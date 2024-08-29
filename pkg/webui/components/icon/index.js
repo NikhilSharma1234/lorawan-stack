@@ -27,6 +27,7 @@ const hardcoded = {
   cluster: 'language',
   collaborators: 'people',
   data: 'poll',
+  datavis: 'show_chart',
   develop: 'code',
   device: 'device_hub',
   devices: 'device_hub',

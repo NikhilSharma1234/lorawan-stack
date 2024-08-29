@@ -107,7 +107,7 @@ ca-key.pem
 # Development data directory
 .dev/
 .env/
-
+.dev.env
 # Javascript test coverage
 /coverage
 /sdk/js/coverage

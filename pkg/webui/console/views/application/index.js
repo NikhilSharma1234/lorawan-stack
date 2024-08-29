@@ -136,7 +136,7 @@ const ApplicationInner = () => {
           <SideNavigation.Item title={sharedMessages.liveData} path="data" icon="data" />
         )}
         {mayViewApplicationEvents.check(rights) && (
-          <SideNavigation.Item title={sharedMessages.dataVis} path="datavis" icon="data" />
+          <SideNavigation.Item title={sharedMessages.dataVis} path="datavis" icon="datavis" />
         )}
         {maySetApplicationPayloadFormatters.check(rights) && (
           <SideNavigation.Item title={sharedMessages.payloadFormatters} icon="code">

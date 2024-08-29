@@ -1203,6 +1203,7 @@
   "lib.shared-messages.deleted": "Deleted (Admin)",
   "lib.shared-messages.description": "Description",
   "lib.shared-messages.details": "Details",
+  "lib.shared-messages.dataVis": "Data Visualization",
   "lib.shared-messages.devAddr": "Device address",
   "lib.shared-messages.devDesc": "End device description",
   "lib.shared-messages.devEUI": "DevEUI",

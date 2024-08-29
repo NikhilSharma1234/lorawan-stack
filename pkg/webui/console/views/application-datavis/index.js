@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 
 import PageTitle from '@ttn-lw/components/page-title'
@@ -27,9 +27,36 @@ import useRootClass from '@ttn-lw/lib/hooks/use-root-class'
 import sharedMessages from '@ttn-lw/lib/shared-messages'
 
 import { mayViewApplicationEvents } from '@console/lib/feature-checks'
+import { Chart } from "react-google-charts";
 
 const ApplicationDataVisualization = () => {
   const { appId } = useParams()
+
+  const dataFake = [
+    ["Year", "Sales", "Expenses"],
+    ["2004", 1000, 400],
+    ["2005", 1170, 460],
+    ["2006", 660, 1120],
+    ["2007", 1030, 540],
+  ];
+  
+  const options = {
+    title: "Company Performance",
+    curveType: "function",
+    legend: { position: "bottom" },
+  };
+
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    fetch('http://localhost:5001/data')
+      .then(response => response.json())
+      .then(json => {
+        setData(json)
+        console.log(json)
+      })
+      .catch(error => console.error(error));
+  }, []);
 
   useRootClass(style.stageFlex, 'stage')
 
@@ -44,6 +71,13 @@ const ApplicationDataVisualization = () => {
       otherwise={{ redirect: `/applications/${appId}` }}
     >
       <PageTitle title={sharedMessages.dataVis} />
+      <Chart
+      chartType="LineChart"
+      width="100%"
+      height="400px"
+      data={dataFake}
+      options={options}
+    />
     </Require>
   )
 }
