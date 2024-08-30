@@ -33,15 +33,15 @@ const ApplicationDataVisualization = () => {
   const { appId } = useParams()
 
   const dataFake = [
-    ["Year", "Sales", "Expenses"],
-    ["2004", 1000, 400],
-    ["2005", 1170, 460],
-    ["2006", 660, 1120],
-    ["2007", 1030, 540],
+    ["Time", "Temperature"],
+    ["", 1000],
+    ["", 1170],
+    ["", 660],
+    ["", 1030],
   ];
   
   const options = {
-    title: "Company Performance",
+    title: "Sensor Data",
     curveType: "function",
     legend: { position: "bottom" },
   };
@@ -52,8 +52,17 @@ const ApplicationDataVisualization = () => {
     fetch('http://localhost:5001/data')
       .then(response => response.json())
       .then(json => {
-        setData(json)
-        console.log(json)
+        console.log("HEHE")
+        console.log(json.data)
+        const newArr = [];
+        newArr.push(["Time", "Temperature"])
+        for(let row = 0; row < json.data.length; row++) {
+          let rowData = json.data[row];
+          console.log(json.data[row])
+          if (rowData.payload.temperature) newArr.push([rowData.timestamp, rowData.payload.temperature]);
+        }
+        console.log(newArr)
+        setData(newArr)
       })
       .catch(error => console.error(error));
   }, []);
@@ -75,9 +84,9 @@ const ApplicationDataVisualization = () => {
       chartType="LineChart"
       width="100%"
       height="400px"
-      data={dataFake}
+      data={data}
       options={options}
-    />
+      />
     </Require>
   )
 }
