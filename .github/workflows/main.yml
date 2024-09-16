@@ -59,8 +59,8 @@ jobs:
         with:
           version: "v1.18.2"
           args: release --config .goreleaser.snapshot.yml --snapshot --timeout 60m
-        env:
-          SIGN_KEY_NAME: ${{ secrets.SIGN_KEY_NAME }}
+        #env:
+        #  SIGN_KEY_NAME: ${{ secrets.SIGN_KEY_NAME }}
       - name: Tag and Push Docker images
         run: |
           docker tag lorawan-stack-dev:${{ github.sha }}-amd64 ${DOCKER_PREFIX}/lorawan-stack-dev:${{ github.sha }}-amd64
@@ -71,4 +71,4 @@ jobs:
           docker manifest push ${DOCKER_PREFIX}/lorawan-stack-dev:${{ github.sha }}
         env:
           DOCKER_CLI_EXPERIMENTAL: enabled
-          DOCKER_PREFIX: thethingsnetwork
+          DOCKER_PREFIX: chasec2331
