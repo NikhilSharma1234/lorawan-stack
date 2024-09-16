@@ -13,22 +13,19 @@
 // limitations under the License.
 
 import "react-datepicker/dist/react-datepicker.css";
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect } from 'react'
 import { getDevicesList } from '@console/store/actions/devices'
 import DatePicker from 'react-datepicker'
 import { selectSelectedApplicationId } from "@console/store/selectors/applications";
 import { selectSelectedDevice } from "@console/store/selectors/devices";
 import { useSelector, useDispatch } from 'react-redux'
 import Button from '@ttn-lw/components/button'
-import PageTitle from '@ttn-lw/components/page-title'
-import { useParams } from 'react-router-dom'
 import Breadcrumb from '@ttn-lw/components/breadcrumbs/breadcrumb'
 import { useBreadcrumbs } from '@ttn-lw/components/breadcrumbs/context'
-import Require from '@console/lib/components/require'
 import style from '@console/views/app/app.styl'
 import useRootClass from '@ttn-lw/lib/hooks/use-root-class'
 import sharedMessages from '@ttn-lw/lib/shared-messages'
-import { mayViewApplicationEvents } from '@console/lib/feature-checks'
+import attachPromise from '@ttn-lw/lib/store/actions/attach-promise'
 
 
 const ApplicationDataExport = () => {
@@ -40,13 +37,16 @@ const ApplicationDataExport = () => {
   const [endTime, setEndTime] = useState(new Date());
   const [data, setData] = useState(null);
 
-  useEffect(() => {
-    dispatch(getDevicesList(appId, { page: 1, limit: 100 }, [
+  useEffect(async () => {
+    const devicesNew = await dispatch(attachPromise(
+      getDevicesList(appId, { page: 1, limit: 100 }, [
       'name',
       'application_server_address',
       'network_server_address',
       'join_server_address',
-    ]));
+    ])));
+    console.log("here")
+    console.log(devicesNew)
   }, [appId, dispatch]);
 
   useEffect(() => {
