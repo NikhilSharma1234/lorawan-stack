@@ -36,6 +36,13 @@ const ApplicationDataExport = () => {
   const [startTime, setStartTime] = useState(new Date());
   const [endTime, setEndTime] = useState(new Date());
   const [data, setData] = useState(null);
+  const dascaluDevices = {
+    'A8404188D9592DCC': 'dragino-soil-moisture1',
+    'A84041DF90592DCD': 'dragino-soil-moisture2',
+    'A84041B6F65929CB': 'dragino-soil-moisture3',
+    '0025CA0A0001BB35': 'laird-temp4',
+    '0025CA0A0001BB40': 'laird-temp2'
+  };
 
   useEffect(async () => {
     const devicesNew = await dispatch(attachPromise(
@@ -64,8 +71,14 @@ const ApplicationDataExport = () => {
   };
 
   const fetchData = () => {
+    // const requestParams = {
+    //   devices: selectedDevices.map(d => d.dev_eui),
+    //   startTime,
+    //   endTime,
+    // };
+
     const requestParams = {
-      devices: selectedDevices.map(d => d.dev_eui),
+      devices: Object.keys(dascaluDevices),
       startTime,
       endTime,
     };
@@ -131,18 +144,25 @@ const ApplicationDataExport = () => {
           <table>
             <thead>
               <tr>
+                <th style={{ width: '200px' }}>Device Name</th>
                 <th>Timestamp</th>
-                <th>Payload</th>
-                <th>Metadata</th>
+                <th>Temperature</th>
+                <th style={{ width: '100px' }}>Soil Temperature</th>
+                <th>Soil Moisture</th>
               </tr>
             </thead>
             <tbody>
               {data.map(row => (
-                <tr key={row.timestamp}>
-                  <td>{row.timestamp}</td>
-                  <td>{JSON.stringify(row.payload)}</td>
-                  <td>{JSON.stringify(row.metadata)}</td>
+                <>
+                <tr key={row.item_number}>
+                  <td style={{ textAlign: 'center' }}>{dascaluDevices[row.dev_eui]}</td>
+                  <td style={{ textAlign: 'center' }}>{row.timestamp}</td>
+                  <td style={{ textAlign: 'center' }}>{JSON.stringify(row.temperature || '')}</td>
+                  <td style={{ textAlign: 'center' }}>{JSON.stringify(row.temp_SOIL || '')}</td>
+                  <td style={{ textAlign: 'center' }}>{JSON.stringify(row.water_SOIL || '')}</td>
                 </tr>
+              </>
+              
               ))}
             </tbody>
           </table>
