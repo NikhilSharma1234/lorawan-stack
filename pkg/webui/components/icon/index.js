@@ -28,6 +28,7 @@ const hardcoded = {
   collaborators: 'people',
   data: 'poll',
   datavis: 'show_chart',
+  expdata: 'file_download',
   develop: 'code',
   device: 'device_hub',
   devices: 'device_hub',

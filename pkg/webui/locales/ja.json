@@ -1204,6 +1204,7 @@
   "lib.shared-messages.description": "説明",
   "lib.shared-messages.details": "",
   "lib.shared-messages.dataVis": "",
+  "lib.shared-messages.expData": "",
   "lib.shared-messages.devAddr": "デバイスアドレス",
   "lib.shared-messages.devDesc": "エンドデバイスの説明",
   "lib.shared-messages.devEUI": "DevEUI",

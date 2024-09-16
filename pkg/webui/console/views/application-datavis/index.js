@@ -14,20 +14,15 @@
 
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-
+import { Chart } from "react-google-charts"
 import PageTitle from '@ttn-lw/components/page-title'
 import Breadcrumb from '@ttn-lw/components/breadcrumbs/breadcrumb'
 import { useBreadcrumbs } from '@ttn-lw/components/breadcrumbs/context'
-
 import Require from '@console/lib/components/require'
-
 import style from '@console/views/app/app.styl'
-
 import useRootClass from '@ttn-lw/lib/hooks/use-root-class'
 import sharedMessages from '@ttn-lw/lib/shared-messages'
-
 import { mayViewApplicationEvents } from '@console/lib/feature-checks'
-import { Chart } from "react-google-charts";
 
 const ApplicationDataVisualization = () => {
   const { appId } = useParams()
@@ -92,3 +87,4 @@ const ApplicationDataVisualization = () => {
 }
 
 export default ApplicationDataVisualization
+
