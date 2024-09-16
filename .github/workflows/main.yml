@@ -58,7 +58,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v5
         with:
           version: "v1.18.2"
-          args: release --config .goreleaser.snapshot.yml --snapshot --timeout 60m
+          args: release --config .goreleaser.snapshotunsigned.yml --snapshot --timeout 60m
         #env:
         #  SIGN_KEY_NAME: ${{ secrets.SIGN_KEY_NAME }}
       - name: Tag and Push Docker images
