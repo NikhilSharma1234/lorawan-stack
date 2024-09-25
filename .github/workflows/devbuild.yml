@@ -3,6 +3,7 @@ name: Snapshot release
 on:
   push:
     branches:
+      - "main*"
       - "dev*"
   workflow_dispatch:
 
@@ -71,4 +72,4 @@ jobs:
           docker manifest push ${DOCKER_PREFIX}/lorawan-stack-dev:${{ github.sha }}
         env:
           DOCKER_CLI_EXPERIMENTAL: enabled
-          DOCKER_PREFIX: chasec2331
+          DOCKER_PREFIX: somedockerrepo
