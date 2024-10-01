@@ -2177,7 +2177,6 @@
     prop-types "^15.8.1"
     react-is "^18.3.1"
 
-<<<<<<< HEAD
 "@mui/x-charts-vendor@7.16.0":
   version "7.16.0"
   resolved "https://registry.npmjs.org/@mui/x-charts-vendor/-/x-charts-vendor-7.16.0.tgz"
@@ -2213,8 +2212,6 @@
     clsx "^2.1.1"
     prop-types "^15.8.1"
 
-=======
->>>>>>> e02da2224480896074b8f8d59bf63ec634d67064
 "@mui/x-data-grid@^7.18.0":
   version "7.18.0"
   resolved "https://registry.npmjs.org/@mui/x-data-grid/-/x-data-grid-7.18.0.tgz"
