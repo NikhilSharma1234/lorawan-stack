@@ -171,6 +171,8 @@ export default defineMessages({
   deleted: 'Deleted (Admin)',
   description: 'Description',
   details: 'Details',
+  dataVis: 'Data visualization',
+  expData: 'Export data',
   devAddr: 'Device address',
   devDesc: 'End device description',
   devEUI: 'DevEUI',

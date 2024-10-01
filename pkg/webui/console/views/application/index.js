@@ -34,6 +34,8 @@ import ApplicationGeneralSettings from '@console/views/application-general-setti
 import ApplicationApiKeys from '@console/views/application-api-keys'
 import ApplicationCollaborators from '@console/views/application-collaborators'
 import ApplicationData from '@console/views/application-data'
+import ApplicationDataVisualization from '@console/views/application-datavis'
+import ApplicationDataExport from '../application-expdata'
 import ApplicationPayloadFormatters from '@console/views/application-payload-formatters'
 import ApplicationIntegrationsWebhooks from '@console/views/application-integrations-webhooks'
 import ApplicationIntegrationsPubsubs from '@console/views/application-integrations-pubsubs'
@@ -134,6 +136,12 @@ const ApplicationInner = () => {
         {mayViewApplicationEvents.check(rights) && (
           <SideNavigation.Item title={sharedMessages.liveData} path="data" icon="data" />
         )}
+        {mayViewApplicationEvents.check(rights) && (
+          <SideNavigation.Item title={sharedMessages.expData} path="expdata" icon="expdata" />
+        )}        
+        {mayViewApplicationEvents.check(rights) && (
+          <SideNavigation.Item title={sharedMessages.dataVis} path="datavis" icon="datavis" />
+        )}
         {maySetApplicationPayloadFormatters.check(rights) && (
           <SideNavigation.Item title={sharedMessages.payloadFormatters} icon="code">
             <SideNavigation.Item
@@ -201,6 +209,8 @@ const ApplicationInner = () => {
         <Route path="devices/*" Component={Devices} />
         <Route path="collaborators/*" Component={ApplicationCollaborators} />
         <Route path="data" Component={ApplicationData} />
+        <Route path="datavis" Component={ApplicationDataVisualization} />
+        <Route path="expdata" Component={ApplicationDataExport}/>
         <Route path="payload-formatters/*" Component={ApplicationPayloadFormatters} />
         <Route path="integrations/mqtt" Component={ApplicationIntegrationsMqtt} />
         <Route path="integrations/webhooks/*" Component={ApplicationIntegrationsWebhooks} />
