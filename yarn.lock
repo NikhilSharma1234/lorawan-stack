@@ -2177,6 +2177,7 @@
     prop-types "^15.8.1"
     react-is "^18.3.1"
 
+<<<<<<< HEAD
 "@mui/x-charts-vendor@7.16.0":
   version "7.16.0"
   resolved "https://registry.npmjs.org/@mui/x-charts-vendor/-/x-charts-vendor-7.16.0.tgz"
@@ -2212,6 +2213,8 @@
     clsx "^2.1.1"
     prop-types "^15.8.1"
 
+=======
+>>>>>>> e02da2224480896074b8f8d59bf63ec634d67064
 "@mui/x-data-grid@^7.18.0":
   version "7.18.0"
   resolved "https://registry.npmjs.org/@mui/x-data-grid/-/x-data-grid-7.18.0.tgz"
@@ -6004,6 +6007,11 @@ expect@^29.7.0:
     jest-message-util "^29.7.0"
     jest-util "^29.7.0"
 
+export-to-csv@^1.4.0:
+  version "1.4.0"
+  resolved "https://registry.npmjs.org/export-to-csv/-/export-to-csv-1.4.0.tgz"
+  integrity sha512-6CX17Cu+rC2Fi2CyZ4CkgVG3hLl6BFsdAxfXiZkmDFIDY4mRx2y2spdeH6dqPHI9rP+AsHEfGeKz84Uuw7+Pmg==
+
 express@^4.19.2:
   version "4.21.0"
   resolved "https://registry.npmjs.org/express/-/express-4.21.0.tgz"
@@ -8072,11 +8080,6 @@ json-stringify-safe@~5.0.1:
   resolved "https://registry.npmjs.org/json-stringify-safe/-/json-stringify-safe-5.0.1.tgz"
   integrity sha512-ZClg6AaYvamvYEE82d3Iyd3vSSIjQ+odgjaTzRuO3s7toCdFKczob2i0zCh7JE8kWn17yvAWhUVxvqGwUalsRA==
 
-json-to-csv-export@2.1.0:
-  version "2.1.0"
-  resolved "https://registry.npmjs.org/json-to-csv-export/-/json-to-csv-export-2.1.0.tgz"
-  integrity sha512-xAkBf6f0uLqG7gtCuulqp6BtbIswYMiSTCJ2ctuh2w1W5XvQKywX4Ppkr5Tgm3JUHLgeOspli8zA9Hy494X5WA==
-
 json5@^1.0.2:
   version "1.0.2"
   resolved "https://registry.npmjs.org/json5/-/json5-1.0.2.tgz"
@@ -10047,13 +10050,6 @@ react-is@^18.0.0, react-is@^18.3.1:
   version "18.3.1"
   resolved "https://registry.npmjs.org/react-is/-/react-is-18.3.1.tgz"
   integrity sha512-/LLMVyas0ljjAtoYiPqYiL8VWXzUUdThrmU5+n20DZv+a+ClRoevUzw5JxU+Ieh5/c87ytoTBV9G1FiKfNJdmg==
-
-react-json-to-csv@^1.2.0:
-  version "1.2.0"
-  resolved "https://registry.npmjs.org/react-json-to-csv/-/react-json-to-csv-1.2.0.tgz"
-  integrity sha512-4yBorgPrkRQDRpbTKDq5vXIb4+CYBorwFxbYyKddmTnFlUGQb/2EOyIrSq6Elp/ygYCVKJK2IwfhEYUaDVyCpw==
-  dependencies:
-    json-to-csv-export "2.1.0"
 
 react-leaflet@^4.2.1:
   version "4.2.1"
