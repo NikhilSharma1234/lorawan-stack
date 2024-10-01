@@ -48,9 +48,8 @@ const ApplicationDataExport = () => {
   const dispatch = useDispatch()
   const [selectedDevices, setSelectedDevices] = useState({})
   const [availableDevices, setAvailableDevices] = useState({
-    A8404188D9592DCC: 'dragino-soil-moisture1',
+    A84041B6F65929CB: 'nikhil-dragino',
     A84041DF90592DCD: 'dragino-soil-moisture2',
-    A84041B6F65929CB: 'dragino-soil-moisture3',
     '0025CA0A0001BB35': 'laird-temp4',
     '0025CA0A0001BB40': 'laird-temp2',
   })
@@ -79,6 +78,7 @@ const ApplicationDataExport = () => {
     temp_SOIL: 'Soil Temperature',
     water_SOIL: 'Soil Moisture',
     batteryCapacity: 'Battery Level',
+    conduct_SOIL: 'Soil Conductivity',
   }
 
   useEffect(() => {
@@ -318,7 +318,7 @@ const ApplicationDataExport = () => {
             headerName: 'Soil Temperature',
             description: 'Soil temperature from sensor',
             type: 'number',
-            width: 90,
+            width: 120,
           },
         ]
       : []),
@@ -330,6 +330,17 @@ const ApplicationDataExport = () => {
             description: 'Soil moisture from sensor',
             type: 'number',
             width: 90,
+          },
+        ]
+      : []),
+    ...(availableColumns.includes('conduct_SOIL')
+      ? [
+          {
+            field: 'conduct_SOIL',
+            headerName: 'Soil Conductivity',
+            description: 'Soil conductivity from sensor',
+            type: 'number',
+            width: 120,
           },
         ]
       : []),
