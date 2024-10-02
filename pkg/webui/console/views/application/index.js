@@ -35,7 +35,6 @@ import ApplicationApiKeys from '@console/views/application-api-keys'
 import ApplicationCollaborators from '@console/views/application-collaborators'
 import ApplicationData from '@console/views/application-data'
 import ApplicationDataVisualization from '@console/views/application-datavis'
-import ApplicationDataExport from '../application-expdata'
 import ApplicationPayloadFormatters from '@console/views/application-payload-formatters'
 import ApplicationIntegrationsWebhooks from '@console/views/application-integrations-webhooks'
 import ApplicationIntegrationsPubsubs from '@console/views/application-integrations-pubsubs'
@@ -75,6 +74,8 @@ import {
   selectMqttProviderDisabled,
   selectNatsProviderDisabled,
 } from '@console/store/selectors/application-server'
+
+import ApplicationDataExport from '../application-expdata'
 
 const Application = () => {
   const { appId } = useParams()
@@ -138,7 +139,7 @@ const ApplicationInner = () => {
         )}
         {mayViewApplicationEvents.check(rights) && (
           <SideNavigation.Item title={sharedMessages.expData} path="expdata" icon="expdata" />
-        )}        
+        )}
         {mayViewApplicationEvents.check(rights) && (
           <SideNavigation.Item title={sharedMessages.dataVis} path="datavis" icon="datavis" />
         )}
@@ -210,7 +211,7 @@ const ApplicationInner = () => {
         <Route path="collaborators/*" Component={ApplicationCollaborators} />
         <Route path="data" Component={ApplicationData} />
         <Route path="datavis" Component={ApplicationDataVisualization} />
-        <Route path="expdata" Component={ApplicationDataExport}/>
+        <Route path="expdata" Component={ApplicationDataExport} />
         <Route path="payload-formatters/*" Component={ApplicationPayloadFormatters} />
         <Route path="integrations/mqtt" Component={ApplicationIntegrationsMqtt} />
         <Route path="integrations/webhooks/*" Component={ApplicationIntegrationsWebhooks} />

@@ -47,12 +47,7 @@ const ApplicationDataExport = () => {
   const appId = useSelector(selectSelectedApplicationId)
   const dispatch = useDispatch()
   const [selectedDevices, setSelectedDevices] = useState({})
-  const [availableDevices, setAvailableDevices] = useState({
-    A84041B6F65929CB: 'nikhil-dragino',
-    A84041DF90592DCD: 'dragino-soil-moisture2',
-    '0025CA0A0001BB35': 'laird-temp4',
-    '0025CA0A0001BB40': 'laird-temp2',
-  })
+  const [availableDevices, setAvailableDevices] = useState({})
   const [availableColumns, setAvailableColumns] = useState([
     'temperature',
     'temp_SOIL',
@@ -93,7 +88,11 @@ const ApplicationDataExport = () => {
           ]),
         ),
       )
-      // SetAvailableDevices(devicesNew)
+      const devices = []
+      for (const device of devicesNew.entities) {
+        devices[device.ids.dev_eui] = device.ids.device_id
+      }
+      setAvailableDevices(devices)
     }
     fetchDevices()
   }, [appId, dispatch])
@@ -360,9 +359,9 @@ const ApplicationDataExport = () => {
   const paginationModel = { page: 0, pageSize: 10 }
 
   return (
-    <div style={{ margin: '16px' }}>
+    <div style={{ marginLeft: '30px' }}>
       <div style={{ display: 'flex' }}>
-        <div style={{ margin: '0px 16px' }}>
+        <div style={{ margin: '0px 16px 0px 0px' }}>
           <h3>Select Time Range</h3>
           <LocalizationProvider dateAdapter={AdapterDayjs}>
             <div style={{ display: 'flex', alignItems: 'center' }}>
