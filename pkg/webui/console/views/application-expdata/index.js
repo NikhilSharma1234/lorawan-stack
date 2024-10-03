@@ -377,7 +377,7 @@ const ApplicationDataExport = () => {
   const paginationModel = { page: 0, pageSize: 10 }
 
   return (
-    <div style={{ marginLeft: '30px' }}>
+    <div style={{ margin: '0px 30px' }}>
       <div style={{ display: 'flex' }}>
         <div style={{ margin: '0px 16px 0px 0px' }}>
           <h3>Select Time Range</h3>
