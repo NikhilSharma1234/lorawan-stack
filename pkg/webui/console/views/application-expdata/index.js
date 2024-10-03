@@ -58,6 +58,7 @@ const ApplicationDataExport = () => {
   const [startTime, setStartTime] = useState(null)
   const [endTime, setEndTime] = useState(null)
   const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
   const ITEM_HEIGHT = 48
   const ITEM_PADDING_TOP = 8
   const MenuProps = {
@@ -77,6 +78,28 @@ const ApplicationDataExport = () => {
   }
 
   useEffect(() => {
+    const fetchDeviceType = devices => {
+      fetch('http://localhost:5001/devices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sensor_ids: Object.keys(devices),
+        }),
+      })
+        .then(response => response.json())
+        .then(json => {
+          const devicesWithType = {}
+          for (const deviceKey of Object.keys(devices)) {
+            devicesWithType[deviceKey] = {
+              name: devices[deviceKey],
+              type: json.capabilities[deviceKey],
+            }
+          }
+          setAvailableDevices(devicesWithType)
+          setLoading(false)
+        })
+        .catch(error => console.error('Error fetching data:', error))
+    }
     const fetchDevices = async () => {
       const devicesNew = await dispatch(
         attachPromise(
@@ -88,11 +111,11 @@ const ApplicationDataExport = () => {
           ]),
         ),
       )
-      const devices = []
+      const devices = {}
       for (const device of devicesNew.entities) {
         devices[device.ids.dev_eui] = device.ids.device_id
       }
-      setAvailableDevices(devices)
+      fetchDeviceType(devices)
     }
     fetchDevices()
   }, [appId, dispatch])
@@ -114,11 +137,6 @@ const ApplicationDataExport = () => {
   }
 
   const fetchData = () => {
-    // Const requestParams = {
-    //   devices: selectedDevices.map(d => d.dev_eui),
-    //   startTime,
-    //   endTime,
-    // };
     const requestParams = {
       devices: Object.keys(selectedDevices),
       startTime,
@@ -167,7 +185,7 @@ const ApplicationDataExport = () => {
       } else {
         const newSelectedDevices = {}
         for (const key of value) {
-          newSelectedDevices[key] = availableDevices[key]
+          newSelectedDevices[key] = availableDevices[key].name
         }
         setSelectedDevices(newSelectedDevices)
       }
@@ -219,7 +237,7 @@ const ApplicationDataExport = () => {
 
       // Add device name based on dev_eui
       if (row.dev_eui && availableDevices[row.dev_eui]) {
-        filteredRow.device_name = availableDevices[row.dev_eui]
+        filteredRow.device_name = availableDevices[row.dev_eui].name
       }
 
       return filteredRow
@@ -289,7 +307,7 @@ const ApplicationDataExport = () => {
       headerName: 'Device Name',
       description: 'Name of the device',
       width: 175,
-      valueGetter: value => availableDevices[value],
+      valueGetter: value => availableDevices[value].name,
     },
     {
       field: 'timestamp',
@@ -388,12 +406,21 @@ const ApplicationDataExport = () => {
                 renderValue={() => Object.values(selectedDevices).join(', ')}
                 MenuProps={MenuProps}
               >
-                {Object.keys(availableDevices).map(key => (
-                  <MenuItem key={availableDevices[key]} value={key}>
-                    <Checkbox checked={Object.keys(selectedDevices).includes(key)} />
-                    <ListItemText primary={availableDevices[key]} />
+                {loading ? (
+                  <MenuItem disabled>
+                    <h1>Loading</h1>
                   </MenuItem>
-                ))}
+                ) : (
+                  Object.keys(availableDevices).map(key => (
+                    <MenuItem key={key} value={key}>
+                      <Checkbox checked={Object.keys(selectedDevices).includes(key)} />
+                      <ListItemText
+                        primary={availableDevices[key].name}
+                        secondary={availableDevices[key].type}
+                      />
+                    </MenuItem>
+                  ))
+                )}
               </Select>
             </FormControl>
           </div>
