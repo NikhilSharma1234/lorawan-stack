@@ -48,10 +48,17 @@ const ApplicationDataVisualization = () => {
   const dispatch = useDispatch()
   const [selectedDevices, setSelectedDevices] = useState({})
   const [availableDevices, setAvailableDevices] = useState({})
+  const [loading, setLoading] = useState(true)
 
   const [selectedSensor, setSelectedSensor] = useState('')
   const [selectedTime, setSelectedTime] = useState('1H')
   const [graphData, setGraphData] = useState([])
+  const availableReadingColumns = {
+    Temperature: 'temperature',
+    'Soil Moisture': 'water_SOIL',
+    'Soil Conductivity': 'conduct_SOIL',
+    'Soil Temperature': 'temp_SOIL',
+  }
 
   const ITEM_HEIGHT = 48
   const ITEM_PADDING_TOP = 8
@@ -71,15 +78,75 @@ const ApplicationDataVisualization = () => {
       const {
         target: { value },
       } = event
+      if (value.length === 0) setSelectedSensor('')
 
       const newSelectedDevices = {}
       for (const key of value) {
-        newSelectedDevices[key] = availableDevices[key]
+        newSelectedDevices[key] = availableDevices[key].name
       }
       setSelectedDevices(newSelectedDevices)
     },
     [availableDevices],
   )
+
+  const computeDeviceItemDisabled = key => {
+    if (
+      selectedSensor !== 'temperature' &&
+      selectedSensor !== '' &&
+      availableDevices[key].type === 'Temperature' &&
+      Object.keys(selectedDevices).length === 0
+    )
+      return true
+    else if (
+      selectedSensor === 'temperature' &&
+      selectedSensor !== '' &&
+      availableDevices[key].type === 'Temperature' &&
+      Object.keys(selectedDevices).length === 0
+    )
+      return false
+    else if (
+      selectedSensor !== 'temperature' &&
+      selectedSensor !== '' &&
+      availableDevices[key].type !== 'Temperature' &&
+      Object.keys(selectedDevices).length === 0
+    )
+      return false
+    else if (
+      selectedSensor === 'temperature' &&
+      selectedSensor !== '' &&
+      availableDevices[key].type !== 'Temperature' &&
+      Object.keys(selectedDevices).length === 0
+    )
+      return true
+    if (Object.keys(selectedDevices).length === 0) return false
+    for (const selectedDevice of Object.keys(selectedDevices)) {
+      if (availableDevices[selectedDevice].type === availableDevices[key].type) return false
+    }
+    return true
+  }
+
+  const computeReadingItemDisabled = key => {
+    if (selectedSensor === '' && Object.keys(selectedDevices).length === 0) return false
+    for (const selectedDevice of Object.keys(selectedDevices)) {
+      if (
+        availableDevices[selectedDevice].type === 'Temperature' &&
+        selectedSensor === key &&
+        key === 'temperature'
+      )
+        return false
+      if (availableDevices[selectedDevice].type !== 'Temperature' && key === 'Temperature')
+        return true
+      if (availableDevices[selectedDevice].type !== 'Temperature' && key !== 'Temperature')
+        return false
+      if (availableDevices[selectedDevice].type === 'Temperature' && key === 'Temperature') {
+        return false
+      }
+
+      if (availableDevices[selectedDevice].type === 'Temperature' && key !== 'Temperature')
+        return true
+    }
+    return true
+  }
 
   const handleSensorChange = event => {
     setSelectedSensor(event.target.value)
@@ -90,6 +157,28 @@ const ApplicationDataVisualization = () => {
   }
 
   useEffect(() => {
+    const fetchDeviceType = devices => {
+      fetch('http://localhost:5001/devices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sensor_ids: Object.keys(devices),
+        }),
+      })
+        .then(response => response.json())
+        .then(json => {
+          const devicesWithType = {}
+          for (const deviceKey of Object.keys(devices)) {
+            devicesWithType[deviceKey] = {
+              name: devices[deviceKey],
+              type: json.capabilities[deviceKey],
+            }
+          }
+          setAvailableDevices(devicesWithType)
+          setLoading(false)
+        })
+        .catch(error => console.error('Error fetching data:', error))
+    }
     const fetchDevices = async () => {
       const devicesNew = await dispatch(
         attachPromise(
@@ -101,11 +190,11 @@ const ApplicationDataVisualization = () => {
           ]),
         ),
       )
-      const devices = []
+      const devices = {}
       for (const device of devicesNew.entities) {
         devices[device.ids.dev_eui] = device.ids.device_id
       }
-      setAvailableDevices(devices)
+      fetchDeviceType(devices)
     }
     fetchDevices()
   }, [appId, dispatch])
@@ -178,12 +267,21 @@ const ApplicationDataVisualization = () => {
               renderValue={() => Object.values(selectedDevices).join(', ')}
               MenuProps={MenuProps}
             >
-              {Object.keys(availableDevices).map(key => (
-                <MenuItem key={availableDevices[key]} value={key}>
-                  <Checkbox checked={Object.keys(selectedDevices).includes(key)} />
-                  <ListItemText primary={availableDevices[key]} />
+              {loading ? (
+                <MenuItem disabled>
+                  <h1>Loading</h1>
                 </MenuItem>
-              ))}
+              ) : (
+                Object.keys(availableDevices).map(key => (
+                  <MenuItem key={key} value={key} disabled={computeDeviceItemDisabled(key)}>
+                    <Checkbox checked={Object.keys(selectedDevices).includes(key)} />
+                    <ListItemText
+                      primary={availableDevices[key].name}
+                      secondary={availableDevices[key].type}
+                    />
+                  </MenuItem>
+                ))
+              )}
             </Select>
           </FormControl>
         </div>
@@ -199,10 +297,15 @@ const ApplicationDataVisualization = () => {
               onChange={handleSensorChange}
               input={<OutlinedInput label="Selected Devices" />}
             >
-              <MenuItem value="temperature">Temperature</MenuItem>
-              <MenuItem value="temp_SOIL">Soil Temperature</MenuItem>
-              <MenuItem value="water_SOIL">Soil Moisture</MenuItem>
-              <MenuItem value="conduct_SOIL">Soil Conductivity</MenuItem>
+              {Object.keys(availableReadingColumns).map(key => (
+                <MenuItem
+                  key={key}
+                  value={availableReadingColumns[key]}
+                  disabled={computeReadingItemDisabled(key)}
+                >
+                  {key}
+                </MenuItem>
+              ))}
             </Select>
           </FormControl>
         </div>
