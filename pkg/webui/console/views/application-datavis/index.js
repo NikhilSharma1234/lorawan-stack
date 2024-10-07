@@ -42,9 +42,9 @@ const ApplicationDataVisualization = () => {
   };
 
   const [data, setData] = useState(null);
-
+  const server = process.env.FLASK_DATA_ENDPOINT;
   useEffect(() => {
-    fetch('http://localhost:5001/data')
+    fetch(server)
       .then(response => response.json())
       .then(json => {
         console.log("HEHE")
