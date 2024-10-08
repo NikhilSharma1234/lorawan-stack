@@ -52,13 +52,13 @@ import {
 } from '@console/store/selectors/applications'
 
 const m = defineMessages({
-  ownedTabTitle: 'Owned applications',
-  restoreSuccess: 'Application restored',
-  restoreFail: 'There was an error and application could not be restored',
-  purgeSuccess: 'Application purged',
-  purgeFail: 'There was an error and the application could not be purged',
+  ownedTabTitle: 'Owned projects',
+  restoreSuccess: 'Project restored',
+  restoreFail: 'There was an error and project could not be restored',
+  purgeSuccess: 'Project purged',
+  purgeFail: 'There was an error and the project could not be purged',
   otherClusterTooltip:
-    'This application is registered on a different cluster (`{host}`). To access this application, use the Console of the cluster that this application was registered on.',
+    'This project is registered on a different cluster (`{host}`). To access this application, use the Console of the cluster that this application was registered on.',
 })
 
 const OWNED_TAB = 'owned'

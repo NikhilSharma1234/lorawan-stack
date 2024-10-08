@@ -287,13 +287,13 @@ export default {
       new Dotenv({
         path: './.env.extra', // Path to .env file (this is the default)
         safe: true, // load .env.example (defaults to "false" which does not use dotenv-safe)
+        systemvars: true,
       }),
       new webpack.EnvironmentPlugin({
         NODE_ENV,
         VERSION: version,
         REVISION: revision,
         ADDITIONAL_CONFIG: JSON.stringify(ADDITIONAL_CONFIG),
-        FLASK_DATA_ENDPOINT: process.env.FLASK_DATA_ENDPOINT || 'http://localhost:5001/data',
       }),
       new webpack.DefinePlugin({
         'process.predefined.SUPPORTED_LOCALES': JSON.stringify(supportedLocales),
