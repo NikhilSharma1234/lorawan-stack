@@ -16,6 +16,7 @@ import React, { useState, useCallback, useEffect } from 'react'
 import { useDispatch } from 'react-redux'
 import { useParams } from 'react-router-dom'
 import { LineChart } from '@mui/x-charts/LineChart'
+import { axisClasses } from '@mui/x-charts'
 import {
   Select,
   OutlinedInput,
@@ -58,6 +59,12 @@ const ApplicationDataVisualization = () => {
     'Soil Moisture': 'water_SOIL',
     'Soil Conductivity': 'conduct_SOIL',
     'Soil Temperature': 'temp_SOIL',
+  }
+
+  const sensorLabels = {
+    water_SOIL: 'Soil Moisture',
+    conduct_SOIL: 'Soil Conductivity',
+    temp_SOIL: 'Soil Temperature',
   }
 
   const ITEM_HEIGHT = 48
@@ -246,6 +253,7 @@ const ApplicationDataVisualization = () => {
     'apps.single.data',
     <Breadcrumb path={`/applications/${appId}/datavis`} content={sharedMessages.dataVis} />,
   )
+  const [fixLabel, setFixLabel] = React.useState(true);
 
   return (
     <Require
@@ -325,28 +333,58 @@ const ApplicationDataVisualization = () => {
           </SubmitButton>
         </div>
 
-        {graphData && graphData.dataset && graphData.dataset.length > 0 && (
-          <LineChart
-            dataset={graphData.dataset}
-            xAxis={[
-              {
-                dataKey: 'timestamp',
-                valueFormatter: value => new Date(value).toLocaleString(),
-                scaleType: 'time',
-              },
-            ]}
-            series={graphData.series.map(series => ({
-              ...series,
-              showMark: false,
-              connectNulls: true,
-            }))}
-            width={800}
-            height={400}
-          />
-        )}
+        <div style={{ paddingRight: '50px' }}>
+          {graphData && graphData.dataset && graphData.dataset.length > 0 && (
+            <LineChart
+              dataset={graphData.dataset}
+              xAxis={[
+                {
+                  dataKey: 'timestamp',
+                  valueFormatter: value => {
+                    const date = new Date(value).toLocaleDateString(); 
+                    const time = new Date(value).toLocaleTimeString(); 
+                    return `${date}\n${time}`; 
+                  },
+                  scaleType: 'time',
+                  label: 'Time',  
+                  labelStyle: {
+                    transform: 'translateY(30px)',  
+                  },
+                },
+              ]}
+              yAxis={[
+                {
+                  label: sensorLabels[selectedSensor] || selectedSensor.charAt(0).toUpperCase() + selectedSensor.slice(1),
+                  labelStyle: {
+                  },
+                  
+                },
+              ]}
+              series={graphData.series.map(series => ({
+                ...series,
+                showMark: false,
+                connectNulls: true,
+              }))}
+              width={850}
+              height={450}  
+              sx={
+                fixLabel
+                  ? {
+                      [`.${axisClasses.left} .${axisClasses.label}`]: {
+                        transform: 'translateX(-30px)',
+                      },
+                    }
+                  : {}
+              }
+              margin={{ top: 30, right: 100, left: 100, bottom: 80 }}  
+            />
+          )}
+      </div>
+
       </div>
     </Require>
   )
 }
+
 
 export default ApplicationDataVisualization
