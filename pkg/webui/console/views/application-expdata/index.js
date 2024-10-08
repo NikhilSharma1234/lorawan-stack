@@ -47,12 +47,7 @@ const ApplicationDataExport = () => {
   const appId = useSelector(selectSelectedApplicationId)
   const dispatch = useDispatch()
   const [selectedDevices, setSelectedDevices] = useState({})
-  const [availableDevices, setAvailableDevices] = useState({
-    A84041B6F65929CB: 'nikhil-dragino',
-    A84041DF90592DCD: 'dragino-soil-moisture2',
-    '0025CA0A0001BB35': 'laird-temp4',
-    '0025CA0A0001BB40': 'laird-temp2',
-  })
+  const [availableDevices, setAvailableDevices] = useState({})
   const [availableColumns, setAvailableColumns] = useState([
     'temperature',
     'temp_SOIL',
@@ -63,6 +58,7 @@ const ApplicationDataExport = () => {
   const [startTime, setStartTime] = useState(null)
   const [endTime, setEndTime] = useState(null)
   const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
   const ITEM_HEIGHT = 48
   const ITEM_PADDING_TOP = 8
   const MenuProps = {
@@ -82,6 +78,28 @@ const ApplicationDataExport = () => {
   }
 
   useEffect(() => {
+    const fetchDeviceType = devices => {
+      fetch('http://localhost:5001/devices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sensor_ids: Object.keys(devices),
+        }),
+      })
+        .then(response => response.json())
+        .then(json => {
+          const devicesWithType = {}
+          for (const deviceKey of Object.keys(devices)) {
+            devicesWithType[deviceKey] = {
+              name: devices[deviceKey],
+              type: json.capabilities[deviceKey],
+            }
+          }
+          setAvailableDevices(devicesWithType)
+          setLoading(false)
+        })
+        .catch(error => console.error('Error fetching data:', error))
+    }
     const fetchDevices = async () => {
       const devicesNew = await dispatch(
         attachPromise(
@@ -93,7 +111,11 @@ const ApplicationDataExport = () => {
           ]),
         ),
       )
-      // SetAvailableDevices(devicesNew)
+      const devices = {}
+      for (const device of devicesNew.entities) {
+        devices[device.ids.dev_eui] = device.ids.device_id
+      }
+      fetchDeviceType(devices)
     }
     fetchDevices()
   }, [appId, dispatch])
@@ -115,11 +137,6 @@ const ApplicationDataExport = () => {
   }
 
   const fetchData = () => {
-    // Const requestParams = {
-    //   devices: selectedDevices.map(d => d.dev_eui),
-    //   startTime,
-    //   endTime,
-    // };
     const requestParams = {
       devices: Object.keys(selectedDevices),
       startTime,
@@ -168,7 +185,7 @@ const ApplicationDataExport = () => {
       } else {
         const newSelectedDevices = {}
         for (const key of value) {
-          newSelectedDevices[key] = availableDevices[key]
+          newSelectedDevices[key] = availableDevices[key].name
         }
         setSelectedDevices(newSelectedDevices)
       }
@@ -220,7 +237,7 @@ const ApplicationDataExport = () => {
 
       // Add device name based on dev_eui
       if (row.dev_eui && availableDevices[row.dev_eui]) {
-        filteredRow.device_name = availableDevices[row.dev_eui]
+        filteredRow.device_name = availableDevices[row.dev_eui].name
       }
 
       return filteredRow
@@ -290,7 +307,7 @@ const ApplicationDataExport = () => {
       headerName: 'Device Name',
       description: 'Name of the device',
       width: 175,
-      valueGetter: value => availableDevices[value],
+      valueGetter: value => availableDevices[value].name,
     },
     {
       field: 'timestamp',
@@ -360,9 +377,9 @@ const ApplicationDataExport = () => {
   const paginationModel = { page: 0, pageSize: 10 }
 
   return (
-    <div style={{ margin: '16px' }}>
+    <div style={{ margin: '0px 30px' }}>
       <div style={{ display: 'flex' }}>
-        <div style={{ margin: '0px 16px' }}>
+        <div style={{ margin: '0px 16px 0px 0px' }}>
           <h3>Select Time Range</h3>
           <LocalizationProvider dateAdapter={AdapterDayjs}>
             <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -389,12 +406,21 @@ const ApplicationDataExport = () => {
                 renderValue={() => Object.values(selectedDevices).join(', ')}
                 MenuProps={MenuProps}
               >
-                {Object.keys(availableDevices).map(key => (
-                  <MenuItem key={availableDevices[key]} value={key}>
-                    <Checkbox checked={Object.keys(selectedDevices).includes(key)} />
-                    <ListItemText primary={availableDevices[key]} />
+                {loading ? (
+                  <MenuItem disabled>
+                    <h1>Loading</h1>
                   </MenuItem>
-                ))}
+                ) : (
+                  Object.keys(availableDevices).map(key => (
+                    <MenuItem key={key} value={key}>
+                      <Checkbox checked={Object.keys(selectedDevices).includes(key)} />
+                      <ListItemText
+                        primary={availableDevices[key].name}
+                        secondary={availableDevices[key].type}
+                      />
+                    </MenuItem>
+                  ))
+                )}
               </Select>
             </FormControl>
           </div>
