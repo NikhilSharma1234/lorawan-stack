@@ -125,7 +125,7 @@ const ApplicationDataExport = () => {
       startTime,
       endTime,
     }
-
+    console.log(process.env.FLASK_DATA_ENDPOINT);
     const server = process.env.FLASK_DATA_ENDPOINT;
 
     fetch(server, {
@@ -369,7 +369,6 @@ const ApplicationDataExport = () => {
           <LocalizationProvider dateAdapter={AdapterDayjs}>
             <div style={{ display: 'flex', alignItems: 'center' }}>
               <div>
-                {process.env.NODE_ENV}
                 <DateTimePicker label="Start Time" value={null} onChange={convertLocalToUTCStart} />
               </div>
               <div style={{ margin: '0 20px' }}> --------- </div>

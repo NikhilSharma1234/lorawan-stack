@@ -42,6 +42,7 @@ const ApplicationDataVisualization = () => {
   };
 
   const [data, setData] = useState(null);
+  console.log(process.env.FLASK_DATA_ENDPOINT);
   const server = process.env.FLASK_DATA_ENDPOINT;
   useEffect(() => {
     fetch(server)
