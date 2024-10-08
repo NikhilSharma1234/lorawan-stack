@@ -102,24 +102,19 @@ func generateConsoleCSPString(config *Config, nonce string, others ...webui.Cont
 		config.UI.StackConfig.GCS.BaseURL,
 		config.UI.StackConfig.DCS.BaseURL,
 	)
-	a := []string{
-		"'self'",
+	return webui.ContentSecurityPolicy{
+		ConnectionSource: append([]string{
+			"'self'",
 			config.UI.SentryDSN,
+			config.UI.StatusPage,
 			"gravatar.com",
 			"www.gravatar.com",
-	}
-
-	b := append([]string {
-		"'self'",
-		config.UI.SiteName,
 			"localhost:5001",
-			"localhost:5001",
-	}, a...)
-
-	c := append(b, baseURLs...)
-
-	return webui.ContentSecurityPolicy{
-		ConnectionSource: c,
+			"ncar-da-15.rc.unr.edu",
+			"ncar-da-15.rc.unr.edu:30127",
+			"ncar-da-15.rc.unr.edu:30128",
+			"ncar-da-15.rc.unr.edu:30129",
+		}, baseURLs...),
 		StyleSource: append([]string{
 			"'self'",
 			"gstatic.com",

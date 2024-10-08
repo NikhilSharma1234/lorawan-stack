@@ -76,10 +76,10 @@ const ApplicationDataExport = () => {
     batteryCapacity: 'Battery Level',
     conduct_SOIL: 'Soil Conductivity',
   }
-
+  const serverDeviceEndpoint = process.env.FLASK_DEVICE_ENDPOINT;
   useEffect(() => {
     const fetchDeviceType = devices => {
-      fetch('http://localhost:5001/devices', {
+      fetch(serverDeviceEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -143,7 +143,9 @@ const ApplicationDataExport = () => {
       endTime,
     }
 
-    fetch('http://localhost:5001/export', {
+    const server = process.env.FLASK_EXPORT_ENDPOINT;
+
+    fetch(server, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestParams),
