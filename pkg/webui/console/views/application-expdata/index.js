@@ -142,8 +142,8 @@ const ApplicationDataExport = () => {
       startTime,
       endTime,
     }
-    console.log(process.env.FLASK_DATA_ENDPOINT);
-    const server = process.env.FLASK_DATA_ENDPOINT;
+
+    const server = process.env.FLASK_EXPORT_ENDPOINT;
 
     fetch(server, {
       method: 'POST',
