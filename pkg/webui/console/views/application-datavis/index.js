@@ -61,6 +61,8 @@ const ApplicationDataVisualization = () => {
     'Soil Temperature': 'temp_SOIL',
   }
 
+
+  
   const sensorLabels = {
     water_SOIL: 'Soil Moisture',
     conduct_SOIL: 'Soil Conductivity',
@@ -77,7 +79,8 @@ const ApplicationDataVisualization = () => {
       },
     },
   }
-
+  const serverDataEndpoint = process.env.FLASK_DATA_ENDPOINT;
+  const serverDeviceEndpoint = process.env.FLASK_DEVICE_ENDPOINT;
   const timesOptions = ['1H', '24H', '7D', '14D', '30D', '6M', '1Y', 'ALL']
 
   const handleDeviceChange = useCallback(
@@ -165,7 +168,7 @@ const ApplicationDataVisualization = () => {
 
   useEffect(() => {
     const fetchDeviceType = devices => {
-      fetch('http://localhost:5001/devices', {
+      fetch(serverDeviceEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -207,7 +210,7 @@ const ApplicationDataVisualization = () => {
   }, [appId, dispatch])
 
   const fetchData = () => {
-    fetch('http://localhost:5001/data', {
+    fetch(serverDataEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -216,6 +219,7 @@ const ApplicationDataVisualization = () => {
         period: selectedTime,
       }),
     })
+
       .then(response => response.json())
       .then(json => {
         const dataset = {}
