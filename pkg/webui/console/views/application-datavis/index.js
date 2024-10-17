@@ -51,14 +51,25 @@ const ApplicationDataVisualization = () => {
   const [availableDevices, setAvailableDevices] = useState({})
   const [loading, setLoading] = useState(true)
 
-  const [selectedSensor, setSelectedSensor] = useState('')
+  const [selectedColumns, setSelectedColumns] = useState('')
   const [selectedTime, setSelectedTime] = useState('1H')
   const [graphData, setGraphData] = useState([])
-  const availableReadingColumns = {
+  const [availableReadingColumns, setAvailableReadingColumns] = useState({})
+  const deviceToAvailableColumns = {
+    Temperature: ['Temperature'],
+    'Soil Moisture': ['Soil Moisture', 'Soil Conductivity', 'Soil Temperature'],
+    'Temperature D20': ['Temperature Red'],
+    'Temperature D22': ['Temperature Red', 'Temperature White'],
+    'Temperature D23': ['Temperature Red', 'Temperature White', 'Temperature Black'],
+  }
+  const columnToKeyMap = {
     Temperature: 'temperature',
     'Soil Moisture': 'water_SOIL',
     'Soil Conductivity': 'conduct_SOIL',
     'Soil Temperature': 'temp_SOIL',
+    'Temperature Red': 'Temp_Red',
+    'Temperature White': 'Temp_White',
+    'Temperature Black': 'Temp_Black',
   }
 
 
@@ -67,6 +78,9 @@ const ApplicationDataVisualization = () => {
     water_SOIL: 'Soil Moisture',
     conduct_SOIL: 'Soil Conductivity',
     temp_SOIL: 'Soil Temperature',
+    Temp_Red: 'Temperature Red',
+    Temp_White: 'Temeprature White',
+    Temp_Black: 'Temeprature Black',
   }
 
   const ITEM_HEIGHT = 48
@@ -88,46 +102,23 @@ const ApplicationDataVisualization = () => {
       const {
         target: { value },
       } = event
-      if (value.length === 0) setSelectedSensor('')
+      if (value.length === 0) setSelectedColumns('')
 
       const newSelectedDevices = {}
+      const newAvailableColumns = {}
       for (const key of value) {
         newSelectedDevices[key] = availableDevices[key].name
+        for (const column of deviceToAvailableColumns[availableDevices[key].type]) {
+          newAvailableColumns[column] = columnToKeyMap[column]
+        }
       }
       setSelectedDevices(newSelectedDevices)
+      setAvailableReadingColumns(newAvailableColumns)
     },
-    [availableDevices],
+    [availableDevices, columnToKeyMap, deviceToAvailableColumns],
   )
 
   const computeDeviceItemDisabled = key => {
-    if (
-      selectedSensor !== 'temperature' &&
-      selectedSensor !== '' &&
-      availableDevices[key].type === 'Temperature' &&
-      Object.keys(selectedDevices).length === 0
-    )
-      return true
-    else if (
-      selectedSensor === 'temperature' &&
-      selectedSensor !== '' &&
-      availableDevices[key].type === 'Temperature' &&
-      Object.keys(selectedDevices).length === 0
-    )
-      return false
-    else if (
-      selectedSensor !== 'temperature' &&
-      selectedSensor !== '' &&
-      availableDevices[key].type !== 'Temperature' &&
-      Object.keys(selectedDevices).length === 0
-    )
-      return false
-    else if (
-      selectedSensor === 'temperature' &&
-      selectedSensor !== '' &&
-      availableDevices[key].type !== 'Temperature' &&
-      Object.keys(selectedDevices).length === 0
-    )
-      return true
     if (Object.keys(selectedDevices).length === 0) return false
     for (const selectedDevice of Object.keys(selectedDevices)) {
       if (availableDevices[selectedDevice].type === availableDevices[key].type) return false
@@ -135,32 +126,9 @@ const ApplicationDataVisualization = () => {
     return true
   }
 
-  const computeReadingItemDisabled = key => {
-    if (selectedSensor === '' && Object.keys(selectedDevices).length === 0) return false
-    for (const selectedDevice of Object.keys(selectedDevices)) {
-      if (
-        availableDevices[selectedDevice].type === 'Temperature' &&
-        selectedSensor === key &&
-        key === 'temperature'
-      )
-        return false
-      if (availableDevices[selectedDevice].type !== 'Temperature' && key === 'Temperature')
-        return true
-      if (availableDevices[selectedDevice].type !== 'Temperature' && key !== 'Temperature')
-        return false
-      if (availableDevices[selectedDevice].type === 'Temperature' && key === 'Temperature') {
-        return false
-      }
-
-      if (availableDevices[selectedDevice].type === 'Temperature' && key !== 'Temperature')
-        return true
-    }
-    return true
-  }
-
-  const handleSensorChange = event => {
-    setSelectedSensor(event.target.value)
-  }
+  const handleReadingTypeChange = useCallback(event => {
+    setSelectedColumns(event.target.value)
+  }, [])
 
   const selectTime = time => {
     setSelectedTime(time)
@@ -215,7 +183,7 @@ const ApplicationDataVisualization = () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         sensor_ids: Object.keys(selectedDevices),
-        payload_type: selectedSensor,
+        payload_type: selectedColumns,
         period: selectedTime,
       }),
     })
@@ -225,7 +193,7 @@ const ApplicationDataVisualization = () => {
         const dataset = {}
         json.data.forEach(item => {
           const timestamp = new Date(item.timestamp).getTime()
-          const sensorValue = parseFloat(item[selectedSensor]) || null
+          const sensorValue = parseFloat(item[selectedColumns]) || null
 
           if (!dataset[timestamp]) {
             dataset[timestamp] = { timestamp }
@@ -257,7 +225,6 @@ const ApplicationDataVisualization = () => {
     'apps.single.data',
     <Breadcrumb path={`/applications/${appId}/datavis`} content={sharedMessages.dataVis} />,
   )
-  const [fixLabel, setFixLabel] = React.useState(true);
 
   return (
     <Require
@@ -305,16 +272,12 @@ const ApplicationDataVisualization = () => {
             <Select
               labelId="sensor-select-label"
               id="sensor-select"
-              value={selectedSensor}
-              onChange={handleSensorChange}
+              value={selectedColumns}
+              onChange={handleReadingTypeChange}
               input={<OutlinedInput label="Selected Devices" />}
             >
               {Object.keys(availableReadingColumns).map(key => (
-                <MenuItem
-                  key={key}
-                  value={availableReadingColumns[key]}
-                  disabled={computeReadingItemDisabled(key)}
-                >
+                <MenuItem key={key} value={availableReadingColumns[key]}>
                   {key}
                 </MenuItem>
               ))}
@@ -345,23 +308,23 @@ const ApplicationDataVisualization = () => {
                 {
                   dataKey: 'timestamp',
                   valueFormatter: value => {
-                    const date = new Date(value).toLocaleDateString(); 
-                    const time = new Date(value).toLocaleTimeString(); 
-                    return `${date}\n${time}`; 
+                    const date = new Date(value).toLocaleDateString()
+                    const time = new Date(value).toLocaleTimeString()
+                    return `${date}\n${time}`
                   },
                   scaleType: 'time',
-                  label: 'Time',  
+                  label: 'Time',
                   labelStyle: {
-                    transform: 'translateY(30px)',  
+                    transform: 'translateY(30px)',
                   },
                 },
               ]}
               yAxis={[
                 {
-                  label: sensorLabels[selectedSensor] || selectedSensor.charAt(0).toUpperCase() + selectedSensor.slice(1),
-                  labelStyle: {
-                  },
-                  
+                  label:
+                    sensorLabels[selectedColumns] ||
+                    selectedColumns.charAt(0).toUpperCase() + selectedColumns.slice(1),
+                  labelStyle: {},
                 },
               ]}
               series={graphData.series.map(series => ({
@@ -370,25 +333,19 @@ const ApplicationDataVisualization = () => {
                 connectNulls: true,
               }))}
               width={850}
-              height={450}  
-              sx={
-                fixLabel
-                  ? {
-                      [`.${axisClasses.left} .${axisClasses.label}`]: {
-                        transform: 'translateX(-30px)',
-                      },
-                    }
-                  : {}
-              }
-              margin={{ top: 30, right: 100, left: 100, bottom: 80 }}  
+              height={450}
+              sx={{
+                [`.${axisClasses.left} .${axisClasses.label}`]: {
+                  transform: 'translateX(-30px)',
+                },
+              }}
+              margin={{ top: 30, right: 100, left: 100, bottom: 80 }}
             />
           )}
-      </div>
-
+        </div>
       </div>
     </Require>
   )
 }
-
 
 export default ApplicationDataVisualization
