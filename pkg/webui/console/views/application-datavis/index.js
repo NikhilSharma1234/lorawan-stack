@@ -72,8 +72,6 @@ const ApplicationDataVisualization = () => {
     'Temperature Black': 'Temp_Black',
   }
 
-
-  
   const sensorLabels = {
     water_SOIL: 'Soil Moisture',
     conduct_SOIL: 'Soil Conductivity',
@@ -93,8 +91,8 @@ const ApplicationDataVisualization = () => {
       },
     },
   }
-  const serverDataEndpoint = process.env.FLASK_DATA_ENDPOINT;
-  const serverDeviceEndpoint = process.env.FLASK_DEVICE_ENDPOINT;
+  const serverDataEndpoint = process.env.FLASK_DATA_ENDPOINT
+  const serverDeviceEndpoint = process.env.FLASK_DEVICE_ENDPOINT
   const timesOptions = ['1H', '24H', '7D', '14D', '30D', '6M', '1Y', 'ALL']
 
   const handleDeviceChange = useCallback(
@@ -175,7 +173,7 @@ const ApplicationDataVisualization = () => {
       fetchDeviceType(devices)
     }
     fetchDevices()
-  }, [appId, dispatch])
+  }, [appId, dispatch, serverDeviceEndpoint])
 
   const fetchData = () => {
     fetch(serverDataEndpoint, {
@@ -187,7 +185,6 @@ const ApplicationDataVisualization = () => {
         period: selectedTime,
       }),
     })
-
       .then(response => response.json())
       .then(json => {
         const dataset = {}
