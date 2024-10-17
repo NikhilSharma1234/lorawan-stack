@@ -75,6 +75,9 @@ const ApplicationDataExport = () => {
     water_SOIL: 'Soil Moisture',
     batteryCapacity: 'Battery Level',
     conduct_SOIL: 'Soil Conductivity',
+    Temp_Red: 'Temperature Red',
+    Temp_White: 'Temperature White',
+    Temp_Black: 'Temperature Black',
   }
   const serverDeviceEndpoint = process.env.FLASK_DEVICE_ENDPOINT;
   useEffect(() => {
@@ -325,6 +328,39 @@ const ApplicationDataExport = () => {
             field: 'temperature',
             headerName: 'Temperature',
             description: 'Temperature reading from sensor',
+            type: 'number',
+            width: 90,
+          },
+        ]
+      : []),
+    ...(availableColumns.includes('Temp_Red')
+      ? [
+          {
+            field: 'Temp_Red',
+            headerName: 'Temperature Red',
+            description: 'Temperature Red reading from sensor',
+            type: 'number',
+            width: 90,
+          },
+        ]
+      : []),
+    ...(availableColumns.includes('Temp_White')
+      ? [
+          {
+            field: 'Temp_White',
+            headerName: 'Temperature White',
+            description: 'Temperature White reading from sensor',
+            type: 'number',
+            width: 90,
+          },
+        ]
+      : []),
+    ...(availableColumns.includes('Temp_Black')
+      ? [
+          {
+            field: 'Temp_Black',
+            headerName: 'Temperature Black',
+            description: 'Temperature Black reading from sensor',
             type: 'number',
             width: 90,
           },
