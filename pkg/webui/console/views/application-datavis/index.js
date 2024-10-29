@@ -51,36 +51,11 @@ const ApplicationDataVisualization = () => {
   const [availableDevices, setAvailableDevices] = useState({})
   const [loading, setLoading] = useState(true)
 
-  const [selectedColumns, setSelectedColumns] = useState('')
+  // ['dev_eui-readingType', '123-temperature']
+  const [selectedReadings, setSelectedReadings] = useState([])
   const [selectedTime, setSelectedTime] = useState('1H')
   const [graphData, setGraphData] = useState([])
   const [availableReadingColumns, setAvailableReadingColumns] = useState({})
-  const deviceToAvailableColumns = {
-    Temperature: ['Temperature'],
-    'Soil Moisture': ['Soil Moisture', 'Soil Conductivity', 'Soil Temperature'],
-    'Temperature D20': ['Temperature Red'],
-    'Temperature D22': ['Temperature Red', 'Temperature White'],
-    'Temperature D23': ['Temperature Red', 'Temperature White', 'Temperature Black'],
-  }
-  const columnToKeyMap = {
-    Temperature: 'temperature',
-    'Soil Moisture': 'water_SOIL',
-    'Soil Conductivity': 'conduct_SOIL',
-    'Soil Temperature': 'temp_SOIL',
-    'Temperature Red': 'Temp_Red',
-    'Temperature White': 'Temp_White',
-    'Temperature Black': 'Temp_Black',
-  }
-
-  const sensorLabels = {
-    water_SOIL: 'Soil Moisture',
-    conduct_SOIL: 'Soil Conductivity',
-    temp_SOIL: 'Soil Temperature',
-    Temp_Red: 'Temperature Red',
-    Temp_White: 'Temeprature White',
-    Temp_Black: 'Temeprature Black',
-  }
-
   const ITEM_HEIGHT = 48
   const ITEM_PADDING_TOP = 8
   const MenuProps = {
@@ -100,32 +75,31 @@ const ApplicationDataVisualization = () => {
       const {
         target: { value },
       } = event
-      if (value.length === 0) setSelectedColumns('')
-
+      if (value.length === 0) setSelectedReadings('')
       const newSelectedDevices = {}
       const newAvailableColumns = {}
       for (const key of value) {
         newSelectedDevices[key] = availableDevices[key].name
-        for (const column of deviceToAvailableColumns[availableDevices[key].type]) {
-          newAvailableColumns[column] = columnToKeyMap[column]
+        newAvailableColumns[key] = []
+        for (const reading of availableDevices[key].readings) {
+          newAvailableColumns[key].push({
+            payload_value: reading.payload_value,
+            display_name: reading.display_name,
+          })
         }
       }
       setSelectedDevices(newSelectedDevices)
       setAvailableReadingColumns(newAvailableColumns)
     },
-    [availableDevices, columnToKeyMap, deviceToAvailableColumns],
+    [availableDevices],
   )
 
-  const computeDeviceItemDisabled = key => {
-    if (Object.keys(selectedDevices).length === 0) return false
-    for (const selectedDevice of Object.keys(selectedDevices)) {
-      if (availableDevices[selectedDevice].type === availableDevices[key].type) return false
-    }
-    return true
-  }
-
-  const handleReadingTypeChange = useCallback(event => {
-    setSelectedColumns(event.target.value)
+  const handleSelectedReadingChange = useCallback(event => {
+    const {
+      target: { value },
+    } = event
+    // Update the state with the new selected readings
+    setSelectedReadings(value)
   }, [])
 
   const selectTime = time => {
@@ -147,7 +121,8 @@ const ApplicationDataVisualization = () => {
           for (const deviceKey of Object.keys(devices)) {
             devicesWithType[deviceKey] = {
               name: devices[deviceKey],
-              type: json.capabilities[deviceKey],
+              type: json.capabilities[deviceKey].type,
+              readings: json.capabilities[deviceKey].readings,
             }
           }
           setAvailableDevices(devicesWithType)
@@ -176,12 +151,22 @@ const ApplicationDataVisualization = () => {
   }, [appId, dispatch, serverDeviceEndpoint])
 
   const fetchData = () => {
+    const mappedData = selectedReadings.reduce((acc, column) => {
+      const [devEui, attribute] = column.split('-')
+
+      if (!acc[devEui]) {
+        acc[devEui] = []
+      }
+
+      acc[devEui].push(attribute)
+
+      return acc
+    }, {})
     fetch(serverDataEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        sensor_ids: Object.keys(selectedDevices),
-        payload_type: selectedColumns,
+        data: mappedData,
         period: selectedTime,
       }),
     })
@@ -190,27 +175,38 @@ const ApplicationDataVisualization = () => {
         const dataset = {}
         json.data.forEach(item => {
           const timestamp = new Date(item.timestamp).getTime()
-          const sensorValue = parseFloat(item[selectedColumns]) || null
+          const sensorValue = parseFloat(item.value) || null
 
           if (!dataset[timestamp]) {
             dataset[timestamp] = { timestamp }
           }
 
-          dataset[timestamp][item.dev_eui] = sensorValue
+          dataset[timestamp][`${item.dev_eui}-${item.payload_type}`] = sensorValue
 
           for (const device of Object.keys(selectedDevices).filter(
             dev_eui => dev_eui !== item.dev_eui,
           )) {
-            if (!dataset[timestamp][device]) dataset[timestamp][device] = null
+            if (!dataset[timestamp][`${device}-${item.payload_type}`])
+              dataset[timestamp][`${device}-${item.payload_type}`] = null
           }
         })
 
         const datasetArray = Object.values(dataset).sort((a, b) => a.timestamp - b.timestamp)
 
-        const series = Object.keys(selectedDevices).map(deviceEui => ({
-          dataKey: deviceEui,
-          label: selectedDevices[deviceEui] || deviceEui,
-        }))
+        const series = Object.keys(mappedData).flatMap(deviceId =>
+          mappedData[deviceId].map(payloadValue => {
+            // Find the display name corresponding to the payload value
+            const column = availableReadingColumns[deviceId].find(
+              item => item.payload_value === payloadValue,
+            )
+            const displayName = column ? column.display_name : payloadValue // Fallback to payloadValue if not found
+
+            return {
+              dataKey: `${deviceId}-${payloadValue}`,
+              label: `${selectedDevices[deviceId]} ${displayName}`,
+            }
+          }),
+        )
         setGraphData({ dataset: datasetArray, series })
       })
       .catch(error => console.error('Error fetching data:', error))
@@ -249,7 +245,7 @@ const ApplicationDataVisualization = () => {
                 </MenuItem>
               ) : (
                 Object.keys(availableDevices).map(key => (
-                  <MenuItem key={key} value={key} disabled={computeDeviceItemDisabled(key)}>
+                  <MenuItem key={key} value={key}>
                     <Checkbox checked={Object.keys(selectedDevices).includes(key)} />
                     <ListItemText
                       primary={availableDevices[key].name}
@@ -269,15 +265,42 @@ const ApplicationDataVisualization = () => {
             <Select
               labelId="sensor-select-label"
               id="sensor-select"
-              value={selectedColumns}
-              onChange={handleReadingTypeChange}
+              value={selectedReadings}
+              onChange={handleSelectedReadingChange}
               input={<OutlinedInput label="Selected Devices" />}
+              multiple
+              renderValue={
+                () =>
+                  selectedReadings
+                    .map(payloadValue => {
+                      const [, attribute] = payloadValue.split('-')
+                      // Find the corresponding display_name from availableReadingColumns
+                      for (const dev_eui in availableReadingColumns) {
+                        const reading = availableReadingColumns[dev_eui].find(
+                          item => item.payload_value === attribute,
+                        )
+                        if (reading) {
+                          return reading.display_name // Return the display_name if found
+                        }
+                      }
+                      return attribute // Fallback to payloadValue if display_name is not found
+                    })
+                    .join(', ') // Join all selected display_names with commas
+              }
             >
-              {Object.keys(availableReadingColumns).map(key => (
-                <MenuItem key={key} value={availableReadingColumns[key]}>
-                  {key}
-                </MenuItem>
-              ))}
+              {Object.keys(availableReadingColumns).map(dev_eui =>
+                availableReadingColumns[dev_eui].map((item, index) => (
+                  <MenuItem key={`${dev_eui}-${index}`} value={`${dev_eui}-${item.payload_value}`}>
+                    <Checkbox
+                      checked={selectedReadings.includes(`${dev_eui}-${item.payload_value}`)}
+                    />
+                    <ListItemText
+                      primary={item.display_name}
+                      secondary={availableDevices[dev_eui]?.name}
+                    />
+                  </MenuItem>
+                )),
+              )}
             </Select>
           </FormControl>
         </div>
@@ -314,14 +337,6 @@ const ApplicationDataVisualization = () => {
                   labelStyle: {
                     transform: 'translateY(30px)',
                   },
-                },
-              ]}
-              yAxis={[
-                {
-                  label:
-                    sensorLabels[selectedColumns] ||
-                    selectedColumns.charAt(0).toUpperCase() + selectedColumns.slice(1),
-                  labelStyle: {},
                 },
               ]}
               series={graphData.series.map(series => ({
