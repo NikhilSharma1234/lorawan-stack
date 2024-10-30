@@ -48,17 +48,14 @@ const ApplicationDataExport = () => {
   const dispatch = useDispatch()
   const [selectedDevices, setSelectedDevices] = useState({})
   const [availableDevices, setAvailableDevices] = useState({})
-  const [availableColumns, setAvailableColumns] = useState([
-    'temperature',
-    'temp_SOIL',
-    'water_SOIL',
-  ])
+  const [availableColumns, setAvailableColumns] = useState([])
   const [selectedColumns, setSelectedColumns] = useState([])
   const [exportOption, setExportOption] = React.useState('CSV')
   const [startTime, setStartTime] = useState(null)
   const [endTime, setEndTime] = useState(null)
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [tableColumns, setTableColumns] = useState([])
   const ITEM_HEIGHT = 48
   const ITEM_PADDING_TOP = 8
   const MenuProps = {
@@ -69,17 +66,7 @@ const ApplicationDataExport = () => {
       },
     },
   }
-  const validColumns = {
-    temperature: 'Temperature',
-    temp_SOIL: 'Soil Temperature',
-    water_SOIL: 'Soil Moisture',
-    batteryCapacity: 'Battery Level',
-    conduct_SOIL: 'Soil Conductivity',
-    Temp_Red: 'Temperature Red',
-    Temp_White: 'Temperature White',
-    Temp_Black: 'Temperature Black',
-  }
-  const serverDeviceEndpoint = process.env.FLASK_DEVICE_ENDPOINT;
+  const serverDeviceEndpoint = process.env.FLASK_DEVICE_ENDPOINT
   useEffect(() => {
     const fetchDeviceType = devices => {
       fetch(serverDeviceEndpoint, {
@@ -95,7 +82,8 @@ const ApplicationDataExport = () => {
           for (const deviceKey of Object.keys(devices)) {
             devicesWithType[deviceKey] = {
               name: devices[deviceKey],
-              type: json.capabilities[deviceKey],
+              type: json.capabilities[deviceKey].type,
+              readings: json.capabilities[deviceKey].readings,
             }
           }
           setAvailableDevices(devicesWithType)
@@ -121,7 +109,7 @@ const ApplicationDataExport = () => {
       fetchDeviceType(devices)
     }
     fetchDevices()
-  }, [appId, dispatch])
+  }, [appId, dispatch, serverDeviceEndpoint])
 
   const convertLocalToUTCStart = localTime => {
     // Create a Date object from the local timestamp
@@ -146,7 +134,7 @@ const ApplicationDataExport = () => {
       endTime,
     }
 
-    const server = process.env.FLASK_EXPORT_ENDPOINT;
+    const server = process.env.FLASK_EXPORT_ENDPOINT
 
     fetch(server, {
       method: 'POST',
@@ -155,22 +143,105 @@ const ApplicationDataExport = () => {
     })
       .then(response => response.json())
       .then(json => {
-        setData(json.data)
-        const dataFromAPI = [...json.data]
-        const availableColumns = []
-        for (const object of dataFromAPI) {
-          for (const key of Object.keys(object)) {
-            if (
-              Object.keys(validColumns).includes(key) &&
-              !availableColumns.includes(key) &&
-              object[key]
-            ) {
-              availableColumns.push(key)
+        // Default columns
+        let columns = [
+          {
+            field: 'dev_eui',
+            headerName: 'Device Name',
+            description: 'Name of the device',
+            width: 175,
+            valueGetter: value => availableDevices[value].name,
+          },
+          {
+            field: 'timestamp',
+            headerName: 'Timestamp',
+            description: 'Timestamp from reading',
+            type: 'dateTime',
+            width: 250,
+            valueGetter: value => value && new Date(value),
+          },
+        ]
+
+        // Create a reverse mapping from display names to keys
+        const displayNameToKeys = {}
+
+        for (const key in json.mapping) {
+          const displayName = json.mapping[key].display_name
+          if (!displayNameToKeys[displayName]) {
+            displayNameToKeys[displayName] = []
+          }
+          displayNameToKeys[displayName].push(key)
+        }
+
+        // Merge values for keys with the same display name in json.data
+        const mergedData = json.data.map(item => {
+          const newItem = { ...item } // Copy the original item
+
+          for (const [displayName, keys] of Object.entries(displayNameToKeys)) {
+            // Check if any of the keys exist in the current item
+            const valuesToSum = keys.map(key => item[key]).filter(value => value !== undefined)
+
+            if (valuesToSum.length > 0) {
+              newItem[displayName] = valuesToSum.reduce((sum, value) => sum + (value || 0), 0)
+              keys.forEach(key => delete newItem[key]) // Remove original keys
+            }
+          }
+
+          return newItem
+        })
+
+        // Add additional columns from mapping information
+        const dataKeys = mergedData.reduce((keys, item) => {
+          Object.keys(item).forEach(key => keys.add(key))
+          return keys
+        }, new Set())
+
+        // Track added display names to avoid duplicates
+        const addedDisplayNames = new Set()
+
+        for (const key of dataKeys) {
+          if (key !== 'dev_eui' && key !== 'timestamp') {
+            const mappingInfo = json.mapping[key]
+
+            if (mappingInfo) {
+              // Check if the display name has already been added
+              if (!addedDisplayNames.has(mappingInfo.display_name)) {
+                columns.push({
+                  field: key,
+                  headerName: mappingInfo.display_name,
+                  description: mappingInfo.description || '',
+                  sortable: mappingInfo.sortable || false,
+                  type: 'number', // Adjust type based on unit
+                  width: mappingInfo.width || 100,
+                })
+
+                // Mark the display name as added
+                addedDisplayNames.add(mappingInfo.display_name)
+              }
+            } else {
+              // Fallback for keys without mapping information
+              columns.push({
+                field: key,
+                headerName: key,
+                description: '',
+                sortable: false,
+                type: 'string',
+                width: 100,
+              })
             }
           }
         }
-        setAvailableColumns(availableColumns)
-        setSelectedColumns(availableColumns)
+
+        columns = columns.filter(value => value.field !== 'item_number')
+
+        const filteredAvailableColumns = columns
+          .map(a => a.headerName)
+          .filter(value => !['Device Name', 'Timestamp'].includes(value))
+        // Set the table columns and data
+        setTableColumns(columns)
+        setAvailableColumns(filteredAvailableColumns) // List of available columns
+        setSelectedColumns(filteredAvailableColumns) // Initially selecting all columns
+        setData(mergedData) // Use the merged data
       })
       .catch(error => {
         console.error('Error fetching data:', error)
@@ -237,6 +308,8 @@ const ApplicationDataExport = () => {
       selectedColumns.forEach(column => {
         if (row.hasOwnProperty(column)) {
           filteredRow[column] = row[column]
+        } else {
+          filteredRow[column] = null
         }
       })
 
@@ -305,112 +378,6 @@ const ApplicationDataExport = () => {
     'apps.single.data',
     <Breadcrumb path={`/applications/${appId}/expdata`} content={sharedMessages.expData} />,
   )
-
-  const columns = [
-    {
-      field: 'dev_eui',
-      headerName: 'Device Name',
-      description: 'Name of the device',
-      width: 175,
-      valueGetter: value => availableDevices[value].name,
-    },
-    {
-      field: 'timestamp',
-      headerName: 'Timestamp',
-      description: 'Timestamp from reading',
-      type: 'dateTime',
-      width: 250,
-      valueGetter: value => value && new Date(value),
-    },
-    ...(availableColumns.includes('temperature')
-      ? [
-          {
-            field: 'temperature',
-            headerName: 'Temperature',
-            description: 'Temperature reading from sensor',
-            type: 'number',
-            width: 90,
-          },
-        ]
-      : []),
-    ...(availableColumns.includes('Temp_Red')
-      ? [
-          {
-            field: 'Temp_Red',
-            headerName: 'Temperature Red',
-            description: 'Temperature Red reading from sensor',
-            type: 'number',
-            width: 90,
-          },
-        ]
-      : []),
-    ...(availableColumns.includes('Temp_White')
-      ? [
-          {
-            field: 'Temp_White',
-            headerName: 'Temperature White',
-            description: 'Temperature White reading from sensor',
-            type: 'number',
-            width: 90,
-          },
-        ]
-      : []),
-    ...(availableColumns.includes('Temp_Black')
-      ? [
-          {
-            field: 'Temp_Black',
-            headerName: 'Temperature Black',
-            description: 'Temperature Black reading from sensor',
-            type: 'number',
-            width: 90,
-          },
-        ]
-      : []),
-    ...(availableColumns.includes('temp_SOIL')
-      ? [
-          {
-            field: 'temp_SOIL',
-            headerName: 'Soil Temperature',
-            description: 'Soil temperature from sensor',
-            type: 'number',
-            width: 120,
-          },
-        ]
-      : []),
-    ...(availableColumns.includes('water_SOIL')
-      ? [
-          {
-            field: 'water_SOIL',
-            headerName: 'Soil Moisture',
-            description: 'Soil moisture from sensor',
-            type: 'number',
-            width: 90,
-          },
-        ]
-      : []),
-    ...(availableColumns.includes('conduct_SOIL')
-      ? [
-          {
-            field: 'conduct_SOIL',
-            headerName: 'Soil Conductivity',
-            description: 'Soil conductivity from sensor',
-            type: 'number',
-            width: 120,
-          },
-        ]
-      : []),
-    ...(availableColumns.includes('batteryCapacity')
-      ? [
-          {
-            field: 'batteryCapacity',
-            headerName: 'Battery Level',
-            description: 'Battery level from sensor',
-            sortable: false,
-            width: 90,
-          },
-        ]
-      : []),
-  ]
 
   const paginationModel = { page: 0, pageSize: 10 }
 
@@ -498,16 +465,16 @@ const ApplicationDataExport = () => {
                 renderValue={() => {
                   const toRender = []
                   for (const column of selectedColumns) {
-                    toRender.push(validColumns[column])
+                    toRender.push(column)
                   }
                   return toRender.join(', ')
                 }}
                 MenuProps={MenuProps}
               >
                 {availableColumns.map(key => (
-                  <MenuItem key={validColumns[key]} value={key}>
+                  <MenuItem key={key} value={key}>
                     <Checkbox checked={selectedColumns.includes(key)} />
-                    <ListItemText primary={validColumns[key]} />
+                    <ListItemText primary={key} />
                   </MenuItem>
                 ))}
               </Select>
@@ -542,7 +509,7 @@ const ApplicationDataExport = () => {
           <DataGrid
             getRowId={row => row.item_number}
             rows={data}
-            columns={columns}
+            columns={tableColumns}
             initialState={{ pagination: { paginationModel } }}
             pageSizeOptions={[5, 10]}
             sx={{ border: 0 }}
