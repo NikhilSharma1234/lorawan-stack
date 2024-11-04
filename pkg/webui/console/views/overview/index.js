@@ -54,9 +54,9 @@ import HelpLink from './help-link'
 import style from './overview.styl'
 
 const m = defineMessages({
-  createApplication: 'Create an application',
+  createApplication: 'Create a project',
   createGateway: 'Register a gateway',
-  gotoApplications: 'Go to applications',
+  gotoApplications: 'Go to projects',
   gotoGateways: 'Go to gateways',
   welcome: 'Welcome to the Console!',
   welcomeBack: 'Welcome back, {userName}! 👋',
