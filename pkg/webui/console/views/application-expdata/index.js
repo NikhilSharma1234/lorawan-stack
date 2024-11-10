@@ -13,6 +13,8 @@
 // limitations under the License.
 
 import React, { useState, useEffect, useCallback } from 'react'
+import yup from '@ttn-lw/lib/yup'
+import { Formik, Form } from 'formik' 
 import { useSelector, useDispatch } from 'react-redux'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
@@ -54,6 +56,7 @@ const ApplicationDataExport = () => {
   const [startTime, setStartTime] = useState(null)
   const [endTime, setEndTime] = useState(null)
   const [data, setData] = useState(null)
+  const [, set] = useState(false);
   const [loading, setLoading] = useState(true)
   const [tableColumns, setTableColumns] = useState([])
   const ITEM_HEIGHT = 48
@@ -67,6 +70,20 @@ const ApplicationDataExport = () => {
     },
   }
   const serverDeviceEndpoint = process.env.FLASK_DEVICE_ENDPOINT
+
+  const validationSchema = yup.object().shape({
+    selectedDevices: yup.array().min(1).required(),
+  })
+
+  // const validationSchemaExport = yup.object().shape({
+  //   selectedColumns: yup.array().min(1, 'Select at least one export column').required(),
+  //   exportOption: yup.array()
+  //     .when('selectedColumns', {
+  //       is: selectedColumns => selectedColumns.length > 0,
+  //       then: schema => schema.min(1, 'Select at least one export format').required(),
+  //     }),
+  // })
+
   useEffect(() => {
     const fetchDeviceType = devices => {
       fetch(serverDeviceEndpoint, {
@@ -128,6 +145,7 @@ const ApplicationDataExport = () => {
   }
 
   const fetchData = () => {
+    set(true);
     const requestParams = {
       devices: Object.keys(selectedDevices),
       startTime,
@@ -397,6 +415,16 @@ const ApplicationDataExport = () => {
               </div>
             </div>
           </LocalizationProvider>
+
+          <Formik
+          initialValues={{
+            selectedDevices: Object.keys(selectedDevices),
+          }}
+          validationSchema={validationSchema}
+          onSubmit={fetchData} 
+        >
+          {({ setFieldValue, values, errors, touched }) => (
+            <Form>
           <h3>Devices</h3>
           <div>
             <FormControl sx={{ width: 300 }}>
@@ -405,8 +433,12 @@ const ApplicationDataExport = () => {
                 labelId="demo-multiple-checkbox-label"
                 id="demo-multiple-checkbox"
                 multiple
-                value={Object.keys(selectedDevices)}
-                onChange={handleSelectedDeviceChange}
+                value={values.selectedDevices}
+                                   onChange={event => {
+                      const { value } = event.target
+                      setFieldValue('selectedDevices', value)
+                      handleSelectedDeviceChange(event)
+                    }}
                 input={<OutlinedInput label="Selected Devices" />}
                 renderValue={() => Object.values(selectedDevices).join(', ')}
                 MenuProps={MenuProps}
@@ -428,6 +460,15 @@ const ApplicationDataExport = () => {
                 )}
               </Select>
             </FormControl>
+            {errors.selectedDevices && touched.selectedDevices && (!startTime || !endTime) && (
+                <div style={{ color: 'red' }}>Select a start/end time with at least one device</div>
+              )}
+            {errors.selectedDevices && touched.selectedDevices && startTime && endTime && (
+              <div style={{ color: 'red' }}>Select at least one device</div>
+              )}
+            {values.selectedDevices.length > 0 && (!startTime || !endTime) && (
+              <div style={{ color: 'red' }}>Select a start/end time</div>
+              )}
           </div>
           <div
             style={{
@@ -449,6 +490,9 @@ const ApplicationDataExport = () => {
               Fetch Data
             </SubmitButton>
           </div>
+          </Form>
+          )}
+          </Formik>
         </div>
         {data ? (
           <div style={{ margin: '0px 32px', display: 'flex', flexDirection: 'column' }}>

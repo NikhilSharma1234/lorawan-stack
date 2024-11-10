@@ -37,14 +37,14 @@ import { createApp } from '@console/store/actions/applications'
 import { selectUserId } from '@account/store/selectors/user'
 
 const m = defineMessages({
-  applicationName: 'Application name',
-  appIdPlaceholder: 'my-new-application',
-  appNamePlaceholder: 'My new application',
-  appDescPlaceholder: 'Description for my new application',
+  applicationName: 'Project name',
+  appIdPlaceholder: 'my-new-project',
+  appNamePlaceholder: 'My new project',
+  appDescPlaceholder: 'Description for my new project',
   appDescDescription:
-    'Optional application description; can also be used to save notes about the application',
+    'Optional project description; can also be used to save notes about the project',
   appDescription:
-    'Within applications, you can register and manage end devices, aggregate their sensor data and act on it using our many integration options.{break}Learn more in our <Link>Applications Guide</Link>',
+    'Within projects, you can register and manage end devices, aggregate their sensor data and act on it using our many integration options.{break}Learn more in our <Link>Projects Guide</Link>',
 })
 
 const validationSchema = Yup.object().shape({
