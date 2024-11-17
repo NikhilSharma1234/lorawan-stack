@@ -56,7 +56,6 @@ const ApplicationDataExport = () => {
   const [startTime, setStartTime] = useState(null)
   const [endTime, setEndTime] = useState(null)
   const [data, setData] = useState(null)
-  const [, set] = useState(false);
   const [loading, setLoading] = useState(true)
   const [tableColumns, setTableColumns] = useState([])
   const ITEM_HEIGHT = 48
@@ -74,15 +73,6 @@ const ApplicationDataExport = () => {
   const validationSchema = yup.object().shape({
     selectedDevices: yup.array().min(1).required(),
   })
-
-  // const validationSchemaExport = yup.object().shape({
-  //   selectedColumns: yup.array().min(1, 'Select at least one export column').required(),
-  //   exportOption: yup.array()
-  //     .when('selectedColumns', {
-  //       is: selectedColumns => selectedColumns.length > 0,
-  //       then: schema => schema.min(1, 'Select at least one export format').required(),
-  //     }),
-  // })
 
   useEffect(() => {
     const fetchDeviceType = devices => {
@@ -145,7 +135,6 @@ const ApplicationDataExport = () => {
   }
 
   const fetchData = () => {
-    set(true);
     const requestParams = {
       devices: Object.keys(selectedDevices),
       startTime,
