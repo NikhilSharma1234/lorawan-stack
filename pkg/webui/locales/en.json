@@ -1260,7 +1260,7 @@
   "lib.shared-messages.eventJoinAcceptDesc": "An end device successfully joins the network and starts a session",
   "lib.shared-messages.eventLocationSolvedDesc": "An integration succeeded locating the end device",
   "lib.shared-messages.eventServiceDataDesc": "An integration emits an event",
-  "lib.shared-messages.eventUplinkMessageDesc": "An uplink message is received by the proj",
+  "lib.shared-messages.eventUplinkMessageDesc": "An uplink message is received by the project",
   "lib.shared-messages.eventUplinkNormalizedDesc": "A normalized uplink payload",
   "lib.shared-messages.eventsCannotShow": "Cannot show events",
   "lib.shared-messages.expiry": "Expiry",
