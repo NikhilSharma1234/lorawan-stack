@@ -38,16 +38,12 @@ import { useBreadcrumbs } from '@ttn-lw/components/breadcrumbs/context'
 import Button from '@ttn-lw/components/button'
 import SubmitButton from '@ttn-lw/components/submit-button'
 
-import Require from '@console/lib/components/require'
-
 import style from '@console/views/app/app.styl'
 
 import yup from '@ttn-lw/lib/yup'
 import attachPromise from '@ttn-lw/lib/store/actions/attach-promise'
 import useRootClass from '@ttn-lw/lib/hooks/use-root-class'
 import sharedMessages from '@ttn-lw/lib/shared-messages'
-
-import { mayViewApplicationEvents } from '@console/lib/feature-checks'
 
 import { getDevicesList } from '@console/store/actions/devices'
 
@@ -151,7 +147,8 @@ const ApplicationDataVisualization = () => {
   useEffect(() => {
     setAggregationOptions(aggregationOptionsMap[selectedTime] || [])
     setSelectedAggregation(defaultAggregationValues[selectedTime] || '')
-  }, [aggregationOptionsMap, defaultAggregationValues, selectedTime])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTime])
 
   const handleAggregationChange = event => {
     setSelectedAggregation(event.target.value)

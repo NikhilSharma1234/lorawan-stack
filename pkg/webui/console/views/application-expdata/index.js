@@ -226,8 +226,7 @@ const ApplicationDataExport = () => {
 
         for (const key of dataKeys) {
           if (key !== 'dev_eui' && key !== 'timestamp') {
-            const mappingInfo = json.mapping[key]
-
+            const mappingInfo = json.mapping[displayNameToKeys[key]]
             if (mappingInfo) {
               // Check if the display name has already been added
               if (!addedDisplayNames.has(mappingInfo.display_name)) {
