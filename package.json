@@ -87,6 +87,7 @@
     "@formatjs/intl-numberformat": "^8.10.3",
     "@formatjs/intl-pluralrules": "^5.2.14",
     "@formatjs/intl-relativetimeformat": "^11.2.14",
+    "@mui/icons-material": "^6.1.7",
     "@mui/material": "^6.1.0",
     "@mui/x-charts": "^7.17.0",
     "@mui/x-data-grid": "^7.18.0",
