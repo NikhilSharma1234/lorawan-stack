@@ -583,59 +583,6 @@ const ApplicationDataExport = () => {
             )}
           </Formik>
         </div>
-        {data ? (
-          <div style={{ margin: '0px 32px', display: 'flex', flexDirection: 'column' }}>
-            <h3>Export Data</h3>
-            <FormControl sx={{ width: 300 }}>
-              <InputLabel id="demo-multiple-checkbox-label">Selected Columns</InputLabel>
-              <Select
-                labelId="demo-multiple-checkbox-label"
-                id="demo-multiple-checkbox"
-                multiple
-                value={selectedColumns}
-                onChange={handleSelectedColumnChange}
-                input={<OutlinedInput label="Selected Columns" />}
-                renderValue={() => {
-                  const toRender = []
-                  for (const column of selectedColumns) {
-                    toRender.push(column)
-                  }
-                  return toRender.join(', ')
-                }}
-                MenuProps={MenuProps}
-              >
-                {availableColumns.map(key => (
-                  <MenuItem key={key} value={key}>
-                    <Checkbox checked={selectedColumns.includes(key)} />
-                    <ListItemText primary={key} />
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <h3>Format</h3>
-            <ToggleButtonGroup
-              value={exportOption}
-              exclusive
-              onChange={(event, value) => setExportOption(value)}
-              aria-label="Format Selection"
-              size="large"
-            >
-              <ToggleButton value="CSV">CSV</ToggleButton>
-              <ToggleButton value="JSON">JSON</ToggleButton>
-            </ToggleButtonGroup>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                margin: '20px 0px',
-              }}
-            >
-              <SubmitButton isSubmitting={false} isValidating={false} onClick={handleExportData}>
-                Export Data
-              </SubmitButton>
-            </div>
-          </div>
-        ) : null}
       </div>
       {data ? (
         <Paper sx={{ height: 625, width: '100%' }}>
