@@ -13,8 +13,7 @@
 // limitations under the License.
 
 import React, { useState, useCallback, useEffect } from 'react'
-import yup from '@ttn-lw/lib/yup'
-import { Formik, Form, Field } from 'formik' 
+import { Formik, Form } from 'formik'
 import { useDispatch } from 'react-redux'
 import { useParams } from 'react-router-dom'
 import { LineChart } from '@mui/x-charts/LineChart'
@@ -38,6 +37,7 @@ import Require from '@console/lib/components/require'
 
 import style from '@console/views/app/app.styl'
 
+import yup from '@ttn-lw/lib/yup'
 import attachPromise from '@ttn-lw/lib/store/actions/attach-promise'
 import useRootClass from '@ttn-lw/lib/hooks/use-root-class'
 import sharedMessages from '@ttn-lw/lib/shared-messages'
@@ -82,7 +82,7 @@ const ApplicationDataVisualization = () => {
     '30D': ['None', '1 Hour', '1 Day', '7 Days'],
     '6M': ['1 Day', '7 Days', '1 Month'],
     '1Y': ['1 Day', '7 Days', '1 Month'],
-    'ALL': ['1 Day', '7 Days', '1 Month', '6 Months'],
+    ALL: ['1 Day', '7 Days', '1 Month', '6 Months'],
   }
 
   const defaultAggregationValues = {
@@ -93,16 +93,15 @@ const ApplicationDataVisualization = () => {
     '30D': 'None',
     '6M': '1 Day',
     '1Y': '1 Day',
-    'ALL': '1 Day'
+    ALL: '1 Day',
   }
 
   const validationSchema = yup.object().shape({
     selectedDevices: yup.array().min(1, 'Select at least one device').required(),
-    selectedReadings: yup.array()
-      .when('selectedDevices', {
-        is: selectedDevices => selectedDevices.length > 0,
-        then: schema => schema.min(1, 'Select at least one reading').required(),
-      }),
+    selectedReadings: yup.array().when('selectedDevices', {
+      is: selectedDevices => selectedDevices.length > 0,
+      then: schema => schema.min(1, 'Select at least one reading').required(),
+    }),
   })
 
   const handleDeviceChange = useCallback(
@@ -136,17 +135,18 @@ const ApplicationDataVisualization = () => {
     setSelectedReadings(value)
   }, [])
 
-  const selectTime = (time) => {
+  const selectTime = time => {
     setSelectedTime(time)
     setSelectedAggregation(defaultAggregationValues[time] || '')
   }
 
   useEffect(() => {
     setAggregationOptions(aggregationOptionsMap[selectedTime] || [])
-    setSelectedAggregation(defaultAggregationValues[selectedTime] || '') 
+    setSelectedAggregation(defaultAggregationValues[selectedTime] || '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTime])
 
-  const handleAggregationChange = (event) => {
+  const handleAggregationChange = event => {
     setSelectedAggregation(event.target.value)
   }
 
@@ -196,67 +196,67 @@ const ApplicationDataVisualization = () => {
 
   const fetchData = () => {
     const mappedData = selectedReadings.reduce((acc, column) => {
-      const [devEui, attribute] = column.split('-');
-  
+      const [devEui, attribute] = column.split('-')
+
       if (!acc[devEui]) {
-        acc[devEui] = [];
+        acc[devEui] = []
       }
-  
-      acc[devEui].push(attribute);
-  
-      return acc;
-    }, {});
-  
+
+      acc[devEui].push(attribute)
+
+      return acc
+    }, {})
+
     fetch(serverDataEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         data: mappedData,
         period: selectedTime,
-        aggregation: selectedAggregation // Add selected aggregation option here
+        aggregation: selectedAggregation, // Add selected aggregation option here
       }),
     })
       .then(response => response.json())
       .then(json => {
         // Handle response as before
-        const dataset = {};
+        const dataset = {}
         json.data.forEach(item => {
-          const timestamp = new Date(item.timestamp).getTime();
-          const sensorValue = parseFloat(item.value) || null;
-  
+          const timestamp = new Date(item.timestamp).getTime()
+          const sensorValue = parseFloat(item.value) || null
+
           if (!dataset[timestamp]) {
-            dataset[timestamp] = { timestamp };
+            dataset[timestamp] = { timestamp }
           }
-  
-          dataset[timestamp][`${item.dev_eui}-${item.payload_type}`] = sensorValue;
-  
+
+          dataset[timestamp][`${item.dev_eui}-${item.payload_type}`] = sensorValue
+
           for (const device of Object.keys(selectedDevices).filter(
             dev_eui => dev_eui !== item.dev_eui,
           )) {
             if (!dataset[timestamp][`${device}-${item.payload_type}`])
-              dataset[timestamp][`${device}-${item.payload_type}`] = null;
+              dataset[timestamp][`${device}-${item.payload_type}`] = null
           }
-        });
-  
-        const datasetArray = Object.values(dataset).sort((a, b) => a.timestamp - b.timestamp);
-  
+        })
+
+        const datasetArray = Object.values(dataset).sort((a, b) => a.timestamp - b.timestamp)
+
         const series = Object.keys(mappedData).flatMap(deviceId =>
           mappedData[deviceId].map(payloadValue => {
             const column = availableReadingColumns[deviceId].find(
               item => item.payload_value === payloadValue,
-            );
-            const displayName = column ? column.display_name : payloadValue;
-  
+            )
+            const displayName = column ? column.display_name : payloadValue
+
             return {
               dataKey: `${deviceId}-${payloadValue}`,
               label: `${selectedDevices[deviceId]} ${displayName}`,
-            };
+            }
           }),
-        );
-        setGraphData({ dataset: datasetArray, series });
+        )
+        setGraphData({ dataset: datasetArray, series })
       })
-      .catch(error => console.error('Error fetching data:', error));
-  };
+      .catch(error => console.error('Error fetching data:', error))
+  }
 
   useRootClass(style.stageFlex, 'stage')
 
@@ -274,10 +274,10 @@ const ApplicationDataVisualization = () => {
         <Formik
           initialValues={{
             selectedDevices: Object.keys(selectedDevices),
-            selectedReadings: selectedReadings,
+            selectedReadings,
           }}
           validationSchema={validationSchema}
-          onSubmit={fetchData} 
+          onSubmit={fetchData}
         >
           {({ setFieldValue, values, errors, touched }) => (
             <Form>
@@ -296,7 +296,9 @@ const ApplicationDataVisualization = () => {
                       handleDeviceChange(event)
                     }}
                     input={<OutlinedInput label="Selected Devices" />}
-                    renderValue={() => values.selectedDevices.map(devId => availableDevices[devId]?.name).join(', ')}
+                    renderValue={() =>
+                      values.selectedDevices.map(devId => availableDevices[devId]?.name).join(', ')
+                    }
                     MenuProps={MenuProps}
                   >
                     {loading ? (
@@ -307,17 +309,20 @@ const ApplicationDataVisualization = () => {
                       Object.keys(availableDevices).map(key => (
                         <MenuItem key={key} value={key}>
                           <Checkbox checked={values.selectedDevices.includes(key)} />
-                          <ListItemText primary={availableDevices[key].name} secondary={availableDevices[key].type} />
+                          <ListItemText
+                            primary={availableDevices[key].name}
+                            secondary={availableDevices[key].type}
+                          />
                         </MenuItem>
                       ))
                     )}
                   </Select>
                 </FormControl>
-                {errors.selectedDevices && touched.selectedDevices &&(
+                {errors.selectedDevices && touched.selectedDevices && (
                   <div style={{ color: 'red' }}>{errors.selectedDevices}</div>
                 )}
               </div>
-  
+
               <div>
                 <h3>Sensor Readings</h3>
                 <FormControl sx={{ width: 300 }}>
@@ -350,8 +355,15 @@ const ApplicationDataVisualization = () => {
                   >
                     {Object.keys(availableReadingColumns).map(dev_eui =>
                       availableReadingColumns[dev_eui].map((item, index) => (
-                        <MenuItem key={`${dev_eui}-${index}`} value={`${dev_eui}-${item.payload_value}`}>
-                          <Checkbox checked={values.selectedReadings.includes(`${dev_eui}-${item.payload_value}`)} />
+                        <MenuItem
+                          key={`${dev_eui}-${index}`}
+                          value={`${dev_eui}-${item.payload_value}`}
+                        >
+                          <Checkbox
+                            checked={values.selectedReadings.includes(
+                              `${dev_eui}-${item.payload_value}`,
+                            )}
+                          />
                           <ListItemText
                             primary={item.display_name}
                             secondary={availableDevices[dev_eui]?.name}
@@ -365,7 +377,7 @@ const ApplicationDataVisualization = () => {
                   <div style={{ color: 'red' }}>{errors.selectedReadings}</div>
                 )}
               </div>
-  
+
               <div style={{ margin: '20px 0px', display: 'flex', gap: '10px' }}>
                 {timesOptions.map(time => (
                   <Button
@@ -377,67 +389,67 @@ const ApplicationDataVisualization = () => {
                     primary={selectedTime === time}
                   />
                 ))}
-              <SubmitButton>
-                Fetch Data
-              </SubmitButton>
-              {selectedTime !== '1H' && (
-                <div style={{ marginLeft: '25px', marginTop: '-84px'}}>
-                  <h3>Aggregate By</h3>
-                  <FormControl sx={{ width: 175 }}>
-                    <Select
-                      value={selectedAggregation}
-                      onChange={handleAggregationChange}
-                      displayEmpty
-                      renderValue={(selected) => selected || "Select Aggregation"}
-                    >
-                      {aggregationOptions.map(option => (
-                        <MenuItem key={option} value={option}>
-                          {option}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </div>
-              )}
-              </div>
-              </Form>
-          )}
-        </Formik>
-              <div style={{ paddingRight: '50px', paddingTop: '25px' }}>
-                {graphData && graphData.dataset && graphData.dataset.length > 0 && (
-                  <LineChart
-                    dataset={graphData.dataset}
-                    xAxis={[{
-                      dataKey: 'timestamp',
-                      valueFormatter: value => {
-                        const date = new Date(value).toLocaleDateString()
-                        const time = new Date(value).toLocaleTimeString()
-                        return `${date}\n${time}`
-                      },
-                      scaleType: 'time',
-                      label: 'Time',
-                      labelStyle: {
-                        transform: 'translateY(30px)',
-                      },
-                    }]}
-                    series={graphData.series.map(series => ({
-                      ...series,
-                      showMark: false,
-                      connectNulls: true,
-                    }))}
-                    width={850}
-                    height={450}
-                    sx={{
-                      [`.${axisClasses.left} .${axisClasses.label}`]: {
-                        transform: 'translateX(-30px)',
-                      },
-                    }}
-                  />
+                <SubmitButton>Fetch Data</SubmitButton>
+                {selectedTime !== '1H' && (
+                  <div style={{ marginLeft: '25px', marginTop: '-84px' }}>
+                    <h3>Aggregate By</h3>
+                    <FormControl sx={{ width: 175 }}>
+                      <Select
+                        value={selectedAggregation}
+                        onChange={handleAggregationChange}
+                        displayEmpty
+                        renderValue={selected => selected || 'Select Aggregation'}
+                      >
+                        {aggregationOptions.map(option => (
+                          <MenuItem key={option} value={option}>
+                            {option}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </div>
                 )}
               </div>
+            </Form>
+          )}
+        </Formik>
+        <div style={{ paddingRight: '50px', paddingTop: '25px' }}>
+          {graphData && graphData.dataset && graphData.dataset.length > 0 && (
+            <LineChart
+              dataset={graphData.dataset}
+              xAxis={[
+                {
+                  dataKey: 'timestamp',
+                  valueFormatter: value => {
+                    const date = new Date(value).toLocaleDateString()
+                    const time = new Date(value).toLocaleTimeString()
+                    return `${date}\n${time}`
+                  },
+                  scaleType: 'time',
+                  label: 'Time',
+                  labelStyle: {
+                    transform: 'translateY(30px)',
+                  },
+                },
+              ]}
+              series={graphData.series.map(series => ({
+                ...series,
+                showMark: false,
+                connectNulls: true,
+              }))}
+              width={850}
+              height={450}
+              sx={{
+                [`.${axisClasses.left} .${axisClasses.label}`]: {
+                  transform: 'translateX(-30px)',
+                },
+              }}
+            />
+          )}
+        </div>
       </div>
     </Require>
-  )  
+  )
 }
 
 export default ApplicationDataVisualization
