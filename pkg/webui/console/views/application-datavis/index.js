@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import React, { useState, useCallback, useEffect } from 'react'
-import yup from '@ttn-lw/lib/yup'
-import { Formik, Form, Field } from 'formik' 
+import React, { useState, useCallback, useEffect, useRef } from 'react'
+import { Formik, Form } from 'formik'
 import { useDispatch } from 'react-redux'
 import { useParams } from 'react-router-dom'
 import { LineChart } from '@mui/x-charts/LineChart'
@@ -27,7 +26,12 @@ import {
   FormControl,
   Checkbox,
   ListItemText,
+  ButtonGroup,
+  IconButton,
 } from '@mui/material'
+import PlayArrowIcon from '@mui/icons-material/PlayArrow'
+import PauseIcon from '@mui/icons-material/Pause'
+import StopIcon from '@mui/icons-material/Stop'
 
 import Breadcrumb from '@ttn-lw/components/breadcrumbs/breadcrumb'
 import { useBreadcrumbs } from '@ttn-lw/components/breadcrumbs/context'
@@ -38,6 +42,7 @@ import Require from '@console/lib/components/require'
 
 import style from '@console/views/app/app.styl'
 
+import yup from '@ttn-lw/lib/yup'
 import attachPromise from '@ttn-lw/lib/store/actions/attach-promise'
 import useRootClass from '@ttn-lw/lib/hooks/use-root-class'
 import sharedMessages from '@ttn-lw/lib/shared-messages'
@@ -73,6 +78,9 @@ const ApplicationDataVisualization = () => {
   const serverDataEndpoint = process.env.FLASK_DATA_ENDPOINT
   const serverDeviceEndpoint = process.env.FLASK_DEVICE_ENDPOINT
   const timesOptions = ['1H', '24H', '7D', '14D', '30D', '6M', '1Y', 'ALL']
+  const [timer, setTimer] = useState(0)
+  const [isRunning, setIsRunning] = useState(false)
+  const [clicks, setClicks] = useState(0)
 
   const aggregationOptionsMap = {
     '1H': ['None'],
@@ -82,7 +90,7 @@ const ApplicationDataVisualization = () => {
     '30D': ['None', '1 Hour', '1 Day', '7 Days'],
     '6M': ['1 Day', '7 Days', '1 Month'],
     '1Y': ['1 Day', '7 Days', '1 Month'],
-    'ALL': ['1 Day', '7 Days', '1 Month', '6 Months'],
+    ALL: ['1 Day', '7 Days', '1 Month', '6 Months'],
   }
 
   const defaultAggregationValues = {
@@ -93,16 +101,15 @@ const ApplicationDataVisualization = () => {
     '30D': 'None',
     '6M': '1 Day',
     '1Y': '1 Day',
-    'ALL': '1 Day'
+    ALL: '1 Day',
   }
 
   const validationSchema = yup.object().shape({
     selectedDevices: yup.array().min(1, 'Select at least one device').required(),
-    selectedReadings: yup.array()
-      .when('selectedDevices', {
-        is: selectedDevices => selectedDevices.length > 0,
-        then: schema => schema.min(1, 'Select at least one reading').required(),
-      }),
+    selectedReadings: yup.array().when('selectedDevices', {
+      is: selectedDevices => selectedDevices.length > 0,
+      then: schema => schema.min(1, 'Select at least one reading').required(),
+    }),
   })
 
   const handleDeviceChange = useCallback(
@@ -136,17 +143,17 @@ const ApplicationDataVisualization = () => {
     setSelectedReadings(value)
   }, [])
 
-  const selectTime = (time) => {
+  const selectTime = time => {
     setSelectedTime(time)
     setSelectedAggregation(defaultAggregationValues[time] || '')
   }
 
   useEffect(() => {
     setAggregationOptions(aggregationOptionsMap[selectedTime] || [])
-    setSelectedAggregation(defaultAggregationValues[selectedTime] || '') 
-  }, [selectedTime])
+    setSelectedAggregation(defaultAggregationValues[selectedTime] || '')
+  }, [aggregationOptionsMap, defaultAggregationValues, selectedTime])
 
-  const handleAggregationChange = (event) => {
+  const handleAggregationChange = event => {
     setSelectedAggregation(event.target.value)
   }
 
@@ -196,67 +203,67 @@ const ApplicationDataVisualization = () => {
 
   const fetchData = () => {
     const mappedData = selectedReadings.reduce((acc, column) => {
-      const [devEui, attribute] = column.split('-');
-  
+      const [devEui, attribute] = column.split('-')
+
       if (!acc[devEui]) {
-        acc[devEui] = [];
+        acc[devEui] = []
       }
-  
-      acc[devEui].push(attribute);
-  
-      return acc;
-    }, {});
-  
+
+      acc[devEui].push(attribute)
+
+      return acc
+    }, {})
+
     fetch(serverDataEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         data: mappedData,
         period: selectedTime,
-        aggregation: selectedAggregation // Add selected aggregation option here
+        aggregation: selectedAggregation, // Add selected aggregation option here
       }),
     })
       .then(response => response.json())
       .then(json => {
         // Handle response as before
-        const dataset = {};
+        const dataset = {}
         json.data.forEach(item => {
-          const timestamp = new Date(item.timestamp).getTime();
-          const sensorValue = parseFloat(item.value) || null;
-  
+          const timestamp = new Date(item.timestamp).getTime()
+          const sensorValue = parseFloat(item.value) || null
+
           if (!dataset[timestamp]) {
-            dataset[timestamp] = { timestamp };
+            dataset[timestamp] = { timestamp }
           }
-  
-          dataset[timestamp][`${item.dev_eui}-${item.payload_type}`] = sensorValue;
-  
+
+          dataset[timestamp][`${item.dev_eui}-${item.payload_type}`] = sensorValue
+
           for (const device of Object.keys(selectedDevices).filter(
             dev_eui => dev_eui !== item.dev_eui,
           )) {
             if (!dataset[timestamp][`${device}-${item.payload_type}`])
-              dataset[timestamp][`${device}-${item.payload_type}`] = null;
+              dataset[timestamp][`${device}-${item.payload_type}`] = null
           }
-        });
-  
-        const datasetArray = Object.values(dataset).sort((a, b) => a.timestamp - b.timestamp);
-  
+        })
+
+        const datasetArray = Object.values(dataset).sort((a, b) => a.timestamp - b.timestamp)
+
         const series = Object.keys(mappedData).flatMap(deviceId =>
           mappedData[deviceId].map(payloadValue => {
             const column = availableReadingColumns[deviceId].find(
               item => item.payload_value === payloadValue,
-            );
-            const displayName = column ? column.display_name : payloadValue;
-  
+            )
+            const displayName = column ? column.display_name : payloadValue
+
             return {
               dataKey: `${deviceId}-${payloadValue}`,
               label: `${selectedDevices[deviceId]} ${displayName}`,
-            };
+            }
           }),
-        );
-        setGraphData({ dataset: datasetArray, series });
+        )
+        setGraphData({ dataset: datasetArray, series })
       })
-      .catch(error => console.error('Error fetching data:', error));
-  };
+      .catch(error => console.error('Error fetching data:', error))
+  }
 
   useRootClass(style.stageFlex, 'stage')
 
@@ -265,22 +272,62 @@ const ApplicationDataVisualization = () => {
     <Breadcrumb path={`/applications/${appId}/datavis`} content={sharedMessages.dataVis} />,
   )
 
+  const handleStart = () => {
+    if (isRunning) return
+    setIsRunning(true)
+    startTimeTimer.current = Date.now() - timer
+    timeInterval.current = setInterval(() => {
+      setTimer(Date.now() - startTimeTimer.current)
+    }, 10)
+  }
+
+  const handlePause = () => {
+    if (!isRunning) return
+    setIsRunning(false)
+    clearInterval(timeInterval.current)
+  }
+
+  const handleReset = () => {
+    clearInterval(timeInterval.current)
+    timeInterval.current = null
+    setIsRunning(false)
+    setTimer(0)
+  }
+
+  const increment = () => {
+    setClicks(clicks + 1)
+  }
+
+  const formatTime = timer => {
+    const minutes = Math.floor(timer / 60000)
+      .toString()
+      .padStart(2, '0') // Convert to two-digit string
+    const seconds = Math.floor((timer / 1000) % 60)
+      .toString()
+      .padStart(2, '0') // Convert to two-digit string
+    const milliseconds = (timer % 10000).toString().padStart(2, '0') // Convert to two-digit string (hundredths)
+
+    return { minutes, seconds, milliseconds }
+  }
+
+  const { minutes, seconds, milliseconds } = formatTime(timer)
+
+  const timeInterval = useRef(null)
+  const startTimeTimer = useRef(null)
+
   return (
-    <Require
-      featureCheck={mayViewApplicationEvents}
-      otherwise={{ redirect: `/applications/${appId}` }}
-    >
-      <div style={{ marginLeft: '30px' }}>
-        <Formik
-          initialValues={{
-            selectedDevices: Object.keys(selectedDevices),
-            selectedReadings: selectedReadings,
-          }}
-          validationSchema={validationSchema}
-          onSubmit={fetchData} 
-        >
-          {({ setFieldValue, values, errors, touched }) => (
-            <Form>
+    <div style={{ margin: '0px 30px' }} onMouseDown={() => increment()}>
+      <Formik
+        initialValues={{
+          selectedDevices: Object.keys(selectedDevices),
+          selectedReadings,
+        }}
+        validationSchema={validationSchema}
+        onSubmit={fetchData}
+      >
+        {({ setFieldValue, values, errors, touched }) => (
+          <Form>
+            <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}>
               <div>
                 <h3>Devices</h3>
                 <FormControl sx={{ width: 300 }}>
@@ -296,7 +343,9 @@ const ApplicationDataVisualization = () => {
                       handleDeviceChange(event)
                     }}
                     input={<OutlinedInput label="Selected Devices" />}
-                    renderValue={() => values.selectedDevices.map(devId => availableDevices[devId]?.name).join(', ')}
+                    renderValue={() =>
+                      values.selectedDevices.map(devId => availableDevices[devId]?.name).join(', ')
+                    }
                     MenuProps={MenuProps}
                   >
                     {loading ? (
@@ -307,88 +356,122 @@ const ApplicationDataVisualization = () => {
                       Object.keys(availableDevices).map(key => (
                         <MenuItem key={key} value={key}>
                           <Checkbox checked={values.selectedDevices.includes(key)} />
-                          <ListItemText primary={availableDevices[key].name} secondary={availableDevices[key].type} />
+                          <ListItemText
+                            primary={availableDevices[key].name}
+                            secondary={availableDevices[key].type}
+                          />
                         </MenuItem>
                       ))
                     )}
                   </Select>
                 </FormControl>
-                {errors.selectedDevices && touched.selectedDevices &&(
+                {errors.selectedDevices && touched.selectedDevices && (
                   <div style={{ color: 'red' }}>{errors.selectedDevices}</div>
                 )}
               </div>
-  
               <div>
-                <h3>Sensor Readings</h3>
-                <FormControl sx={{ width: 300 }}>
-                  <InputLabel id="sensor-select-label">Selected Reading</InputLabel>
-                  <Select
-                    labelId="sensor-select-label"
-                    id="sensor-select"
-                    value={values.selectedReadings}
-                    onChange={event => {
-                      const { value } = event.target
-                      setFieldValue('selectedReadings', value)
-                      handleSelectedReadingChange(event) // Keep the current reading change logic
-                    }}
-                    input={<OutlinedInput label="Selected Devices" />}
-                    multiple
-                    renderValue={() =>
-                      values.selectedReadings
-                        .map(payloadValue => {
-                          const [, attribute] = payloadValue.split('-')
-                          for (const dev_eui in availableReadingColumns) {
-                            const reading = availableReadingColumns[dev_eui].find(
-                              item => item.payload_value === attribute,
-                            )
-                            if (reading) return reading.display_name
-                          }
-                          return attribute
-                        })
-                        .join(', ')
-                    }
-                  >
-                    {Object.keys(availableReadingColumns).map(dev_eui =>
-                      availableReadingColumns[dev_eui].map((item, index) => (
-                        <MenuItem key={`${dev_eui}-${index}`} value={`${dev_eui}-${item.payload_value}`}>
-                          <Checkbox checked={values.selectedReadings.includes(`${dev_eui}-${item.payload_value}`)} />
-                          <ListItemText
-                            primary={item.display_name}
-                            secondary={availableDevices[dev_eui]?.name}
-                          />
-                        </MenuItem>
-                      )),
-                    )}
-                  </Select>
-                </FormControl>
-                {errors.selectedReadings && touched.selectedReadings && (
-                  <div style={{ color: 'red' }}>{errors.selectedReadings}</div>
-                )}
+                <ButtonGroup variant="contained" aria-label="Basic button group">
+                  <IconButton disabled={isRunning} onClick={() => handleStart()}>
+                    <PlayArrowIcon />
+                  </IconButton>
+                  <IconButton disabled={!isRunning} onClick={() => handlePause()}>
+                    <PauseIcon />
+                  </IconButton>
+                  <IconButton disabled={isRunning} onClick={() => handleReset()}>
+                    <StopIcon />
+                  </IconButton>
+                </ButtonGroup>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <h3>
+                    {minutes} {seconds} {milliseconds}
+                  </h3>
+                  <h2>{clicks}</h2>
+                </div>
               </div>
-  
-              <div style={{ margin: '20px 0px', display: 'flex', gap: '10px' }}>
-                {timesOptions.map(time => (
-                  <Button
-                    key={time}
-                    type="button"
-                    message={time}
-                    className="small"
-                    onClick={() => selectTime(time)}
-                    primary={selectedTime === time}
-                  />
-                ))}
-              <SubmitButton>
-                Fetch Data
-              </SubmitButton>
+            </div>
+
+            <div>
+              <h3>Sensor Readings</h3>
+              <FormControl sx={{ width: 300 }}>
+                <InputLabel id="sensor-select-label">Selected Reading</InputLabel>
+                <Select
+                  labelId="sensor-select-label"
+                  id="sensor-select"
+                  value={values.selectedReadings}
+                  onChange={event => {
+                    const { value } = event.target
+                    setFieldValue('selectedReadings', value)
+                    handleSelectedReadingChange(event) // Keep the current reading change logic
+                  }}
+                  input={<OutlinedInput label="Selected Devices" />}
+                  multiple
+                  renderValue={() =>
+                    values.selectedReadings
+                      .map(payloadValue => {
+                        const [, attribute] = payloadValue.split('-')
+                        for (const dev_eui in availableReadingColumns) {
+                          const reading = availableReadingColumns[dev_eui].find(
+                            item => item.payload_value === attribute,
+                          )
+                          if (reading) return reading.display_name
+                        }
+                        return attribute
+                      })
+                      .join(', ')
+                  }
+                >
+                  {Object.keys(availableReadingColumns).map(dev_eui =>
+                    availableReadingColumns[dev_eui].map((item, index) => (
+                      <MenuItem
+                        key={`${dev_eui}-${index}`}
+                        value={`${dev_eui}-${item.payload_value}`}
+                      >
+                        <Checkbox
+                          checked={values.selectedReadings.includes(
+                            `${dev_eui}-${item.payload_value}`,
+                          )}
+                        />
+                        <ListItemText
+                          primary={item.display_name}
+                          secondary={availableDevices[dev_eui]?.name}
+                        />
+                      </MenuItem>
+                    )),
+                  )}
+                </Select>
+              </FormControl>
+              {errors.selectedReadings && touched.selectedReadings && (
+                <div style={{ color: 'red' }}>{errors.selectedReadings}</div>
+              )}
+            </div>
+
+            <div style={{ margin: '20px 0px', display: 'flex', gap: '10px' }}>
+              {timesOptions.map(time => (
+                <Button
+                  key={time}
+                  type="button"
+                  message={time}
+                  className="small"
+                  onClick={() => selectTime(time)}
+                  primary={selectedTime === time}
+                />
+              ))}
+              <SubmitButton>Fetch Data</SubmitButton>
               {selectedTime !== '1H' && (
-                <div style={{ marginLeft: '25px', marginTop: '-84px'}}>
+                <div style={{ marginLeft: '25px', marginTop: '-84px' }}>
                   <h3>Aggregate By</h3>
                   <FormControl sx={{ width: 175 }}>
                     <Select
                       value={selectedAggregation}
                       onChange={handleAggregationChange}
                       displayEmpty
-                      renderValue={(selected) => selected || "Select Aggregation"}
+                      renderValue={selected => selected || 'Select Aggregation'}
                     >
                       {aggregationOptions.map(option => (
                         <MenuItem key={option} value={option}>
@@ -399,45 +482,46 @@ const ApplicationDataVisualization = () => {
                   </FormControl>
                 </div>
               )}
-              </div>
-              </Form>
-          )}
-        </Formik>
-              <div style={{ paddingRight: '50px', paddingTop: '25px' }}>
-                {graphData && graphData.dataset && graphData.dataset.length > 0 && (
-                  <LineChart
-                    dataset={graphData.dataset}
-                    xAxis={[{
-                      dataKey: 'timestamp',
-                      valueFormatter: value => {
-                        const date = new Date(value).toLocaleDateString()
-                        const time = new Date(value).toLocaleTimeString()
-                        return `${date}\n${time}`
-                      },
-                      scaleType: 'time',
-                      label: 'Time',
-                      labelStyle: {
-                        transform: 'translateY(30px)',
-                      },
-                    }]}
-                    series={graphData.series.map(series => ({
-                      ...series,
-                      showMark: false,
-                      connectNulls: true,
-                    }))}
-                    width={850}
-                    height={450}
-                    sx={{
-                      [`.${axisClasses.left} .${axisClasses.label}`]: {
-                        transform: 'translateX(-30px)',
-                      },
-                    }}
-                  />
-                )}
-              </div>
+            </div>
+          </Form>
+        )}
+      </Formik>
+      <div style={{ paddingRight: '50px', paddingTop: '25px' }}>
+        {graphData && graphData.dataset && graphData.dataset.length > 0 && (
+          <LineChart
+            dataset={graphData.dataset}
+            xAxis={[
+              {
+                dataKey: 'timestamp',
+                valueFormatter: value => {
+                  const date = new Date(value).toLocaleDateString()
+                  const time = new Date(value).toLocaleTimeString()
+                  return `${date}\n${time}`
+                },
+                scaleType: 'time',
+                label: 'Time',
+                labelStyle: {
+                  transform: 'translateY(30px)',
+                },
+              },
+            ]}
+            series={graphData.series.map(series => ({
+              ...series,
+              showMark: false,
+              connectNulls: true,
+            }))}
+            width={850}
+            height={450}
+            sx={{
+              [`.${axisClasses.left} .${axisClasses.label}`]: {
+                transform: 'translateX(-30px)',
+              },
+            }}
+          />
+        )}
       </div>
-    </Require>
-  )  
+    </div>
+  )
 }
 
 export default ApplicationDataVisualization
