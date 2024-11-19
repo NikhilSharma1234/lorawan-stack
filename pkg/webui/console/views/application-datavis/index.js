@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import React, { useState, useCallback, useEffect } from 'react'
+import { Formik, Form } from 'formik'
 import { useDispatch } from 'react-redux'
 import { useParams } from 'react-router-dom'
 import { LineChart } from '@mui/x-charts/LineChart'
@@ -36,6 +37,7 @@ import Require from '@console/lib/components/require'
 
 import style from '@console/views/app/app.styl'
 
+import yup from '@ttn-lw/lib/yup'
 import attachPromise from '@ttn-lw/lib/store/actions/attach-promise'
 import useRootClass from '@ttn-lw/lib/hooks/use-root-class'
 import sharedMessages from '@ttn-lw/lib/shared-messages'
@@ -49,6 +51,8 @@ const ApplicationDataVisualization = () => {
   const dispatch = useDispatch()
   const [selectedDevices, setSelectedDevices] = useState({})
   const [availableDevices, setAvailableDevices] = useState({})
+  const [aggregationOptions, setAggregationOptions] = useState([])
+  const [selectedAggregation, setSelectedAggregation] = useState('')
   const [loading, setLoading] = useState(true)
 
   // ['dev_eui-readingType', '123-temperature']
@@ -69,6 +73,36 @@ const ApplicationDataVisualization = () => {
   const serverDataEndpoint = process.env.FLASK_DATA_ENDPOINT
   const serverDeviceEndpoint = process.env.FLASK_DEVICE_ENDPOINT
   const timesOptions = ['1H', '24H', '7D', '14D', '30D', '6M', '1Y', 'ALL']
+
+  const aggregationOptionsMap = {
+    '1H': ['None'],
+    '24H': ['None', '1 Hour'],
+    '7D': ['None', '1 Hour', '1 Day'],
+    '14D': ['None', '1 Hour', '1 Day'],
+    '30D': ['None', '1 Hour', '1 Day', '7 Days'],
+    '6M': ['1 Day', '7 Days', '1 Month'],
+    '1Y': ['1 Day', '7 Days', '1 Month'],
+    ALL: ['1 Day', '7 Days', '1 Month', '6 Months'],
+  }
+
+  const defaultAggregationValues = {
+    '1H': 'None',
+    '24H': 'None',
+    '7D': 'None',
+    '14D': 'None',
+    '30D': 'None',
+    '6M': '1 Day',
+    '1Y': '1 Day',
+    ALL: '1 Day',
+  }
+
+  const validationSchema = yup.object().shape({
+    selectedDevices: yup.array().min(1, 'Select at least one device').required(),
+    selectedReadings: yup.array().when('selectedDevices', {
+      is: selectedDevices => selectedDevices.length > 0,
+      then: schema => schema.min(1, 'Select at least one reading').required(),
+    }),
+  })
 
   const handleDeviceChange = useCallback(
     event => {
@@ -98,12 +132,22 @@ const ApplicationDataVisualization = () => {
     const {
       target: { value },
     } = event
-    // Update the state with the new selected readings
     setSelectedReadings(value)
   }, [])
 
   const selectTime = time => {
     setSelectedTime(time)
+    setSelectedAggregation(defaultAggregationValues[time] || '')
+  }
+
+  useEffect(() => {
+    setAggregationOptions(aggregationOptionsMap[selectedTime] || [])
+    setSelectedAggregation(defaultAggregationValues[selectedTime] || '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTime])
+
+  const handleAggregationChange = event => {
+    setSelectedAggregation(event.target.value)
   }
 
   useEffect(() => {
@@ -162,16 +206,19 @@ const ApplicationDataVisualization = () => {
 
       return acc
     }, {})
+
     fetch(serverDataEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         data: mappedData,
         period: selectedTime,
+        aggregation: selectedAggregation, // Add selected aggregation option here
       }),
     })
       .then(response => response.json())
       .then(json => {
+        // Handle response as before
         const dataset = {}
         json.data.forEach(item => {
           const timestamp = new Date(item.timestamp).getTime()
@@ -195,11 +242,10 @@ const ApplicationDataVisualization = () => {
 
         const series = Object.keys(mappedData).flatMap(deviceId =>
           mappedData[deviceId].map(payloadValue => {
-            // Find the display name corresponding to the payload value
             const column = availableReadingColumns[deviceId].find(
               item => item.payload_value === payloadValue,
             )
-            const displayName = column ? column.display_name : payloadValue // Fallback to payloadValue if not found
+            const displayName = column ? column.display_name : payloadValue
 
             return {
               dataKey: `${deviceId}-${payloadValue}`,
@@ -225,102 +271,149 @@ const ApplicationDataVisualization = () => {
       otherwise={{ redirect: `/applications/${appId}` }}
     >
       <div style={{ marginLeft: '30px' }}>
-        <div>
-          <h3>Devices</h3>
-          <FormControl sx={{ width: 300 }}>
-            <InputLabel id="device-select-label">Selected Devices</InputLabel>
-            <Select
-              labelId="device-select-label"
-              id="device-select"
-              multiple
-              value={Object.keys(selectedDevices)}
-              onChange={handleDeviceChange}
-              input={<OutlinedInput label="Selected Devices" />}
-              renderValue={() => Object.values(selectedDevices).join(', ')}
-              MenuProps={MenuProps}
-            >
-              {loading ? (
-                <MenuItem disabled>
-                  <h1>Loading</h1>
-                </MenuItem>
-              ) : (
-                Object.keys(availableDevices).map(key => (
-                  <MenuItem key={key} value={key}>
-                    <Checkbox checked={Object.keys(selectedDevices).includes(key)} />
-                    <ListItemText
-                      primary={availableDevices[key].name}
-                      secondary={availableDevices[key].type}
-                    />
-                  </MenuItem>
-                ))
-              )}
-            </Select>
-          </FormControl>
-        </div>
+        <Formik
+          initialValues={{
+            selectedDevices: Object.keys(selectedDevices),
+            selectedReadings,
+          }}
+          validationSchema={validationSchema}
+          onSubmit={fetchData}
+        >
+          {({ setFieldValue, values, errors, touched }) => (
+            <Form>
+              <div>
+                <h3>Devices</h3>
+                <FormControl sx={{ width: 300 }}>
+                  <InputLabel id="device-select-label">Selected Devices</InputLabel>
+                  <Select
+                    labelId="device-select-label"
+                    id="device-select"
+                    multiple
+                    value={values.selectedDevices}
+                    onChange={event => {
+                      const { value } = event.target
+                      setFieldValue('selectedDevices', value)
+                      handleDeviceChange(event)
+                    }}
+                    input={<OutlinedInput label="Selected Devices" />}
+                    renderValue={() =>
+                      values.selectedDevices.map(devId => availableDevices[devId]?.name).join(', ')
+                    }
+                    MenuProps={MenuProps}
+                  >
+                    {loading ? (
+                      <MenuItem disabled>
+                        <h1>Loading</h1>
+                      </MenuItem>
+                    ) : (
+                      Object.keys(availableDevices).map(key => (
+                        <MenuItem key={key} value={key}>
+                          <Checkbox checked={values.selectedDevices.includes(key)} />
+                          <ListItemText
+                            primary={availableDevices[key].name}
+                            secondary={availableDevices[key].type}
+                          />
+                        </MenuItem>
+                      ))
+                    )}
+                  </Select>
+                </FormControl>
+                {errors.selectedDevices && touched.selectedDevices && (
+                  <div style={{ color: 'red' }}>{errors.selectedDevices}</div>
+                )}
+              </div>
 
-        <div style={{}}>
-          <h3>Sensor Readings</h3>
-          <FormControl sx={{ width: 300 }}>
-            <InputLabel id="sensor-select-label">Selected Reading</InputLabel>
-            <Select
-              labelId="sensor-select-label"
-              id="sensor-select"
-              value={selectedReadings}
-              onChange={handleSelectedReadingChange}
-              input={<OutlinedInput label="Selected Devices" />}
-              multiple
-              renderValue={
-                () =>
-                  selectedReadings
-                    .map(payloadValue => {
-                      const [, attribute] = payloadValue.split('-')
-                      // Find the corresponding display_name from availableReadingColumns
-                      for (const dev_eui in availableReadingColumns) {
-                        const reading = availableReadingColumns[dev_eui].find(
-                          item => item.payload_value === attribute,
-                        )
-                        if (reading) {
-                          return reading.display_name // Return the display_name if found
-                        }
-                      }
-                      return attribute // Fallback to payloadValue if display_name is not found
-                    })
-                    .join(', ') // Join all selected display_names with commas
-              }
-            >
-              {Object.keys(availableReadingColumns).map(dev_eui =>
-                availableReadingColumns[dev_eui].map((item, index) => (
-                  <MenuItem key={`${dev_eui}-${index}`} value={`${dev_eui}-${item.payload_value}`}>
-                    <Checkbox
-                      checked={selectedReadings.includes(`${dev_eui}-${item.payload_value}`)}
-                    />
-                    <ListItemText
-                      primary={item.display_name}
-                      secondary={availableDevices[dev_eui]?.name}
-                    />
-                  </MenuItem>
-                )),
-              )}
-            </Select>
-          </FormControl>
-        </div>
+              <div>
+                <h3>Sensor Readings</h3>
+                <FormControl sx={{ width: 300 }}>
+                  <InputLabel id="sensor-select-label">Selected Reading</InputLabel>
+                  <Select
+                    labelId="sensor-select-label"
+                    id="sensor-select"
+                    value={values.selectedReadings}
+                    onChange={event => {
+                      const { value } = event.target
+                      setFieldValue('selectedReadings', value)
+                      handleSelectedReadingChange(event) // Keep the current reading change logic
+                    }}
+                    input={<OutlinedInput label="Selected Devices" />}
+                    multiple
+                    renderValue={() =>
+                      values.selectedReadings
+                        .map(payloadValue => {
+                          const [, attribute] = payloadValue.split('-')
+                          for (const dev_eui in availableReadingColumns) {
+                            const reading = availableReadingColumns[dev_eui].find(
+                              item => item.payload_value === attribute,
+                            )
+                            if (reading) return reading.display_name
+                          }
+                          return attribute
+                        })
+                        .join(', ')
+                    }
+                  >
+                    {Object.keys(availableReadingColumns).map(dev_eui =>
+                      availableReadingColumns[dev_eui].map((item, index) => (
+                        <MenuItem
+                          key={`${dev_eui}-${index}`}
+                          value={`${dev_eui}-${item.payload_value}`}
+                        >
+                          <Checkbox
+                            checked={values.selectedReadings.includes(
+                              `${dev_eui}-${item.payload_value}`,
+                            )}
+                          />
+                          <ListItemText
+                            primary={item.display_name}
+                            secondary={availableDevices[dev_eui]?.name}
+                          />
+                        </MenuItem>
+                      )),
+                    )}
+                  </Select>
+                </FormControl>
+                {errors.selectedReadings && touched.selectedReadings && (
+                  <div style={{ color: 'red' }}>{errors.selectedReadings}</div>
+                )}
+              </div>
 
-        <div style={{ margin: '20px 0px', display: 'flex', gap: '10px' }}>
-          {timesOptions.map(time => (
-            <Button
-              key={time}
-              message={time}
-              className="small"
-              onClick={() => selectTime(time)}
-              primary={selectedTime === time}
-            />
-          ))}
-          <SubmitButton isSubmitting={false} isValidating={false} onClick={fetchData}>
-            Fetch Data
-          </SubmitButton>
-        </div>
-
-        <div style={{ paddingRight: '50px' }}>
+              <div style={{ margin: '20px 0px', display: 'flex', gap: '10px' }}>
+                {timesOptions.map(time => (
+                  <Button
+                    key={time}
+                    type="button"
+                    message={time}
+                    className="small"
+                    onClick={() => selectTime(time)}
+                    primary={selectedTime === time}
+                  />
+                ))}
+                <SubmitButton>Fetch Data</SubmitButton>
+                {selectedTime !== '1H' && (
+                  <div style={{ marginLeft: '25px', marginTop: '-84px' }}>
+                    <h3>Aggregate By</h3>
+                    <FormControl sx={{ width: 175 }}>
+                      <Select
+                        value={selectedAggregation}
+                        onChange={handleAggregationChange}
+                        displayEmpty
+                        renderValue={selected => selected || 'Select Aggregation'}
+                      >
+                        {aggregationOptions.map(option => (
+                          <MenuItem key={option} value={option}>
+                            {option}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </div>
+                )}
+              </div>
+            </Form>
+          )}
+        </Formik>
+        <div style={{ paddingRight: '50px', paddingTop: '25px' }}>
           {graphData && graphData.dataset && graphData.dataset.length > 0 && (
             <LineChart
               dataset={graphData.dataset}
@@ -351,7 +444,6 @@ const ApplicationDataVisualization = () => {
                   transform: 'translateX(-30px)',
                 },
               }}
-              margin={{ top: 30, right: 100, left: 100, bottom: 80 }}
             />
           )}
         </div>

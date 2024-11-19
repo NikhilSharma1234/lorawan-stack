@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import React, { useState, useEffect, useCallback } from 'react'
+import { Formik, Form } from 'formik'
 import { useSelector, useDispatch } from 'react-redux'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
@@ -35,6 +36,7 @@ import SubmitButton from '@ttn-lw/components/submit-button'
 
 import style from '@console/views/app/app.styl'
 
+import yup from '@ttn-lw/lib/yup'
 import attachPromise from '@ttn-lw/lib/store/actions/attach-promise'
 import sharedMessages from '@ttn-lw/lib/shared-messages'
 import useRootClass from '@ttn-lw/lib/hooks/use-root-class'
@@ -67,6 +69,11 @@ const ApplicationDataExport = () => {
     },
   }
   const serverDeviceEndpoint = process.env.FLASK_DEVICE_ENDPOINT
+
+  const validationSchema = yup.object().shape({
+    selectedDevices: yup.array().min(1).required(),
+  })
+
   useEffect(() => {
     const fetchDeviceType = devices => {
       fetch(serverDeviceEndpoint, {
@@ -201,7 +208,7 @@ const ApplicationDataExport = () => {
 
         for (const key of dataKeys) {
           if (key !== 'dev_eui' && key !== 'timestamp') {
-            const mappingInfo = json.mapping[key]
+            const mappingInfo = json.mapping[displayNameToKeys[key]]
 
             if (mappingInfo) {
               // Check if the display name has already been added
@@ -397,58 +404,88 @@ const ApplicationDataExport = () => {
               </div>
             </div>
           </LocalizationProvider>
-          <h3>Devices</h3>
-          <div>
-            <FormControl sx={{ width: 300 }}>
-              <InputLabel id="demo-multiple-checkbox-label">Selected Devices</InputLabel>
-              <Select
-                labelId="demo-multiple-checkbox-label"
-                id="demo-multiple-checkbox"
-                multiple
-                value={Object.keys(selectedDevices)}
-                onChange={handleSelectedDeviceChange}
-                input={<OutlinedInput label="Selected Devices" />}
-                renderValue={() => Object.values(selectedDevices).join(', ')}
-                MenuProps={MenuProps}
-              >
-                {loading ? (
-                  <MenuItem disabled>
-                    <h1>Loading</h1>
-                  </MenuItem>
-                ) : (
-                  Object.keys(availableDevices).map(key => (
-                    <MenuItem key={key} value={key}>
-                      <Checkbox checked={Object.keys(selectedDevices).includes(key)} />
-                      <ListItemText
-                        primary={availableDevices[key].name}
-                        secondary={availableDevices[key].type}
-                      />
-                    </MenuItem>
-                  ))
-                )}
-              </Select>
-            </FormControl>
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              margin: '20px 0px',
+
+          <Formik
+            initialValues={{
+              selectedDevices: Object.keys(selectedDevices),
             }}
+            validationSchema={validationSchema}
+            onSubmit={fetchData}
           >
-            <SubmitButton
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                margin: '20px 0px',
-              }}
-              isSubmitting={false}
-              isValidating={false}
-              onClick={fetchData}
-            >
-              Fetch Data
-            </SubmitButton>
-          </div>
+            {({ setFieldValue, values, errors, touched }) => (
+              <Form>
+                <h3>Devices</h3>
+                <div>
+                  <FormControl sx={{ width: 300 }}>
+                    <InputLabel id="demo-multiple-checkbox-label">Selected Devices</InputLabel>
+                    <Select
+                      labelId="demo-multiple-checkbox-label"
+                      id="demo-multiple-checkbox"
+                      multiple
+                      value={values.selectedDevices}
+                      onChange={event => {
+                        const { value } = event.target
+                        setFieldValue('selectedDevices', value)
+                        handleSelectedDeviceChange(event)
+                      }}
+                      input={<OutlinedInput label="Selected Devices" />}
+                      renderValue={() => Object.values(selectedDevices).join(', ')}
+                      MenuProps={MenuProps}
+                    >
+                      {loading ? (
+                        <MenuItem disabled>
+                          <h1>Loading</h1>
+                        </MenuItem>
+                      ) : (
+                        Object.keys(availableDevices).map(key => (
+                          <MenuItem key={key} value={key}>
+                            <Checkbox checked={Object.keys(selectedDevices).includes(key)} />
+                            <ListItemText
+                              primary={availableDevices[key].name}
+                              secondary={availableDevices[key].type}
+                            />
+                          </MenuItem>
+                        ))
+                      )}
+                    </Select>
+                  </FormControl>
+                  {errors.selectedDevices &&
+                    touched.selectedDevices &&
+                    (!startTime || !endTime) && (
+                      <div style={{ color: 'red' }}>
+                        Select a start/end time with at least one device
+                      </div>
+                    )}
+                  {errors.selectedDevices && touched.selectedDevices && startTime && endTime && (
+                    <div style={{ color: 'red' }}>Select at least one device</div>
+                  )}
+                  {values.selectedDevices.length > 0 && (!startTime || !endTime) && (
+                    <div style={{ color: 'red' }}>Select a start/end time</div>
+                  )}
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    margin: '20px 0px',
+                  }}
+                >
+                  <SubmitButton
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      margin: '20px 0px',
+                    }}
+                    isSubmitting={false}
+                    isValidating={false}
+                    onClick={fetchData}
+                  >
+                    Fetch Data
+                  </SubmitButton>
+                </div>
+              </Form>
+            )}
+          </Formik>
         </div>
         {data ? (
           <div style={{ margin: '0px 32px', display: 'flex', flexDirection: 'column' }}>

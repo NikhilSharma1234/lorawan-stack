@@ -233,7 +233,7 @@ export default defineMessages({
   eventJoinAcceptDesc: 'An end device successfully joins the network and starts a session',
   eventLocationSolvedDesc: 'An integration succeeded locating the end device',
   eventServiceDataDesc: 'An integration emits an event',
-  eventUplinkMessageDesc: 'An uplink message is received by the application',
+  eventUplinkMessageDesc: 'An uplink message is received by the project',
   eventUplinkNormalizedDesc: 'A normalized uplink payload',
   eventsCannotShow: 'Cannot show events',
   expiry: 'Expiry',

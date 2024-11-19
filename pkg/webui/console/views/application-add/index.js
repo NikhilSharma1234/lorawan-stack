@@ -35,7 +35,7 @@ import { getOrganizationsList } from '@console/store/actions/organizations'
 
 const m = defineMessages({
   appDescription:
-    'Within applications, you can register and manage end devices and their network data. After setting up your device fleet, use one of our many integration options to pass relevant data to your external services.{break}Learn more in our guide on <Link>Adding Applications</Link>.',
+    'Within projects, you can register and manage end devices and their network data. After setting up your device fleet, use one of our many integration options to pass relevant data to your external services.{break}Learn more in our guide on <Link>Adding Projects</Link>.',
 })
 
 const ApplicationAdd = () => {
