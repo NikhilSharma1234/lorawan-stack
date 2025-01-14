@@ -59,6 +59,7 @@ const hardcoded = {
   link: 'link',
   location: 'place',
   logout: 'power_settings_new',
+  map: 'map',
   organization: 'people',
   overview: 'dashboard',
   packet_broker: 'camera',
