@@ -184,6 +184,10 @@ const ApplicationDataExport = () => {
         const mergedData = json.data.map(item => {
           const newItem = { ...item } // Copy the original item
 
+          if (newItem.timestamp) {
+            newItem.timestamp = formatTimestamp(newItem.timestamp);
+          }
+
           for (const [displayName, keys] of Object.entries(displayNameToKeys)) {
             // Check if any of the keys exist in the current item
             const valuesToSum = keys.map(key => item[key]).filter(value => value !== undefined)
@@ -331,28 +335,48 @@ const ApplicationDataExport = () => {
     downloadJSON(newData)
   }
 
+  const formatTimestamp = (timestamp) => {
+    const date = new Date(timestamp);
+  
+    // Format the date as MM/DD/YYYY, hh:mm:ss AM/PM
+    const options = {
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    };
+
+    const formattedDate = date.toLocaleString('en-US', options);
+    return formattedDate.replace(',', ''); 
+  };
+  
   const convertJSONToCSV = newData => {
-    let csv = ''
-
-    const headers = Object.keys(newData[0])
-    csv += `${headers.join(',')}\n`
-
-    // Extract values with proper escaping
+    let csv = '';
+  
+    const headers = Object.keys(newData[0]);
+    csv += `${headers.join(',')}\n`;
+  
     newData.forEach(obj => {
       const values = headers.map(header => {
-        const value = obj[header]
-        // Check if the value is a string and contains a comma or quote
-        if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
-          // Escape quotes and wrap in quotes
-          return `"${value.replace(/"/g, '""')}"`
+        const value = obj[header];
+        if (header === 'timestamp' && value) {
+          return formatTimestamp(value);  // Ensure timestamp is formatted
         }
-        return value
-      })
-      csv += `${values.join(',')}\n`
-    })
-
-    return csv
-  }
+        // Handle escaping for other fields as necessary
+        if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+          return `"${value.replace(/"/g, '""')}"`;
+        }
+        return value;
+      });
+      csv += `${values.join(',')}\n`;
+    });
+  
+    return csv;
+  };
+  
 
   // Function to initiate CSV download
   const downloadCSV = newData => {

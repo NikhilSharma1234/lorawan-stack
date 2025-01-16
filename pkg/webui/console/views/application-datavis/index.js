@@ -258,7 +258,7 @@ const ApplicationDataVisualization = () => {
     body.payload_types = payloadTypes;
   
     // Choose the correct endpoint based on toggleView
-    const endpoint = toggleView === 'dateTimePicker' ? process.env.FLASK_DATA_ENDPOINT : process.env.FLASK_DATA_BUTTON_ENDPOINT;
+    const endpoint = toggleView === 'dateTimePicker' ? serverDataEndpoint : serverDataButtonEndpoint;
       
     // Send the request to the correct endpoint with the body
     fetch(endpoint, {
@@ -349,9 +349,13 @@ const ApplicationDataVisualization = () => {
                     multiple
                     value={values.selectedDevices}
                     onChange={event => {
-                      const { value } = event.target
-                      setFieldValue('selectedDevices', value)
-                      handleDeviceChange(event)
+                      const { value } = event.target;
+                      setFieldValue('selectedDevices', value);
+                      handleDeviceChange(event);
+                      const newReadings = values.selectedReadings.filter(reading => 
+                        value.includes(reading.split('-')[0])
+                      );
+                      setFieldValue('selectedReadings', newReadings);
                     }}
                     input={<OutlinedInput label="Selected Devices" />}
                     renderValue={() =>
