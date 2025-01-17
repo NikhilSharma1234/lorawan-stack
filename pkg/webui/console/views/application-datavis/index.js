@@ -268,7 +268,6 @@ const ApplicationDataVisualization = () => {
     })
       .then(response => response.json())
       .then(json => {
-        console.log("Response data:", json); // Log the entire response
         if (json && json.data) {
           const dataset = {};
           json.data.forEach(item => {
