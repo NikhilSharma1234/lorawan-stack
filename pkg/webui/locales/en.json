@@ -1364,6 +1364,7 @@
   "lib.shared-messages.macData": "MAC data",
   "lib.shared-messages.macSettingsError": "There was an error and the default MAC settings for the <code>{freqPlan}</code> frequency plan could not be loaded",
   "lib.shared-messages.macVersion": "LoRaWAN version",
+  "lib.shared-messages.map": "Map",
   "lib.shared-messages.managedGateway": "Managed gateway",
   "lib.shared-messages.messageTypes": "Message types",
   "lib.shared-messages.messages": "messages",
