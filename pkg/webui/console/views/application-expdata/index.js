@@ -87,10 +87,18 @@ const ApplicationDataExport = () => {
         .then(json => {
           const devicesWithType = {}
           for (const deviceKey of Object.keys(devices)) {
-            devicesWithType[deviceKey] = {
-              name: devices[deviceKey],
-              type: json.capabilities[deviceKey].type,
-              readings: json.capabilities[deviceKey].readings,
+            if (!json.capabilities[deviceKey]) {
+              devicesWithType[deviceKey] = {
+                name: devices[deviceKey],
+                type: 'Unknown, no data exists',
+                readings: null,
+              }
+            } else {
+              devicesWithType[deviceKey] = {
+                name: devices[deviceKey],
+                type: json.capabilities[deviceKey].type,
+                readings: json.capabilities[deviceKey].readings,
+              }
             }
           }
           setAvailableDevices(devicesWithType)
@@ -438,7 +446,11 @@ const ApplicationDataExport = () => {
                         </MenuItem>
                       ) : (
                         Object.keys(availableDevices).map(key => (
-                          <MenuItem key={key} value={key}>
+                          <MenuItem
+                            key={key}
+                            value={key}
+                            disabled={availableDevices[key].type === 'Unknown, no data exists'}
+                          >
                             <Checkbox checked={Object.keys(selectedDevices).includes(key)} />
                             <ListItemText
                               primary={availableDevices[key].name}

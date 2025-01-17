@@ -76,6 +76,7 @@ import {
 } from '@console/store/selectors/application-server'
 
 import ApplicationDataExport from '../application-expdata'
+import ApplicationMap from '../application-map'
 
 const Application = () => {
   const { appId } = useParams()
@@ -142,6 +143,9 @@ const ApplicationInner = () => {
         )}
         {mayViewApplicationEvents.check(rights) && (
           <SideNavigation.Item title={sharedMessages.dataVis} path="datavis" icon="datavis" />
+        )}
+        {mayViewApplicationEvents.check(rights) && (
+          <SideNavigation.Item title={sharedMessages.map} path="map" icon="map" />
         )}
         {maySetApplicationPayloadFormatters.check(rights) && (
           <SideNavigation.Item title={sharedMessages.payloadFormatters} icon="code">
@@ -212,6 +216,7 @@ const ApplicationInner = () => {
         <Route path="data" Component={ApplicationData} />
         <Route path="datavis" Component={ApplicationDataVisualization} />
         <Route path="expdata" Component={ApplicationDataExport} />
+        <Route path="map" Component={ApplicationMap} />
         <Route path="payload-formatters/*" Component={ApplicationPayloadFormatters} />
         <Route path="integrations/mqtt" Component={ApplicationIntegrationsMqtt} />
         <Route path="integrations/webhooks/*" Component={ApplicationIntegrationsWebhooks} />

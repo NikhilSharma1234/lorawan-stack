@@ -1364,6 +1364,7 @@
   "lib.shared-messages.macData": "MACデータ",
   "lib.shared-messages.macSettingsError": "MAC設定エラー",
   "lib.shared-messages.macVersion": "LoRaWANバージョン",
+  "lib.shared-messages.map": "Map",
   "lib.shared-messages.managedGateway": "",
   "lib.shared-messages.messageTypes": "メッセージの種類",
   "lib.shared-messages.messages": "メッセージ",
