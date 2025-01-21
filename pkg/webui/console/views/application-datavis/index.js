@@ -17,6 +17,9 @@ import { Formik, Form } from 'formik'
 import { useDispatch } from 'react-redux'
 import { useParams } from 'react-router-dom'
 import { LineChart } from '@mui/x-charts/LineChart'
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { axisClasses } from '@mui/x-charts'
 import {
   Select,
@@ -26,6 +29,8 @@ import {
   FormControl,
   Checkbox,
   ListItemText,
+  ToggleButton,
+  ToggleButtonGroup
 } from '@mui/material'
 
 import Breadcrumb from '@ttn-lw/components/breadcrumbs/breadcrumb'
@@ -52,8 +57,11 @@ const ApplicationDataVisualization = () => {
   const [selectedDevices, setSelectedDevices] = useState({})
   const [availableDevices, setAvailableDevices] = useState({})
   const [aggregationOptions, setAggregationOptions] = useState([])
+  const [toggleView, setToggleView] = useState('dateTimePicker')
   const [selectedAggregation, setSelectedAggregation] = useState('')
   const [loading, setLoading] = useState(true)
+  const [startTime, setStartTime] = useState(null)
+  const [endTime, setEndTime] = useState(null)
 
   // ['dev_eui-readingType', '123-temperature']
   const [selectedReadings, setSelectedReadings] = useState([])
@@ -71,6 +79,7 @@ const ApplicationDataVisualization = () => {
     },
   }
   const serverDataEndpoint = process.env.FLASK_DATA_ENDPOINT
+  const serverDataButtonEndpoint = process.env.FLASK_DATA_BUTTON_ENDPOINT
   const serverDeviceEndpoint = process.env.FLASK_DEVICE_ENDPOINT
   const timesOptions = ['1H', '24H', '7D', '14D', '30D', '6M', '1Y', 'ALL']
 
@@ -150,6 +159,26 @@ const ApplicationDataVisualization = () => {
     setSelectedAggregation(event.target.value)
   }
 
+  const handleToggleChange = (event, newView) => {
+    if (newView) setToggleView(newView);
+  };
+
+  const convertLocalToUTCStart = localTime => {
+    // Create a Date object from the local timestamp
+    const date = new Date(localTime)
+
+    // Get the UTC time string
+    setStartTime(date.toISOString()) // Returns in the format "YYYY-MM-DDTHH:mm:ss.sssZ"
+  }
+
+  const convertLocalToUTCEnd = localTime => {
+    // Create a Date object from the local timestamp
+    const date = new Date(localTime)
+
+    // Get the UTC time string
+    setEndTime(date.toISOString()) // Returns in the format "YYYY-MM-DDTHH:mm:ss.sssZ"
+  }
+
   useEffect(() => {
     const fetchDeviceType = devices => {
       fetch(serverDeviceEndpoint, {
@@ -204,68 +233,96 @@ const ApplicationDataVisualization = () => {
 
   const fetchData = () => {
     const mappedData = selectedReadings.reduce((acc, column) => {
-      const [devEui, attribute] = column.split('-')
-
+      const [devEui, attribute] = column.split('-');
+  
       if (!acc[devEui]) {
-        acc[devEui] = []
+        acc[devEui] = [];
+      }
+  
+      acc[devEui].push(attribute);
+      return acc;
+    }, {});
+  
+    // Default body structure
+    const body = {
+      data: mappedData,
+    };
+  
+    if (toggleView === 'dateTimePicker') {
+      if (startTime && endTime) {
+        body.start_time = startTime;  
+        body.end_time = endTime;     
       }
 
-      acc[devEui].push(attribute)
-
-      return acc
-    }, {})
-
-    fetch(serverDataEndpoint, {
+    } else if (toggleView === 'timeButtons') {
+      body.period = selectedTime;
+      body.aggregation = selectedAggregation; 
+    }
+  
+    const sensorIds = Object.keys(mappedData);
+    const payloadTypes = Object.values(mappedData).flat();
+    
+    body.sensor_ids = sensorIds;
+    body.payload_types = payloadTypes;
+  
+    // Choose the correct endpoint based on toggleView
+    const endpoint = toggleView === 'dateTimePicker' ? serverDataEndpoint : serverDataButtonEndpoint;
+      
+    // Send the request to the correct endpoint with the body
+    fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        data: mappedData,
-        period: selectedTime,
-        aggregation: selectedAggregation, // Add selected aggregation option here
-      }),
+      body: JSON.stringify(body),
     })
       .then(response => response.json())
       .then(json => {
-        // Handle response as before
-        const dataset = {}
-        json.data.forEach(item => {
-          const timestamp = new Date(item.timestamp).getTime()
-          const sensorValue = parseFloat(item.value) || null
-
-          if (!dataset[timestamp]) {
-            dataset[timestamp] = { timestamp }
-          }
-
-          dataset[timestamp][`${item.dev_eui}-${item.payload_type}`] = sensorValue
-
-          for (const device of Object.keys(selectedDevices).filter(
-            dev_eui => dev_eui !== item.dev_eui,
-          )) {
-            if (!dataset[timestamp][`${device}-${item.payload_type}`])
-              dataset[timestamp][`${device}-${item.payload_type}`] = null
-          }
-        })
-
-        const datasetArray = Object.values(dataset).sort((a, b) => a.timestamp - b.timestamp)
-
-        const series = Object.keys(mappedData).flatMap(deviceId =>
-          mappedData[deviceId].map(payloadValue => {
-            const column = availableReadingColumns[deviceId].find(
-              item => item.payload_value === payloadValue,
-            )
-            const displayName = column ? column.display_name : payloadValue
-
-            return {
-              dataKey: `${deviceId}-${payloadValue}`,
-              label: `${selectedDevices[deviceId]} ${displayName}`,
+        if (json && json.data) {
+          const dataset = {};
+          json.data.forEach(item => {
+            const timestamp = new Date(item.timestamp).getTime();
+            const sensorValue = parseFloat(item.value) || null;
+  
+            if (!dataset[timestamp]) {
+              dataset[timestamp] = { timestamp };
             }
-          }),
-        )
-        setGraphData({ dataset: datasetArray, series })
+  
+            dataset[timestamp][`${item.dev_eui}-${item.payload_type}`] = sensorValue;
+  
+            // Ensure other devices have null values for missing data
+            for (const device of Object.keys(selectedDevices).filter(
+              dev_eui => dev_eui !== item.dev_eui,
+            )) {
+              if (!dataset[timestamp][`${device}-${item.payload_type}`])
+                dataset[timestamp][`${device}-${item.payload_type}`] = null;
+            }
+          });
+  
+          const datasetArray = Object.values(dataset).sort((a, b) => a.timestamp - b.timestamp);
+  
+          // Build the series for the graph
+          const series = Object.keys(mappedData).flatMap(deviceId =>
+            mappedData[deviceId].map(payloadValue => {
+              const column = availableReadingColumns[deviceId].find(
+                item => item.payload_value === payloadValue,
+              );
+              const displayName = column ? column.display_name : payloadValue;
+  
+              return {
+                dataKey: `${deviceId}-${payloadValue}`,
+                label: `${selectedDevices[deviceId]} ${displayName}`,
+              };
+            }),
+          );
+          
+          // Update the graph data
+          setGraphData({ dataset: datasetArray, series });
+        } else {
+          console.error("No data field in response:", json);
+        }
       })
-      .catch(error => console.error('Error fetching data:', error))
-  }
-
+      .catch(error => console.error('Error fetching data:', error));
+  };  
+  
   useRootClass(style.stageFlex, 'stage')
 
   useBreadcrumbs(
@@ -299,9 +356,13 @@ const ApplicationDataVisualization = () => {
                     multiple
                     value={values.selectedDevices}
                     onChange={event => {
-                      const { value } = event.target
-                      setFieldValue('selectedDevices', value)
-                      handleDeviceChange(event)
+                      const { value } = event.target;
+                      setFieldValue('selectedDevices', value);
+                      handleDeviceChange(event);
+                      const newReadings = values.selectedReadings.filter(reading => 
+                        value.includes(reading.split('-')[0])
+                      );
+                      setFieldValue('selectedReadings', newReadings);
                     }}
                     input={<OutlinedInput label="Selected Devices" />}
                     renderValue={() =>
@@ -390,37 +451,72 @@ const ApplicationDataVisualization = () => {
                 )}
               </div>
 
+              <div style={{marginTop: '25px'}}>
+                <ToggleButtonGroup
+                    value={toggleView}
+                    exclusive
+                    color="primary"
+                    onChange={handleToggleChange}
+                    aria-label="View Toggle"
+                  >
+                    <ToggleButton value="dateTimePicker">Date Time Picker</ToggleButton>
+                    <ToggleButton value="timeButtons">Time Button</ToggleButton>
+                  </ToggleButtonGroup>
+              </div>
+
               <div style={{ margin: '20px 0px', display: 'flex', gap: '10px' }}>
-                {timesOptions.map(time => (
-                  <Button
-                    key={time}
-                    type="button"
-                    message={time}
-                    className="small"
-                    onClick={() => selectTime(time)}
-                    primary={selectedTime === time}
-                  />
-                ))}
-                <SubmitButton>Fetch Data</SubmitButton>
-                {selectedTime !== '1H' && (
-                  <div style={{ marginLeft: '25px', marginTop: '-84px' }}>
-                    <h3>Aggregate By</h3>
-                    <FormControl sx={{ width: 175 }}>
-                      <Select
-                        value={selectedAggregation}
-                        onChange={handleAggregationChange}
-                        displayEmpty
-                        renderValue={selected => selected || 'Select Aggregation'}
-                      >
-                        {aggregationOptions.map(option => (
-                          <MenuItem key={option} value={option}>
-                            {option}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+                {toggleView === 'dateTimePicker' && (
+                  <div>
+                    <LocalizationProvider dateAdapter={AdapterDayjs}>
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <div>
+                          <DateTimePicker label="Start Time" value={null} onChange={convertLocalToUTCStart} />
+                        </div>
+                        <div style={{ margin: '0 20px' }}> --------- </div>
+                        <div>
+                          <DateTimePicker label="End Time" value={null} onChange={convertLocalToUTCEnd} />
+                        </div>
+                      </div>
+                    </LocalizationProvider>
+                    <div style={{ margin: '15px 0px' }}>
+                    <SubmitButton>Fetch Data</SubmitButton>
+                    </div>
                   </div>
                 )}
+                {toggleView === 'timeButtons' && (
+                <div style={{ margin: '5px 0px', display: 'flex', gap: '10px' }}>
+                    {timesOptions.map(time => (
+                      <Button
+                        key={time}
+                        type="button"
+                        message={time}
+                        className="small"
+                        onClick={() => selectTime(time)}
+                        primary={selectedTime === time}
+                      />
+                    ))}
+                    <SubmitButton>Fetch Data</SubmitButton>
+                    {selectedTime !== '1H' && (
+                      <div style={{ marginLeft: '25px', marginTop: '-84px' }}>
+                        <h3>Aggregate By</h3>
+                        <FormControl sx={{ width: 175 }}>
+                          <Select
+                            value={selectedAggregation}
+                            onChange={handleAggregationChange}
+                            displayEmpty
+                            renderValue={selected => selected || 'Select Aggregation'}
+                          >
+                            {aggregationOptions.map(option => (
+                              <MenuItem key={option} value={option}>
+                                {option}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </div>
+                    )}
+                  </div>
+              )}
               </div>
             </Form>
           )}
