@@ -12,23 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import React, { useState, useEffect, useCallback } from 'react'
-import { Formik, Form } from 'formik'
-import { useSelector, useDispatch } from 'react-redux'
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
-import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
-import { Select } from '@mui/material'
-import OutlinedInput from '@mui/material/OutlinedInput'
-import InputLabel from '@mui/material/InputLabel'
-import MenuItem from '@mui/material/MenuItem'
-import FormControl from '@mui/material/FormControl'
-import ListItemText from '@mui/material/ListItemText'
-import Checkbox from '@mui/material/Checkbox'
-import Paper from '@mui/material/Paper'
-import { DataGrid } from '@mui/x-data-grid'
-import ToggleButton from '@mui/material/ToggleButton'
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
+import React, {  useState, useEffect, useCallback } from 'react';
+import { Formik, Form } from 'formik';
+import { useSelector, useDispatch } from 'react-redux';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { Select, Button, Dialog, DialogContent, DialogTitle, IconButton, Collapse, Divider } from '@mui/material';
+import OutlinedInput from '@mui/material/OutlinedInput';
+import InputLabel from '@mui/material/InputLabel';
+import MenuItem from '@mui/material/MenuItem';
+import FormControl from '@mui/material/FormControl';
+import ListItemText from '@mui/material/ListItemText';
+import Checkbox from '@mui/material/Checkbox';
+import Paper from '@mui/material/Paper';
+import { DataGrid } from '@mui/x-data-grid';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
 import { useBreadcrumbs } from '@ttn-lw/components/breadcrumbs/context'
 import Breadcrumb from '@ttn-lw/components/breadcrumbs/breadcrumb'
@@ -40,6 +43,8 @@ import yup from '@ttn-lw/lib/yup'
 import attachPromise from '@ttn-lw/lib/store/actions/attach-promise'
 import sharedMessages from '@ttn-lw/lib/shared-messages'
 import useRootClass from '@ttn-lw/lib/hooks/use-root-class'
+
+import videoFile from '@assets/videos/DataExport.mp4'
 
 import { getDevicesList } from '@console/store/actions/devices'
 
@@ -58,6 +63,7 @@ const ApplicationDataExport = () => {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [tableColumns, setTableColumns] = useState([])
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const ITEM_HEIGHT = 48
   const ITEM_PADDING_TOP = 8
   const MenuProps = {
@@ -422,6 +428,24 @@ const ApplicationDataExport = () => {
 
   return (
     <div style={{ margin: '0px 30px' }}>
+    {/* Add the dropdown button */}
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '16px 0' }}>
+      <Divider style={{ flex: 1, margin: '0 16px' }} />
+      <IconButton onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
+        {isDropdownOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+      </IconButton>
+      <Divider style={{ flex: 1, margin: '0 16px' }} />
+    </div>
+
+    <Collapse in={isDropdownOpen}>
+      <div style={{ display: 'flex', justifyContent: 'center', margin: '16px 0' }}>
+        <video controls style={{ width: '100%', maxWidth: '600px' }}>
+          <source src={videoFile} type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    </Collapse>
+  
       <div style={{ display: 'flex' }}>
         <div style={{ margin: '0px 16px 0px 0px' }}>
           <h3>Select Time Range</h3>
@@ -436,7 +460,7 @@ const ApplicationDataExport = () => {
               </div>
             </div>
           </LocalizationProvider>
-
+  
           <Formik
             initialValues={{
               selectedDevices: Object.keys(selectedDevices),
@@ -590,7 +614,6 @@ const ApplicationDataExport = () => {
         </Paper>
       ) : null}
     </div>
-  )
+  );
 }
-
 export default ApplicationDataExport

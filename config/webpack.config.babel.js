@@ -259,6 +259,17 @@ export default {
         },
       },
       {
+        test: /\.(mp4)$/,
+        use: [
+          {
+            loader: 'file-loader',
+            options: {
+              name: 'static/media/[name].[hash:8].[ext]',
+            },
+          },
+        ],
+      },
+      {
         test: /\.(woff|woff2|ttf|eot|jpg|jpeg|png|svg)$/i,
         type: 'asset/resource',
         generator: {
