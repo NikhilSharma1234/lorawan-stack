@@ -18,7 +18,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
-import { Select, Button, Dialog, DialogContent, DialogTitle, IconButton, Collapse, Divider } from '@mui/material';
+import { Select, Dialog, DialogContent, DialogTitle, IconButton, Box} from '@mui/material';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
@@ -26,12 +26,11 @@ import FormControl from '@mui/material/FormControl';
 import ListItemText from '@mui/material/ListItemText';
 import Checkbox from '@mui/material/Checkbox';
 import Paper from '@mui/material/Paper';
+
 import { DataGrid } from '@mui/x-data-grid';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
 import { useBreadcrumbs } from '@ttn-lw/components/breadcrumbs/context'
 import Breadcrumb from '@ttn-lw/components/breadcrumbs/breadcrumb'
@@ -63,7 +62,7 @@ const ApplicationDataExport = () => {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [tableColumns, setTableColumns] = useState([])
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [openVideo, setOpenVideo] = useState(false);
   const ITEM_HEIGHT = 48
   const ITEM_PADDING_TOP = 8
   const MenuProps = {
@@ -427,26 +426,47 @@ const ApplicationDataExport = () => {
   const paginationModel = { page: 0, pageSize: 10 }
 
   return (
-    <div style={{ margin: '0px 30px' }}>
-    {/* Add the dropdown button */}
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '16px 0' }}>
-      <Divider style={{ flex: 1, margin: '0 16px' }} />
-      <IconButton onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
-        {isDropdownOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-      </IconButton>
-      <Divider style={{ flex: 1, margin: '0 16px' }} />
+    <div>
+    <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '0px 30px' }}>
+      <Box
+        sx={{ boxShadow: 4 }}
+        onClick={() => setOpenVideo(true)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          cursor: 'pointer',
+          padding:'0px 8px',
+          borderRadius: '8px',
+        }}
+      >
+        <IconButton>
+          <HelpOutlineIcon style={{ fontSize: '26px' }} />
+        </IconButton>
+        <p>Help Video</p>
+      </Box>
     </div>
 
-    <Collapse in={isDropdownOpen}>
-      <div style={{ display: 'flex', justifyContent: 'center', margin: '16px 0' }}>
-        <video controls style={{ width: '100%', maxWidth: '600px' }}>
+    <Dialog
+      open={openVideo}
+      onClose={() => setOpenVideo(false)}
+      maxWidth="md"
+      style={{ zIndex: '2001' }}
+      PaperProps={{
+        style: {
+          borderRadius: '6px',
+        },
+      }}
+    >
+      <DialogTitle style={{ alignSelf: 'center' }}>Export Data Video Guide</DialogTitle>
+      <DialogContent>
+        <video controls style={{ width: '100%' }}>
           <source src={videoFile} type="video/mp4" />
           Your browser does not support the video tag.
         </video>
-      </div>
-    </Collapse>
+      </DialogContent>
+    </Dialog>
   
-      <div style={{ display: 'flex' }}>
+      <div style={{ display: 'flex', margin: '-50px 30px'}}>
         <div style={{ margin: '0px 16px 0px 0px' }}>
           <h3>Select Time Range</h3>
           <LocalizationProvider dateAdapter={AdapterDayjs}>

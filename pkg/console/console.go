@@ -110,6 +110,7 @@ func generateConsoleCSPString(config *Config, nonce string, others ...webui.Cont
 			"gravatar.com",
 			"www.gravatar.com",
 			"localhost:5001",
+			"cssi.unr.dev",
 			"ncar-da-15.rc.unr.edu",
 			"ncar-da-15.rc.unr.edu:30127",
 			"ncar-da-15.rc.unr.edu:30128",
