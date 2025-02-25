@@ -20,7 +20,7 @@ import PageTitle from '@ttn-lw/components/page-title'
 
 import { Dialog, DialogContent, DialogTitle, IconButton, Box } from '@mui/material'
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
-import videoFile from '@assets/videos/Map.mp4'
+import videoFile from '@assets/videos/AddSensor.mp4'
 
 import RequireRequest from '@ttn-lw/lib/components/require-request'
 
@@ -85,7 +85,7 @@ const DeviceAdd = () => {
             },
           }}
         >
-          <DialogTitle style={{ alignSelf: 'center' }}>Map Video Guide</DialogTitle>
+          <DialogTitle style={{ alignSelf: 'center' }}>Adding End Device Video Guide</DialogTitle>
           <DialogContent>
             <video controls style={{ width: '100%' }}>
               <source src={videoFile} type="video/mp4" />

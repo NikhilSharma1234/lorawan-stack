@@ -22,7 +22,7 @@ import Link from '@ttn-lw/components/link'
 
 import { Dialog, DialogContent, DialogTitle, IconButton, Box } from '@mui/material'
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
-import videoFile from '@assets/videos/Map.mp4'
+import videoFile from '@assets/videos/AddGateway.mp4'
 
 import Message from '@ttn-lw/lib/components/message'
 import RequireRequest from '@ttn-lw/lib/components/require-request'
@@ -112,7 +112,7 @@ const GatewayAdd = () => {
               },
             }}
           >
-            <DialogTitle style={{ alignSelf: 'center' }}>Map Video Guide</DialogTitle>
+            <DialogTitle style={{ alignSelf: 'center' }}>Adding Gateway Video Guide</DialogTitle>
             <DialogContent>
               <video controls style={{ width: '100%' }}>
                 <source src={videoFile} type="video/mp4" />
