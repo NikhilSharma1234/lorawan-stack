@@ -30,15 +30,17 @@ import {
   Checkbox,
   ListItemText,
   ToggleButton,
-  ToggleButtonGroup
+  ToggleButtonGroup,
+  Dialog, DialogContent, DialogTitle, IconButton, Box
 } from '@mui/material'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+
+import videoFile from '@assets/videos/DataVisualization.mp4'
 
 import Breadcrumb from '@ttn-lw/components/breadcrumbs/breadcrumb'
 import { useBreadcrumbs } from '@ttn-lw/components/breadcrumbs/context'
 import Button from '@ttn-lw/components/button'
 import SubmitButton from '@ttn-lw/components/submit-button'
-
-import Require from '@console/lib/components/require'
 
 import style from '@console/views/app/app.styl'
 
@@ -46,9 +48,6 @@ import yup from '@ttn-lw/lib/yup'
 import attachPromise from '@ttn-lw/lib/store/actions/attach-promise'
 import useRootClass from '@ttn-lw/lib/hooks/use-root-class'
 import sharedMessages from '@ttn-lw/lib/shared-messages'
-
-import { mayViewApplicationEvents } from '@console/lib/feature-checks'
-
 import { getDevicesList } from '@console/store/actions/devices'
 
 const ApplicationDataVisualization = () => {
@@ -62,6 +61,7 @@ const ApplicationDataVisualization = () => {
   const [loading, setLoading] = useState(true)
   const [startTime, setStartTime] = useState(null)
   const [endTime, setEndTime] = useState(null)
+  const [openVideo, setOpenVideo] = useState(false);
 
   // ['dev_eui-readingType', '123-temperature']
   const [selectedReadings, setSelectedReadings] = useState([])
@@ -331,11 +331,47 @@ const ApplicationDataVisualization = () => {
   )
 
   return (
-    <Require
-      featureCheck={mayViewApplicationEvents}
-      otherwise={{ redirect: `/applications/${appId}` }}
-    >
-      <div style={{ marginLeft: '30px' }}>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '0px 30px'}}>
+        <Box
+          sx={{ boxShadow: 4 }}
+          onClick={() => setOpenVideo(true)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            cursor: 'pointer',
+            padding:'0px 8px',
+            borderRadius: '8px',
+          }}
+        >
+          <IconButton>
+            <HelpOutlineIcon style={{ fontSize: '26px' }} />
+          </IconButton>
+          <p>Help Video</p>
+        </Box>
+      </div>
+
+      <Dialog
+        open={openVideo}
+        onClose={() => setOpenVideo(false)}
+        maxWidth="md"
+        style={{ zIndex: '2001' }}
+        PaperProps={{
+          style: {
+            borderRadius: '6px',
+          },
+        }}
+      >
+        <DialogTitle style={{ alignSelf: 'center' }}>Data Visualization Video Guide</DialogTitle>
+        <DialogContent>
+          <video controls style={{ width: '100%' }}>
+            <source src={videoFile} type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+        </DialogContent>
+      </Dialog>
+
+      <div style={{margin: '-50px 30px'}}>
         <Formik
           initialValues={{
             selectedDevices: Object.keys(selectedDevices),
@@ -556,7 +592,8 @@ const ApplicationDataVisualization = () => {
           )}
         </div>
       </div>
-    </Require>
+    </div>
+
   )
 }
 

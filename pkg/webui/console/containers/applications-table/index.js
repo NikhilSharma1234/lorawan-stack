@@ -27,6 +27,8 @@ import Status from '@ttn-lw/components/status'
 import toast from '@ttn-lw/components/toast'
 import Spinner from '@ttn-lw/components/spinner'
 
+import videoFile from '@assets/videos/ProjectsOverview.mp4'
+
 import FetchTable from '@ttn-lw/containers/fetch-table'
 
 import Message from '@ttn-lw/lib/components/message'
@@ -285,6 +287,9 @@ const ApplicationsTable = props => {
       searchable
       clickable={!isDeletedTab}
       tabs={isAdmin ? tabs : []}
+      videoEnabled={true} // Enable the Help Video button
+      videoTitle="Projects Video Guide" // Custom title for the applications table
+      videoFile={videoFile}
       {...rest}
     />
   )

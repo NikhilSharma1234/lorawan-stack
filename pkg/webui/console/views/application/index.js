@@ -29,6 +29,8 @@ import GenericNotFound from '@ttn-lw/lib/components/full-view-error/not-found'
 
 import Require from '@console/lib/components/require'
 
+import videoFile from '@assets/videos/ProjectsOverview.mp4'
+
 import ApplicationOverview from '@console/views/application-overview'
 import ApplicationGeneralSettings from '@console/views/application-general-settings'
 import ApplicationApiKeys from '@console/views/application-api-keys'
@@ -127,6 +129,9 @@ const ApplicationInner = () => {
           iconAlt: sharedMessages.application,
           title: name,
           to: '',
+          videoFile: videoFile,
+          videoTitle: 'Projects Video Guide',
+          videoEnabled: true
         }}
       >
         {mayViewApplicationInfo.check(rights) && (

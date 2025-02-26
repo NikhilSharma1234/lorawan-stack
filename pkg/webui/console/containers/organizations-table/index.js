@@ -25,6 +25,8 @@ import Spinner from '@ttn-lw/components/spinner'
 
 import FetchTable from '@ttn-lw/containers/fetch-table'
 
+import videoFile from '@assets/videos/OrganizationOverview.mp4'
+
 import DateTime from '@ttn-lw/lib/components/date-time'
 import Message from '@ttn-lw/lib/components/message'
 
@@ -222,6 +224,10 @@ const OrganizationsTable = () => {
       searchable
       clickable={!isDeletedTab}
       tabs={isAdmin ? tabs : []}
+      videoEnabled={true}
+      videoTitle="Organizations Video Guide" // Custom title for the org table
+      videoFile={videoFile} //Custon video for org table
+
     />
   )
 }

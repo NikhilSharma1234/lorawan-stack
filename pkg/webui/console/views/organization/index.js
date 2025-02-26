@@ -29,6 +29,9 @@ import RequireRequest from '@ttn-lw/lib/components/require-request'
 
 import Require from '@console/lib/components/require'
 
+
+import videoFile from '@assets/videos/OrganizationOverview.mp4'
+
 import OrganizationOverview from '@console/views/organization-overview'
 import OrganizationData from '@console/views/organization-data'
 import OrganizationGeneralSettings from '@console/views/organization-general-settings'
@@ -114,6 +117,9 @@ const OrganizationInner = () => {
           icon: organizationIcon,
           iconAlt: sharedMessages.organization,
           to: '',
+          videoFile: videoFile,
+          videoTitle: 'Organizations Video Guide',
+          videoEnabled: true
         }}
       >
         {mayViewOrganizationInformation && (
