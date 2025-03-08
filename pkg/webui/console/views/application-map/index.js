@@ -14,19 +14,25 @@
 
 import React, { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Button, Card, CardActions, CardContent, Container, Typography,
-  Dialog, DialogContent, DialogTitle, IconButton, Box
+import {
+  Button,
+  Card,
+  CardActions,
+  CardContent,
+  Container,
+  Typography,
+  Dialog,
+  DialogContent,
+  DialogTitle,
 } from '@mui/material'
-
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
-
-import videoFile from '@assets/videos/Map.mp4'
-
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 import { useDispatch } from 'react-redux'
 import classnames from 'classnames'
 import { MapContainer, Marker, TileLayer, Popup } from 'react-leaflet'
 import { latLngBounds } from 'leaflet'
 import { Col, Row } from 'react-grid-system'
+
+import videoFile from '@assets/videos/Map.mp4'
 
 import mapStyle from '@ttn-lw/components/map/map.styl'
 import { useBreadcrumbs } from '@ttn-lw/components/breadcrumbs/context'
@@ -49,7 +55,7 @@ const ApplicationMap = () => {
   const [unmarkedDevices, setUnmarkedDevices] = useState(undefined)
   const dispatch = useDispatch()
   const navigate = useNavigate()
-  const [openVideo, setOpenVideo] = useState(false);
+  const [openVideo, setOpenVideo] = useState(false)
 
   useEffect(() => {
     const fetchDeviceType = devices => {
@@ -182,45 +188,43 @@ const ApplicationMap = () => {
 
   return (
     <Container>
-
-    <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '0px 30px' }}>
-          <Box
-            sx={{ boxShadow: 4 }}
-            onClick={() => setOpenVideo(true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              cursor: 'pointer',
-              padding:'0px 8px',
-              borderRadius: '8px',
-            }}
-          >
-            <IconButton>
-              <HelpOutlineIcon style={{ fontSize: '26px' }} />
-            </IconButton>
-            <p>Help Video</p>
-          </Box>
-        </div>
-
-        <Dialog
-          open={openVideo}
-          onClose={() => setOpenVideo(false)}
-          maxWidth="md"
-          style={{ zIndex: '2001' }}
-          PaperProps={{
-            style: {
-              borderRadius: '6px',
-            },
-          }}
+      <div
+        style={{
+          display: 'flex',
+          position: 'absolute',
+          right: '1px',
+          margin: '4px 4px',
+          zIndex: 1000,
+        }}
+      >
+        <Button
+          variant="contained"
+          onClick={() => setOpenVideo(true)}
+          startIcon={<HelpOutlineIcon />}
         >
-          <DialogTitle style={{ alignSelf: 'center' }}>Map Video Guide</DialogTitle>
-          <DialogContent>
-            <video controls style={{ width: '100%' }}>
-              <source src={videoFile} type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
-          </DialogContent>
-        </Dialog>
+          <p>Help Video</p>
+        </Button>
+      </div>
+
+      <Dialog
+        open={openVideo}
+        onClose={() => setOpenVideo(false)}
+        maxWidth="md"
+        style={{ zIndex: '2001' }}
+        PaperProps={{
+          style: {
+            borderRadius: '6px',
+          },
+        }}
+      >
+        <DialogTitle style={{ alignSelf: 'center' }}>Map Video Guide</DialogTitle>
+        <DialogContent>
+          <video controls style={{ width: '100%' }}>
+            <source src={videoFile} type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+        </DialogContent>
+      </Dialog>
 
       {availableDevices ? (
         <div
@@ -236,7 +240,7 @@ const ApplicationMap = () => {
             center={mapCenter}
             bounds={bounds}
             centerOnMarkers
-            style={{marginTop:'25px'}}
+            style={{ marginTop: '25px' }}
           >
             <TileLayer
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

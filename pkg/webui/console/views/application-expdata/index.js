@@ -12,25 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import React, {  useState, useEffect, useCallback } from 'react';
-import { Formik, Form } from 'formik';
-import { useSelector, useDispatch } from 'react-redux';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
-import { Select, Dialog, DialogContent, DialogTitle, IconButton, Box} from '@mui/material';
-import OutlinedInput from '@mui/material/OutlinedInput';
-import InputLabel from '@mui/material/InputLabel';
-import MenuItem from '@mui/material/MenuItem';
-import FormControl from '@mui/material/FormControl';
-import ListItemText from '@mui/material/ListItemText';
-import Checkbox from '@mui/material/Checkbox';
-import Paper from '@mui/material/Paper';
+import React, { useState, useEffect, useCallback } from 'react'
+import { Formik, Form } from 'formik'
+import { useSelector, useDispatch } from 'react-redux'
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
+import { Select, Dialog, DialogContent, DialogTitle, Button } from '@mui/material'
+import OutlinedInput from '@mui/material/OutlinedInput'
+import InputLabel from '@mui/material/InputLabel'
+import MenuItem from '@mui/material/MenuItem'
+import FormControl from '@mui/material/FormControl'
+import ListItemText from '@mui/material/ListItemText'
+import Checkbox from '@mui/material/Checkbox'
+import Paper from '@mui/material/Paper'
+import { DataGrid } from '@mui/x-data-grid'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 
-import { DataGrid } from '@mui/x-data-grid';
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import videoFile from '@assets/videos/DataExport.mp4'
 
 import { useBreadcrumbs } from '@ttn-lw/components/breadcrumbs/context'
 import Breadcrumb from '@ttn-lw/components/breadcrumbs/breadcrumb'
@@ -42,8 +43,6 @@ import yup from '@ttn-lw/lib/yup'
 import attachPromise from '@ttn-lw/lib/store/actions/attach-promise'
 import sharedMessages from '@ttn-lw/lib/shared-messages'
 import useRootClass from '@ttn-lw/lib/hooks/use-root-class'
-
-import videoFile from '@assets/videos/DataExport.mp4'
 
 import { getDevicesList } from '@console/store/actions/devices'
 
@@ -62,7 +61,7 @@ const ApplicationDataExport = () => {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [tableColumns, setTableColumns] = useState([])
-  const [openVideo, setOpenVideo] = useState(false);
+  const [openVideo, setOpenVideo] = useState(false)
   const ITEM_HEIGHT = 48
   const ITEM_PADDING_TOP = 8
   const MenuProps = {
@@ -198,7 +197,7 @@ const ApplicationDataExport = () => {
           const newItem = { ...item } // Copy the original item
 
           if (newItem.timestamp) {
-            newItem.timestamp = formatTimestamp(newItem.timestamp);
+            newItem.timestamp = formatTimestamp(newItem.timestamp)
           }
 
           for (const [displayName, keys] of Object.entries(displayNameToKeys)) {
@@ -348,9 +347,9 @@ const ApplicationDataExport = () => {
     downloadJSON(newData)
   }
 
-  const formatTimestamp = (timestamp) => {
-    const date = new Date(timestamp);
-  
+  const formatTimestamp = timestamp => {
+    const date = new Date(timestamp)
+
     // Format the date as MM/DD/YYYY, hh:mm:ss AM/PM
     const options = {
       year: 'numeric',
@@ -360,36 +359,35 @@ const ApplicationDataExport = () => {
       minute: '2-digit',
       second: '2-digit',
       hour12: true,
-    };
+    }
 
-    const formattedDate = date.toLocaleString('en-US', options);
-    return formattedDate.replace(',', ''); 
-  };
-  
+    const formattedDate = date.toLocaleString('en-US', options)
+    return formattedDate.replace(',', '')
+  }
+
   const convertJSONToCSV = newData => {
-    let csv = '';
-  
-    const headers = Object.keys(newData[0]);
-    csv += `${headers.join(',')}\n`;
-  
+    let csv = ''
+
+    const headers = Object.keys(newData[0])
+    csv += `${headers.join(',')}\n`
+
     newData.forEach(obj => {
       const values = headers.map(header => {
-        const value = obj[header];
+        const value = obj[header]
         if (header === 'timestamp' && value) {
-          return formatTimestamp(value);  // Ensure timestamp is formatted
+          return formatTimestamp(value) // Ensure timestamp is formatted
         }
         // Handle escaping for other fields as necessary
         if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
-          return `"${value.replace(/"/g, '""')}"`;
+          return `"${value.replace(/"/g, '""')}"`
         }
-        return value;
-      });
-      csv += `${values.join(',')}\n`;
-    });
-  
-    return csv;
-  };
-  
+        return value
+      })
+      csv += `${values.join(',')}\n`
+    })
+
+    return csv
+  }
 
   // Function to initiate CSV download
   const downloadCSV = newData => {
@@ -426,47 +424,37 @@ const ApplicationDataExport = () => {
   const paginationModel = { page: 0, pageSize: 10 }
 
   return (
-    <div>
-    <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '0px 30px' }}>
-      <Box
-        sx={{ boxShadow: 4 }}
-        onClick={() => setOpenVideo(true)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          cursor: 'pointer',
-          padding:'0px 8px',
-          borderRadius: '8px',
-        }}
-      >
-        <IconButton>
-          <HelpOutlineIcon style={{ fontSize: '26px' }} />
-        </IconButton>
-        <p>Help Video</p>
-      </Box>
-    </div>
+    <div style={{ margin: '0px 30px' }}>
+      <div style={{ display: 'flex' }}>
+        <div style={{ display: 'flex', position: 'absolute', right: '1px', margin: '4px 4px' }}>
+          <Button
+            variant="contained"
+            onClick={() => setOpenVideo(true)}
+            startIcon={<HelpOutlineIcon />}
+          >
+            <p>Help Video</p>
+          </Button>
+        </div>
 
-    <Dialog
-      open={openVideo}
-      onClose={() => setOpenVideo(false)}
-      maxWidth="md"
-      style={{ zIndex: '2001' }}
-      PaperProps={{
-        style: {
-          borderRadius: '6px',
-        },
-      }}
-    >
-      <DialogTitle style={{ alignSelf: 'center' }}>Export Data Video Guide</DialogTitle>
-      <DialogContent>
-        <video controls style={{ width: '100%' }}>
-          <source src={videoFile} type="video/mp4" />
-          Your browser does not support the video tag.
-        </video>
-      </DialogContent>
-    </Dialog>
-  
-      <div style={{ display: 'flex', margin: '-50px 30px'}}>
+        <Dialog
+          open={openVideo}
+          onClose={() => setOpenVideo(false)}
+          maxWidth="md"
+          style={{ zIndex: '2001' }}
+          PaperProps={{
+            style: {
+              borderRadius: '6px',
+            },
+          }}
+        >
+          <DialogTitle style={{ alignSelf: 'center' }}>Export Data Video Guide</DialogTitle>
+          <DialogContent>
+            <video controls style={{ width: '100%' }}>
+              <source src={videoFile} type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          </DialogContent>
+        </Dialog>
         <div style={{ margin: '0px 16px 0px 0px' }}>
           <h3>Select Time Range</h3>
           <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -480,7 +468,7 @@ const ApplicationDataExport = () => {
               </div>
             </div>
           </LocalizationProvider>
-  
+
           <Formik
             initialValues={{
               selectedDevices: Object.keys(selectedDevices),
@@ -634,6 +622,6 @@ const ApplicationDataExport = () => {
         </Paper>
       ) : null}
     </div>
-  );
+  )
 }
 export default ApplicationDataExport

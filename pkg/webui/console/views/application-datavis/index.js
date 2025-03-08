@@ -17,9 +17,9 @@ import { Formik, Form } from 'formik'
 import { useDispatch } from 'react-redux'
 import { useParams } from 'react-router-dom'
 import { LineChart } from '@mui/x-charts/LineChart'
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { axisClasses } from '@mui/x-charts'
 import {
   Select,
@@ -31,9 +31,12 @@ import {
   ListItemText,
   ToggleButton,
   ToggleButtonGroup,
-  Dialog, DialogContent, DialogTitle, IconButton, Box
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Button as MUIButton,
 } from '@mui/material'
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 
 import videoFile from '@assets/videos/DataVisualization.mp4'
 
@@ -42,12 +45,17 @@ import { useBreadcrumbs } from '@ttn-lw/components/breadcrumbs/context'
 import Button from '@ttn-lw/components/button'
 import SubmitButton from '@ttn-lw/components/submit-button'
 
+import Require from '@console/lib/components/require'
+
 import style from '@console/views/app/app.styl'
 
 import yup from '@ttn-lw/lib/yup'
 import attachPromise from '@ttn-lw/lib/store/actions/attach-promise'
 import useRootClass from '@ttn-lw/lib/hooks/use-root-class'
 import sharedMessages from '@ttn-lw/lib/shared-messages'
+
+import { mayViewApplicationEvents } from '@console/lib/feature-checks'
+
 import { getDevicesList } from '@console/store/actions/devices'
 
 const ApplicationDataVisualization = () => {
@@ -61,7 +69,7 @@ const ApplicationDataVisualization = () => {
   const [loading, setLoading] = useState(true)
   const [startTime, setStartTime] = useState(null)
   const [endTime, setEndTime] = useState(null)
-  const [openVideo, setOpenVideo] = useState(false);
+  const [openVideo, setOpenVideo] = useState(false)
 
   // ['dev_eui-readingType', '123-temperature']
   const [selectedReadings, setSelectedReadings] = useState([])
@@ -160,8 +168,8 @@ const ApplicationDataVisualization = () => {
   }
 
   const handleToggleChange = (event, newView) => {
-    if (newView) setToggleView(newView);
-  };
+    if (newView) setToggleView(newView)
+  }
 
   const convertLocalToUTCStart = localTime => {
     // Create a Date object from the local timestamp
@@ -233,41 +241,40 @@ const ApplicationDataVisualization = () => {
 
   const fetchData = () => {
     const mappedData = selectedReadings.reduce((acc, column) => {
-      const [devEui, attribute] = column.split('-');
-  
+      const [devEui, attribute] = column.split('-')
+
       if (!acc[devEui]) {
-        acc[devEui] = [];
+        acc[devEui] = []
       }
-  
-      acc[devEui].push(attribute);
-      return acc;
-    }, {});
-  
+
+      acc[devEui].push(attribute)
+      return acc
+    }, {})
+
     // Default body structure
     const body = {
       data: mappedData,
-    };
-  
+    }
+
     if (toggleView === 'dateTimePicker') {
       if (startTime && endTime) {
-        body.start_time = startTime;  
-        body.end_time = endTime;     
+        body.start_time = startTime
+        body.end_time = endTime
       }
-
     } else if (toggleView === 'timeButtons') {
-      body.period = selectedTime;
-      body.aggregation = selectedAggregation; 
+      body.period = selectedTime
+      body.aggregation = selectedAggregation
     }
-  
-    const sensorIds = Object.keys(mappedData);
-    const payloadTypes = Object.values(mappedData).flat();
-    
-    body.sensor_ids = sensorIds;
-    body.payload_types = payloadTypes;
-  
+
+    const sensorIds = Object.keys(mappedData)
+    const payloadTypes = Object.values(mappedData).flat()
+
+    body.sensor_ids = sensorIds
+    body.payload_types = payloadTypes
+
     // Choose the correct endpoint based on toggleView
-    const endpoint = toggleView === 'dateTimePicker' ? serverDataEndpoint : serverDataButtonEndpoint;
-      
+    const endpoint = toggleView === 'dateTimePicker' ? serverDataEndpoint : serverDataButtonEndpoint
+
     // Send the request to the correct endpoint with the body
     fetch(endpoint, {
       method: 'POST',
@@ -277,52 +284,52 @@ const ApplicationDataVisualization = () => {
       .then(response => response.json())
       .then(json => {
         if (json && json.data) {
-          const dataset = {};
+          const dataset = {}
           json.data.forEach(item => {
-            const timestamp = new Date(item.timestamp).getTime();
-            const sensorValue = parseFloat(item.value) || null;
-  
+            const timestamp = new Date(item.timestamp).getTime()
+            const sensorValue = parseFloat(item.value) || null
+
             if (!dataset[timestamp]) {
-              dataset[timestamp] = { timestamp };
+              dataset[timestamp] = { timestamp }
             }
-  
-            dataset[timestamp][`${item.dev_eui}-${item.payload_type}`] = sensorValue;
-  
+
+            dataset[timestamp][`${item.dev_eui}-${item.payload_type}`] = sensorValue
+
             // Ensure other devices have null values for missing data
             for (const device of Object.keys(selectedDevices).filter(
               dev_eui => dev_eui !== item.dev_eui,
             )) {
               if (!dataset[timestamp][`${device}-${item.payload_type}`])
-                dataset[timestamp][`${device}-${item.payload_type}`] = null;
+                dataset[timestamp][`${device}-${item.payload_type}`] = null
             }
-          });
-  
-          const datasetArray = Object.values(dataset).sort((a, b) => a.timestamp - b.timestamp);
-  
+          })
+
+          const datasetArray = Object.values(dataset).sort((a, b) => a.timestamp - b.timestamp)
+
           // Build the series for the graph
           const series = Object.keys(mappedData).flatMap(deviceId =>
             mappedData[deviceId].map(payloadValue => {
               const column = availableReadingColumns[deviceId].find(
                 item => item.payload_value === payloadValue,
-              );
-              const displayName = column ? column.display_name : payloadValue;
-  
+              )
+              const displayName = column ? column.display_name : payloadValue
+
               return {
                 dataKey: `${deviceId}-${payloadValue}`,
                 label: `${selectedDevices[deviceId]} ${displayName}`,
-              };
+              }
             }),
-          );
-          
+          )
+
           // Update the graph data
-          setGraphData({ dataset: datasetArray, series });
+          setGraphData({ dataset: datasetArray, series })
         } else {
-          console.error("No data field in response:", json);
+          console.error('No data field in response:', json)
         }
       })
-      .catch(error => console.error('Error fetching data:', error));
-  };  
-  
+      .catch(error => console.error('Error fetching data:', error))
+  }
+
   useRootClass(style.stageFlex, 'stage')
 
   useBreadcrumbs(
@@ -331,47 +338,40 @@ const ApplicationDataVisualization = () => {
   )
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '0px 30px'}}>
-        <Box
-          sx={{ boxShadow: 4 }}
-          onClick={() => setOpenVideo(true)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            cursor: 'pointer',
-            padding:'0px 8px',
-            borderRadius: '8px',
+    <Require
+      featureCheck={mayViewApplicationEvents}
+      otherwise={{ redirect: `/applications/${appId}` }}
+    >
+      <div style={{ marginLeft: '30px' }}>
+        <div style={{ display: 'flex', position: 'absolute', right: '1px', margin: '4px 4px' }}>
+          <MUIButton
+            variant="contained"
+            onClick={() => setOpenVideo(true)}
+            startIcon={<HelpOutlineIcon />}
+          >
+            <p>Help Video</p>
+          </MUIButton>
+        </div>
+
+        <Dialog
+          open={openVideo}
+          onClose={() => setOpenVideo(false)}
+          maxWidth="md"
+          style={{ zIndex: '2001' }}
+          PaperProps={{
+            style: {
+              borderRadius: '6px',
+            },
           }}
         >
-          <IconButton>
-            <HelpOutlineIcon style={{ fontSize: '26px' }} />
-          </IconButton>
-          <p>Help Video</p>
-        </Box>
-      </div>
-
-      <Dialog
-        open={openVideo}
-        onClose={() => setOpenVideo(false)}
-        maxWidth="md"
-        style={{ zIndex: '2001' }}
-        PaperProps={{
-          style: {
-            borderRadius: '6px',
-          },
-        }}
-      >
-        <DialogTitle style={{ alignSelf: 'center' }}>Data Visualization Video Guide</DialogTitle>
-        <DialogContent>
-          <video controls style={{ width: '100%' }}>
-            <source src={videoFile} type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
-        </DialogContent>
-      </Dialog>
-
-      <div style={{margin: '-50px 30px'}}>
+          <DialogTitle style={{ alignSelf: 'center' }}>Data Visualization Video Guide</DialogTitle>
+          <DialogContent>
+            <video controls style={{ width: '100%' }}>
+              <source src={videoFile} type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          </DialogContent>
+        </Dialog>
         <Formik
           initialValues={{
             selectedDevices: Object.keys(selectedDevices),
@@ -392,13 +392,13 @@ const ApplicationDataVisualization = () => {
                     multiple
                     value={values.selectedDevices}
                     onChange={event => {
-                      const { value } = event.target;
-                      setFieldValue('selectedDevices', value);
-                      handleDeviceChange(event);
-                      const newReadings = values.selectedReadings.filter(reading => 
-                        value.includes(reading.split('-')[0])
-                      );
-                      setFieldValue('selectedReadings', newReadings);
+                      const { value } = event.target
+                      setFieldValue('selectedDevices', value)
+                      handleDeviceChange(event)
+                      const newReadings = values.selectedReadings.filter(reading =>
+                        value.includes(reading.split('-')[0]),
+                      )
+                      setFieldValue('selectedReadings', newReadings)
                     }}
                     input={<OutlinedInput label="Selected Devices" />}
                     renderValue={() =>
@@ -487,17 +487,17 @@ const ApplicationDataVisualization = () => {
                 )}
               </div>
 
-              <div style={{marginTop: '25px'}}>
+              <div style={{ marginTop: '25px' }}>
                 <ToggleButtonGroup
-                    value={toggleView}
-                    exclusive
-                    color="primary"
-                    onChange={handleToggleChange}
-                    aria-label="View Toggle"
-                  >
-                    <ToggleButton value="dateTimePicker">Date Time Picker</ToggleButton>
-                    <ToggleButton value="timeButtons">Time Button</ToggleButton>
-                  </ToggleButtonGroup>
+                  value={toggleView}
+                  exclusive
+                  color="primary"
+                  onChange={handleToggleChange}
+                  aria-label="View Toggle"
+                >
+                  <ToggleButton value="dateTimePicker">Date Time Picker</ToggleButton>
+                  <ToggleButton value="timeButtons">Time Button</ToggleButton>
+                </ToggleButtonGroup>
               </div>
 
               <div style={{ margin: '20px 0px', display: 'flex', gap: '10px' }}>
@@ -506,21 +506,29 @@ const ApplicationDataVisualization = () => {
                     <LocalizationProvider dateAdapter={AdapterDayjs}>
                       <div style={{ display: 'flex', alignItems: 'center' }}>
                         <div>
-                          <DateTimePicker label="Start Time" value={null} onChange={convertLocalToUTCStart} />
+                          <DateTimePicker
+                            label="Start Time"
+                            value={null}
+                            onChange={convertLocalToUTCStart}
+                          />
                         </div>
                         <div style={{ margin: '0 20px' }}> --------- </div>
                         <div>
-                          <DateTimePicker label="End Time" value={null} onChange={convertLocalToUTCEnd} />
+                          <DateTimePicker
+                            label="End Time"
+                            value={null}
+                            onChange={convertLocalToUTCEnd}
+                          />
                         </div>
                       </div>
                     </LocalizationProvider>
                     <div style={{ margin: '15px 0px' }}>
-                    <SubmitButton>Fetch Data</SubmitButton>
+                      <SubmitButton>Fetch Data</SubmitButton>
                     </div>
                   </div>
                 )}
                 {toggleView === 'timeButtons' && (
-                <div style={{ margin: '5px 0px', display: 'flex', gap: '10px' }}>
+                  <div style={{ margin: '5px 0px', display: 'flex', gap: '10px' }}>
                     {timesOptions.map(time => (
                       <Button
                         key={time}
@@ -552,7 +560,7 @@ const ApplicationDataVisualization = () => {
                       </div>
                     )}
                   </div>
-              )}
+                )}
               </div>
             </Form>
           )}
@@ -592,8 +600,7 @@ const ApplicationDataVisualization = () => {
           )}
         </div>
       </div>
-    </div>
-
+    </Require>
   )
 }
 

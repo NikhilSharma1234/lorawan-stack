@@ -18,7 +18,8 @@ import { defineMessages } from 'react-intl'
 import { useSelector } from 'react-redux'
 
 import {
-Dialog, DialogContent, DialogTitle, IconButton, Box
+Dialog, DialogContent, DialogTitle, IconButton, Box,
+Button
 } from '@mui/material'
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 
@@ -168,23 +169,22 @@ const Overview = () => {
 
   return (
     <RequireRequest requestAction={[getApplicationsList(), getGatewaysList()]}>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '0px 30px'}}>
-        <Box
-          sx={{ boxShadow: 4 }}
+      <div
+        style={{
+          display: 'flex',
+          position: 'absolute',
+          right: '1px',
+          margin: '4px 4px',
+          zIndex: 1000,
+        }}
+      >
+        <Button
+          variant="contained"
           onClick={() => setOpenVideo(true)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            cursor: 'pointer',
-            padding:'0px 8px',
-            borderRadius: '8px',
-          }}
+          startIcon={<HelpOutlineIcon />}
         >
-          <IconButton>
-            <HelpOutlineIcon style={{ fontSize: '26px' }} />
-          </IconButton>
           <p>Help Video</p>
-        </Box>
+        </Button>
       </div>
       <Dialog
         open={openVideo}

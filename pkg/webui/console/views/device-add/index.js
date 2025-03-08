@@ -15,12 +15,12 @@
 import React, { useCallback, useState } from 'react'
 import { Container, Col, Row } from 'react-grid-system'
 import { useParams } from 'react-router-dom'
+import { Dialog, DialogContent, DialogTitle, IconButton, Box, Button } from '@mui/material'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
+
+import videoFile from '@assets/videos/AddSensor.mp4'
 
 import PageTitle from '@ttn-lw/components/page-title'
-
-import { Dialog, DialogContent, DialogTitle, IconButton, Box } from '@mui/material'
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
-import videoFile from '@assets/videos/AddSensor.mp4'
 
 import RequireRequest from '@ttn-lw/lib/components/require-request'
 
@@ -50,23 +50,22 @@ const DeviceAdd = () => {
   return (
     <RequireRequest requestAction={requestAction}>
       <Container>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '0px 30px' }}>
-          <Box
-            sx={{ boxShadow: 4 }}
+        <div
+          style={{
+            display: 'flex',
+            position: 'absolute',
+            right: '1px',
+            margin: '4px 4px',
+            zIndex: 1000,
+          }}
+        >
+          <Button
+            variant="contained"
             onClick={() => setOpenVideo(true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              cursor: 'pointer',
-              padding:'0px 8px',
-              borderRadius: '8px',
-            }}
+            startIcon={<HelpOutlineIcon />}
           >
-            <IconButton>
-              <HelpOutlineIcon style={{ fontSize: '26px' }} />
-            </IconButton>
             <p>Help Video</p>
-          </Box>
+          </Button>
         </div>
         <Row>
           <Col>

@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import React, { useCallback, useState} from 'react'
+import React, { useCallback, useState } from 'react'
 import { Container, Col, Row } from 'react-grid-system'
 import { defineMessages } from 'react-intl'
 import { useNavigate } from 'react-router-dom'
+import { Dialog, DialogContent, DialogTitle, IconButton, Box, Button } from '@mui/material'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 
-import PageTitle from '@ttn-lw/components/page-title'
-import Link from '@ttn-lw/components/link'
-
-import { Dialog, DialogContent, DialogTitle, IconButton, Box } from '@mui/material'
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import videoFile from '@assets/videos/AddGateway.mp4'
+
+import Link from '@ttn-lw/components/link'
+import PageTitle from '@ttn-lw/components/page-title'
 
 import Message from '@ttn-lw/lib/components/message'
 import RequireRequest from '@ttn-lw/lib/components/require-request'
@@ -66,23 +66,22 @@ const GatewayAdd = () => {
     <Require featureCheck={mayCreateGateways} otherwise={{ redirect: '/gateways' }}>
       <RequireRequest requestAction={getOrganizationsList()}>
         <Container>
-          <div style={{ display: 'flex', justifyContent: 'flex-end'}}>
-            <Box
-              sx={{ boxShadow: 4 }}
+          <div
+            style={{
+              display: 'flex',
+              position: 'absolute',
+              right: '1px',
+              margin: '4px 4px',
+              zIndex: 1000,
+            }}
+          >
+            <Button
+              variant="contained"
               onClick={() => setOpenVideo(true)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                cursor: 'pointer',
-                padding:'0px 8px',
-                borderRadius: '8px',
-              }}
+              startIcon={<HelpOutlineIcon />}
             >
-              <IconButton>
-                <HelpOutlineIcon style={{ fontSize: '26px' }} />
-              </IconButton>
               <p>Help Video</p>
-            </Box>
+            </Button>
           </div>
           <PageTitle
             colProps={{ md: 10, lg: 9 }}
