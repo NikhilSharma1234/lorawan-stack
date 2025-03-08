@@ -79,6 +79,7 @@ const GatewayAdd = () => {
               variant="contained"
               onClick={() => setOpenVideo(true)}
               startIcon={<HelpOutlineIcon />}
+              style={{ maxHeight: '36px' }}
             >
               <p>Help Video</p>
             </Button>

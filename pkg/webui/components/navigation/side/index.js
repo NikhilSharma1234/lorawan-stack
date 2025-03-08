@@ -181,7 +181,7 @@ const SideNavigation = ({
                 variant="text"
                 onClick={() => setOpenVideo(true)}
                 startIcon={<HelpOutlineIcon />}
-                style={{ margin: '0px 8px' }}
+                style={{ margin: '0px 8px', maxHeight: '36px' }}
               >
                 <p>Help Video</p>
               </MUIButton>
