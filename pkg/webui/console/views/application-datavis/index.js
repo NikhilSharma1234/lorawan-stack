@@ -37,6 +37,7 @@ import {
   Button as MUIButton,
 } from '@mui/material'
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
+import ReactGA from 'react-ga4'
 
 import videoFile from '@assets/videos/DataVisualization.mp4'
 
@@ -120,6 +121,19 @@ const ApplicationDataVisualization = () => {
       then: schema => schema.min(1, 'Select at least one reading').required(),
     }),
   })
+
+  useEffect(() => {
+    ReactGA.send({
+      hitType: 'pageview',
+      page: `/applications/${appId}/datavis`,
+      title: 'Data Visualization',
+    })
+    ReactGA.event({
+      category: 'Page View',
+      action: 'User Clicked on Data Visualization',
+      label: 'data-vis', // Optional
+    })
+  }, [appId])
 
   const handleDeviceChange = useCallback(
     event => {

@@ -31,6 +31,7 @@ import classnames from 'classnames'
 import { MapContainer, Marker, TileLayer, Popup } from 'react-leaflet'
 import { latLngBounds } from 'leaflet'
 import { Col, Row } from 'react-grid-system'
+import ReactGA from 'react-ga4'
 
 import videoFile from '@assets/videos/Map.mp4'
 
@@ -56,6 +57,19 @@ const ApplicationMap = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const [openVideo, setOpenVideo] = useState(false)
+
+  useEffect(() => {
+    ReactGA.send({
+      hitType: 'pageview',
+      page: `/applications/${appId}/map`,
+      title: 'Project Map',
+    })
+    ReactGA.event({
+      category: 'Page View',
+      action: 'User Clicked on Project Map',
+      label: 'project-map', // Optional
+    })
+  }, [appId])
 
   useEffect(() => {
     const fetchDeviceType = devices => {

@@ -30,6 +30,7 @@ import { DataGrid } from '@mui/x-data-grid'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
+import ReactGA from 'react-ga4'
 
 import videoFile from '@assets/videos/DataExport.mp4'
 
@@ -77,6 +78,19 @@ const ApplicationDataExport = () => {
   const validationSchema = yup.object().shape({
     selectedDevices: yup.array().min(1).required(),
   })
+
+  useEffect(() => {
+    ReactGA.send({
+      hitType: 'pageview',
+      page: `/applications/${appId}/expdata`,
+      title: 'Data Export',
+    })
+    ReactGA.event({
+      category: 'Page View',
+      action: 'User Clicked on Data Export',
+      label: 'data-exp', // Optional
+    })
+  }, [appId])
 
   useEffect(() => {
     const fetchDeviceType = devices => {
