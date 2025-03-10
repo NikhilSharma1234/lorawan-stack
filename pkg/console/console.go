@@ -115,7 +115,7 @@ func generateConsoleCSPString(config *Config, nonce string, others ...webui.Cont
 			"ncar-da-15.rc.unr.edu:30127",
 			"ncar-da-15.rc.unr.edu:30128",
 			"ncar-da-15.rc.unr.edu:30129",
-			"*",
+			"www.google-analytics.com",
 		}, baseURLs...),
 		StyleSource: append([]string{
 			"'self'",
