@@ -16,6 +16,8 @@ import ReactDom from 'react-dom'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import classnames from 'classnames'
 import { defineMessages, useIntl } from 'react-intl'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
+import { Button as MUIButton, Dialog, DialogTitle, DialogContent } from '@mui/material'
 
 import LAYOUT from '@ttn-lw/constants/layout'
 
@@ -30,9 +32,6 @@ import PropTypes from '@ttn-lw/lib/prop-types'
 import SideNavigationList from './list'
 import SideNavigationItem from './item'
 import SideNavigationContext from './context'
-
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline' 
-import { Box, IconButton, Dialog, DialogTitle, DialogContent } from '@mui/material' 
 
 import style from './side.styl'
 
@@ -55,7 +54,7 @@ const SideNavigation = ({
   const [preferMinimized, setPreferMinimized] = useState(false)
   const node = useRef()
   const intl = useIntl()
-  const [openVideo, setOpenVideo] = useState(false) 
+  const [openVideo, setOpenVideo] = useState(false)
 
   const updateAppContainerClasses = useCallback(
     (initial = false) => {
@@ -178,21 +177,14 @@ const SideNavigation = ({
               </div>
             </Link>
             {header.videoEnabled && (
-              <Box
+              <MUIButton
+                variant="text"
                 onClick={() => setOpenVideo(true)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  cursor: 'pointer',
-                  marginLeft: '75px',
-                  marginTop: '-5px'
-                }}
+                startIcon={<HelpOutlineIcon />}
+                style={{ margin: '0px 8px', maxHeight: '36px' }}
               >
-              <IconButton>
-                <HelpOutlineIcon style={{ fontSize: '26px' }} />
-              </IconButton>
-              <p>Help Video</p>
-            </Box>
+                <p>Help Video</p>
+              </MUIButton>
             )}
             <SideNavigationContext.Provider value={{ isMinimized, onLeafItemClick }}>
               <SideNavigationList
@@ -214,7 +206,7 @@ const SideNavigation = ({
         onClick={onToggle}
         data-hook="side-nav-hide-button"
       />
-            <Dialog
+      <Dialog
         open={openVideo}
         onClose={() => setOpenVideo(false)}
         maxWidth="md"
@@ -249,7 +241,7 @@ SideNavigation.propTypes = {
     to: PropTypes.string.isRequired,
     videoFile: PropTypes.object.isRequired, // Proptype of the video file
     videoTitle: PropTypes.string.isRequired, // Proptype of video title
-    videoEnabled: PropTypes.bool.isRequired // Proptype of enabling video
+    videoEnabled: PropTypes.bool.isRequired, // Proptype of enabling video
   }).isRequired,
   modifyAppContainerClasses: PropTypes.bool,
 }

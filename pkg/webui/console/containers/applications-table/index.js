@@ -18,6 +18,8 @@ import { defineMessages, FormattedNumber } from 'react-intl'
 import { bindActionCreators } from 'redux'
 import { createSelector } from 'reselect'
 
+import videoFile from '@assets/videos/ProjectsOverview.mp4'
+
 import Icon from '@ttn-lw/components/icon'
 import Button from '@ttn-lw/components/button'
 import ButtonGroup from '@ttn-lw/components/button/group'
@@ -26,8 +28,6 @@ import DocTooltip from '@ttn-lw/components/tooltip/doc'
 import Status from '@ttn-lw/components/status'
 import toast from '@ttn-lw/components/toast'
 import Spinner from '@ttn-lw/components/spinner'
-
-import videoFile from '@assets/videos/ProjectsOverview.mp4'
 
 import FetchTable from '@ttn-lw/containers/fetch-table'
 
@@ -287,7 +287,7 @@ const ApplicationsTable = props => {
       searchable
       clickable={!isDeletedTab}
       tabs={isAdmin ? tabs : []}
-      videoEnabled={true} // Enable the Help Video button
+      videoEnabled // Enable the Help Video button
       videoTitle="Projects Video Guide" // Custom title for the applications table
       videoFile={videoFile}
       {...rest}

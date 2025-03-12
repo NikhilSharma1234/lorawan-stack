@@ -12,37 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import React, { useCallback, useEffect, useState, useRef } from 'react';
-import { defineMessages } from 'react-intl';
-import { useDispatch, useSelector } from 'react-redux';
-import classnames from 'classnames';
-import { orderBy as lodashOrderBy } from 'lodash';
-import { Dialog, DialogContent, DialogTitle, IconButton, Box } from '@mui/material';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import React, { useCallback, useEffect, useState, useRef } from 'react'
+import { defineMessages } from 'react-intl'
+import { useDispatch, useSelector } from 'react-redux'
+import classnames from 'classnames'
+import { orderBy as lodashOrderBy } from 'lodash'
+import { Dialog, DialogContent, DialogTitle, Button as MUIButton } from '@mui/material'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 
-import PAGE_SIZES from '@ttn-lw/constants/page-sizes';
+import PAGE_SIZES from '@ttn-lw/constants/page-sizes'
 
-import Tabular from '@ttn-lw/components/table';
-import Input from '@ttn-lw/components/input';
-import Button from '@ttn-lw/components/button';
-import Tabs from '@ttn-lw/components/tabs';
-import Overlay from '@ttn-lw/components/overlay';
-import ErrorNotification from '@ttn-lw/components/error-notification';
+import Tabular from '@ttn-lw/components/table'
+import Input from '@ttn-lw/components/input'
+import Button from '@ttn-lw/components/button'
+import Tabs from '@ttn-lw/components/tabs'
+import Overlay from '@ttn-lw/components/overlay'
+import ErrorNotification from '@ttn-lw/components/error-notification'
 
-import PropTypes from '@ttn-lw/lib/prop-types';
-import sharedMessages from '@ttn-lw/lib/shared-messages';
-import attachPromise from '@ttn-lw/lib/store/actions/attach-promise';
-import getByPath from '@ttn-lw/lib/get-by-path';
-import useDebounce from '@ttn-lw/lib/hooks/use-debounce';
-import useQueryState from '@ttn-lw/lib/hooks/use-query-state';
+import PropTypes from '@ttn-lw/lib/prop-types'
+import sharedMessages from '@ttn-lw/lib/shared-messages'
+import attachPromise from '@ttn-lw/lib/store/actions/attach-promise'
+import getByPath from '@ttn-lw/lib/get-by-path'
+import useDebounce from '@ttn-lw/lib/hooks/use-debounce'
+import useQueryState from '@ttn-lw/lib/hooks/use-query-state'
 
-import style from './fetch-table.styl';
+import style from './fetch-table.styl'
 
-const DEFAULT_PAGE = 1;
+const DEFAULT_PAGE = 1
 
-const pageValidator = page => (!Boolean(page) || page < 0 ? DEFAULT_PAGE : page);
+const pageValidator = page => (!Boolean(page) || page < 0 ? DEFAULT_PAGE : page)
 const orderValidator = order =>
-  typeof order === 'string' && order.match(/-?[a-z0-9]/) === null ? undefined : order;
+  typeof order === 'string' && order.match(/-?[a-z0-9]/) === null ? undefined : order
 
 const m = defineMessages({
   errorMessage: `There was an error and the list of {entity, select,
@@ -56,7 +56,7 @@ const m = defineMessages({
     webhooks {webhooks}
     other {entities}
   } could not be displayed`,
-});
+})
 
 const FetchTable = props => {
   const {
@@ -84,96 +84,96 @@ const FetchTable = props => {
     filtersClassName,
     videoEnabled, // New prop
     videoTitle, // New prop for dynamic title
-    videoFile //New prop for dynamic video
-  } = props;
+    videoFile, // New prop for dynamic video
+  } = props
 
-  const isMounted = useRef(true);
-  const dispatch = useDispatch();
-  const defaultTab = tabs.length > 0 ? tabs[0].name : undefined;
-  const [page, setPage] = useQueryState('page', 1, parseInt);
-  const [tab, setTab] = useQueryState('tab', defaultTab);
-  const [order, setOrder] = useQueryState('order', defaultOrder);
-  const [query, setQuery] = useQueryState('query', '');
+  const isMounted = useRef(true)
+  const dispatch = useDispatch()
+  const defaultTab = tabs.length > 0 ? tabs[0].name : undefined
+  const [page, setPage] = useQueryState('page', 1, parseInt)
+  const [tab, setTab] = useQueryState('tab', defaultTab)
+  const [order, setOrder] = useQueryState('order', defaultOrder)
+  const [query, setQuery] = useQueryState('query', '')
   const debouncedQuery = useDebounce(
     query,
     350,
     useCallback(() => {
-      setPage(1);
+      setPage(1)
     }, [setPage]),
-  );
+  )
 
-  const [initialFetch, setInitialFetch] = useState(true);
-  const base = useSelector(state => baseDataSelector(state, props));
-  const items = base[props.entity] || [];
-  const totalCount = base.totalCount || 0;
-  const mayAdd = 'mayAdd' in base ? base.mayAdd : true;
-  const mayLink = 'mayLink' in base ? base.mayLink : true;
+  const [initialFetch, setInitialFetch] = useState(true)
+  const base = useSelector(state => baseDataSelector(state, props))
+  const items = base[props.entity] || []
+  const totalCount = base.totalCount || 0
+  const mayAdd = 'mayAdd' in base ? base.mayAdd : true
+  const mayLink = 'mayLink' in base ? base.mayLink : true
 
-  const filters = { query: debouncedQuery, tab, order, page, limit: pageSize };
-  const [fetching, setFetching] = useState(true);
-  const [error, setError] = useState(undefined);
-  let orderDirection, orderBy;
+  const filters = { query: debouncedQuery, tab, order, page, limit: pageSize }
+  const [fetching, setFetching] = useState(true)
+  const [error, setError] = useState(undefined)
+  let orderDirection, orderBy
   // Parse order string.
   if (typeof order === 'string') {
-    orderDirection = typeof order === 'string' && order[0] === '-' ? 'desc' : 'asc';
-    orderBy = typeof order === 'string' && order[0] === '-' ? order.substr(1) : order;
+    orderDirection = typeof order === 'string' && order[0] === '-' ? 'desc' : 'asc'
+    orderBy = typeof order === 'string' && order[0] === '-' ? order.substr(1) : order
   }
   // Disable sorting when incoming data was long enough to be paginated.
-  const canHandleSorting = totalCount <= pageSize;
-  const disableSorting = handlesSorting && !canHandleSorting;
-  const handleSorting = handlesSorting && canHandleSorting && orderBy !== undefined;
+  const canHandleSorting = totalCount <= pageSize
+  const disableSorting = handlesSorting && !canHandleSorting
+  const handleSorting = handlesSorting && canHandleSorting && orderBy !== undefined
   if (!handleSorting) {
-    filters.order = order;
+    filters.order = order
   }
 
   // State for the video popup
-  const [openVideo, setOpenVideo] = useState(false);
+  const [openVideo, setOpenVideo] = useState(false)
 
   useEffect(
     () => () => {
-      isMounted.current = false;
+      isMounted.current = false
     },
     [],
-  );
+  )
 
   useEffect(() => {
     const fetchItems = async () => {
-      setFetching(true);
-      const f = { query: debouncedQuery || '', page, limit: pageSize };
+      setFetching(true)
+      const f = { query: debouncedQuery || '', page, limit: pageSize }
       if (tabs.find(t => t.name === tab)) {
-        f.tab = tab;
+        f.tab = tab
       } else {
-        setTab(defaultTab);
-        f.tab = undefined;
+        setTab(defaultTab)
+        f.tab = undefined
       }
 
       if (orderValidator(order)) {
-        f.order = order;
+        f.order = order
       } else {
         if (isMounted.current) {
-          setOrder(defaultOrder);
+          setOrder(defaultOrder)
         }
-        f.order = defaultOrder;
+        f.order = defaultOrder
       }
 
       try {
         if (f.query && searchItemsAction) {
-          await dispatch(attachPromise(searchItemsAction(f)));
+          await dispatch(attachPromise(searchItemsAction(f)))
         } else {
-          await dispatch(attachPromise(getItemsAction(f)));
+          await dispatch(attachPromise(getItemsAction(f)))
         }
         if (isMounted.current) {
-          setFetching(false);
-          setInitialFetch(false);
+          setFetching(false)
+          setInitialFetch(false)
         }
       } catch (error) {
         if (isMounted.current) {
-          setError(error);
-          setFetching(false);
+          setError(error)
+          setFetching(false)
         }
       }
-    };
-    fetchItems();
+    }
+    fetchItems()
   }, [
     debouncedQuery,
     defaultOrder,
@@ -188,70 +188,70 @@ const FetchTable = props => {
     setTab,
     tab,
     tabs,
-  ]);
+  ])
 
   const onPageChange = useCallback(
     page => {
-      setPage(pageValidator(page));
+      setPage(pageValidator(page))
     },
     [setPage],
-  );
+  )
 
   const onQueryChange = useCallback(
     query => {
-      setQuery(query);
+      setQuery(query)
     },
     [setQuery],
-  );
+  )
 
   const onOrderChange = useCallback(
     (order, orderBy) => {
-      const filterOrder = `${order === 'desc' ? '-' : ''}${orderBy}`;
+      const filterOrder = `${order === 'desc' ? '-' : ''}${orderBy}`
 
-      setOrder(filterOrder);
+      setOrder(filterOrder)
     },
     [setOrder],
-  );
+  )
 
   const onTabChange = useCallback(
     tab => {
-      setTab(tab);
-      setPage(1);
-      setQuery('');
+      setTab(tab)
+      setPage(1)
+      setQuery('')
     },
     [setPage, setQuery, setTab],
-  );
+  )
 
   const rowHrefSelector = useCallback(
     item => {
-      const entitySingle = entity.substr(0, entity.length - 1);
-      let entityPath;
+      const entitySingle = entity.substr(0, entity.length - 1)
+      let entityPath
       if (Boolean(getItemPathPrefix)) {
-        entityPath = getItemPathPrefix(item);
+        entityPath = getItemPathPrefix(item)
       } else {
-        const item_id = item.id || item.ids[`${entitySingle}_id`];
-        entityPath = `${itemPathPrefix}${item_id}`;
+        const item_id = item.id || item.ids[`${entitySingle}_id`]
+        entityPath = `${itemPathPrefix}${item_id}`
       }
 
-      return entityPath;
+      return entityPath
     },
     [entity, getItemPathPrefix, itemPathPrefix],
-  );
+  )
 
   const preparedItems = handleSorting
     ? lodashOrderBy(items, i => getByPath(i, orderBy), [orderDirection])
-    : items;
+    : items
 
   const filtersCls = classnames(filtersClassName, style.filters, {
     [style.topRule]: tabs.length > 0,
-  });
+  })
 
   // Go back to page 1 when no items are left on the current page.
   useEffect(() => {
     if (preparedItems.length === 0 && page > 1 && !initialFetch) {
-      setPage(1);
+      setPage(1)
     }
-  }, [initialFetch, page, preparedItems.length, setPage]);
+  }, [initialFetch, page, preparedItems.length, setPage])
 
   return (
     <div data-test-id={`${entity}-table`}>
@@ -267,53 +267,53 @@ const FetchTable = props => {
             )
           )}
         </div>
-          <div className={style.filtersRight}>
-            {videoEnabled && (
-              <Box
+        <div className={style.filtersRight}>
+          {videoEnabled && (
+            <div
+              style={{
+                display: 'flex',
+                margin: '4px 4px',
+                zIndex: 1000,
+              }}
+            >
+              <MUIButton
+                size="small"
+                variant="contained"
                 onClick={() => setOpenVideo(true)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  cursor: 'pointer',
-                  padding: '0px 8px',
-                  borderRadius: '8px',
-                  backgroundColor: '#f5f5f5', 
-                  marginRight: '16px', 
-                }}
+                style={{ maxHeight: '36px' }}
+                startIcon={<HelpOutlineIcon />}
               >
-                <IconButton>
-                  <HelpOutlineIcon style={{ fontSize: '26px' }} />
-                </IconButton>
                 <p>Help Video</p>
-              </Box>
-            )}
-            {searchable && (
-              <Input
-                data-test-id="search-input"
-                value={query}
-                icon="search"
-                onChange={onQueryChange}
-                placeholder={searchPlaceholderMessage}
-                className={style.searchBar}
-                inputWidth="full"
-                maxLength={searchQueryMaxLength}
-              />
-            )}
-            {(Boolean(actionItems) || mayAdd) && (
-              <div className={style.actionItems}>
-                {actionItems}
-                {mayAdd && (
-                  <Button.Link
-                    primary
-                    className={style.addButton}
-                    message={addMessage}
-                    icon="add"
-                    to={`${itemPathPrefix}add`}
-                  />
-                )}
-              </div>
-            )}
-          </div>
+              </MUIButton>
+            </div>
+          )}
+          {searchable && (
+            <Input
+              data-test-id="search-input"
+              value={query}
+              icon="search"
+              onChange={onQueryChange}
+              placeholder={searchPlaceholderMessage}
+              className={style.searchBar}
+              inputWidth="full"
+              maxLength={searchQueryMaxLength}
+            />
+          )}
+          {(Boolean(actionItems) || mayAdd) && (
+            <div className={style.actionItems}>
+              {actionItems}
+              {mayAdd && (
+                <Button.Link
+                  primary
+                  className={style.addButton}
+                  message={addMessage}
+                  icon="add"
+                  to={`${itemPathPrefix}add`}
+                />
+              )}
+            </div>
+          )}
+        </div>
       </div>
       <Overlay visible={Boolean(error)}>
         {Boolean(error) && (
@@ -366,8 +366,8 @@ const FetchTable = props => {
         </DialogContent>
       </Dialog>
     </div>
-  );
-};
+  )
+}
 
 FetchTable.propTypes = {
   actionItems: PropTypes.oneOfType([PropTypes.arrayOf(PropTypes.node), PropTypes.node]),
@@ -409,10 +409,10 @@ FetchTable.propTypes = {
       disabled: PropTypes.bool,
     }),
   ),
-  videoEnabled: PropTypes.bool, // New prop
-  videoTitle: PropTypes.string, // New prop for dynamic title
-  videoFile: PropTypes.object, // New prop for dynamic video
-};
+  videoEnabled: PropTypes.bool, // New prop for dynamic title
+  videoFile: PropTypes.object, // New prop
+  videoTitle: PropTypes.string, // New prop for dynamic video
+}
 
 FetchTable.defaultProps = {
   getItemPathPrefix: undefined,
@@ -436,7 +436,7 @@ FetchTable.defaultProps = {
   filtersClassName: undefined,
   videoEnabled: false, // Default value
   videoTitle: 'Video Guide', // Default title
-  videoFile: null, //Default Video
-};
+  videoFile: null, // Default Video
+}
 
-export default FetchTable;
+export default FetchTable

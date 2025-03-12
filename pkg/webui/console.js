@@ -17,6 +17,7 @@ import DOM from 'react-dom'
 import { createBrowserHistory } from 'history'
 import { Provider } from 'react-redux'
 import * as Sentry from '@sentry/react'
+import ReactGA from 'react-ga4'
 
 import sentryConfig from '@ttn-lw/constants/sentry'
 
@@ -35,6 +36,8 @@ import App from '@console/views/app'
 import { selectApplicationRootPath, selectSentryDsnConfig } from '@ttn-lw/lib/selectors/env'
 
 import store from './console/store'
+
+ReactGA.initialize('G-4Z02PD0BFE')
 
 const appRoot = selectApplicationRootPath()
 
