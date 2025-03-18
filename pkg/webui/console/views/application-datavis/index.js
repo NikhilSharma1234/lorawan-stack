@@ -314,7 +314,7 @@ const ApplicationDataVisualization = () => {
       if (startTime && endTime) {
         body.start_time = startTime;
         body.end_time = endTime;
-        body.aggregation = selectedAggregation; // Include aggregation for custom range
+        body.aggregation = selectedAggregation; 
       }
     } else if (toggleView === 'timeButtons') {
       body.period = selectedTime;
@@ -556,7 +556,6 @@ const ApplicationDataVisualization = () => {
                 <div>
                   <LocalizationProvider dateAdapter={AdapterDayjs}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      {/* Start Time Picker */}
                       <div>
                         <DateTimePicker
                           label="Start Time"
@@ -565,10 +564,8 @@ const ApplicationDataVisualization = () => {
                         />
                       </div>
 
-                      {/* Separator */}
                       <div style={{ margin: '0 10px' }}> --------- </div>
 
-                      {/* End Time Picker */}
                       <div>
                         <DateTimePicker
                           label="End Time"
@@ -577,10 +574,9 @@ const ApplicationDataVisualization = () => {
                         />
                       </div>
 
-                      {/* Aggregate By Dropdown */}
                       {startTime && endTime && (
                         <div style={{ display: 'flex', alignItems: 'center', marginLeft: '10px' }}>
-                          <FormControl sx={{ width: 175 }}> {/* Adjust marginTop to align with DateTimePicker */}
+                          <FormControl sx={{ width: 175 }}> 
                             <InputLabel id="aggregation-label">Aggregate By</InputLabel>
                             <Select
                               labelId="aggregation-label"
@@ -602,7 +598,6 @@ const ApplicationDataVisualization = () => {
                     </div>
                   </LocalizationProvider>
 
-                  {/* Fetch Data Button */}
                   <div style={{ margin: '15px 0px' }}>
                     <SubmitButton>Fetch Data</SubmitButton>
                   </div>
