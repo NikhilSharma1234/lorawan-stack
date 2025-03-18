@@ -90,11 +90,13 @@ const ApplicationDataVisualization = () => {
   const serverDataEndpoint = process.env.FLASK_DATA_ENDPOINT
   const serverDataButtonEndpoint = process.env.FLASK_DATA_BUTTON_ENDPOINT
   const serverDeviceEndpoint = process.env.FLASK_DEVICE_ENDPOINT
-  const timesOptions = ['1H', '24H', '7D', '14D', '30D', '6M', '1Y', 'ALL']
+  const timesOptions = ['1H', '6H', '24H', '3D', '7D', '14D', '30D', '6M', '1Y', 'ALL']
 
   const aggregationOptionsMap = {
     '1H': ['None'],
+    '6H': ['None', '1 Hour'],
     '24H': ['None', '1 Hour'],
+    '3D': ['None', '1 Hour', '1 Day'],
     '7D': ['None', '1 Hour', '1 Day'],
     '14D': ['None', '1 Hour', '1 Day'],
     '30D': ['None', '1 Hour', '1 Day', '7 Days'],
@@ -105,7 +107,9 @@ const ApplicationDataVisualization = () => {
 
   const defaultAggregationValues = {
     '1H': 'None',
+    '6H': 'None',
     '24H': 'None',
+    '3D': 'None',
     '7D': 'None',
     '14D': 'None',
     '30D': 'None',
@@ -185,21 +189,58 @@ const ApplicationDataVisualization = () => {
     if (newView) setToggleView(newView)
   }
 
-  const convertLocalToUTCStart = localTime => {
-    // Create a Date object from the local timestamp
-    const date = new Date(localTime)
+  const getClosestTimeRange = (startTime, endTime) => {
+    const timeDifference = endTime - startTime; // Difference in milliseconds
+    const timeDifferenceInHours = timeDifference / (1000 * 60 * 60); // Convert to hours
+  
+    const timeRanges = {
+      '1H': 1,
+      '6H': 6,
+      '24H': 24,
+      '3D': 72, // 3 days = 72 hours
+      '7D': 168, // 7 days = 168 hours
+      '14D': 336, // 14 days = 336 hours
+      '30D': 720, // 30 days = 720 hours
+      '6M': 4320, // 6 months = 4320 hours (approximation)
+      '1Y': 8760, // 1 year = 8760 hours (approximation)
+      ALL: Infinity, // All time
+    };
+  
+    let closestRange = '1H';
+    let closestDifference = Infinity;
+  
+    for (const [range, hours] of Object.entries(timeRanges)) {
+      const difference = Math.abs(timeDifferenceInHours - hours);
+      if (difference < closestDifference) {
+        closestDifference = difference;
+        closestRange = range;
+      }
+    }
+  
+    return closestRange;
+  };
 
-    // Get the UTC time string
-    setStartTime(date.toISOString()) // Returns in the format "YYYY-MM-DDTHH:mm:ss.sssZ"
-  }
+  const convertLocalToUTCStart = localTime => {
+    const date = new Date(localTime);
+    setStartTime(date.toISOString());
+
+    if (endTime) {
+      const closestRange = getClosestTimeRange(date, new Date(endTime));
+      setAggregationOptions(aggregationOptionsMap[closestRange] || []);
+      setSelectedAggregation(defaultAggregationValues[closestRange] || '');
+    }
+  };
 
   const convertLocalToUTCEnd = localTime => {
-    // Create a Date object from the local timestamp
-    const date = new Date(localTime)
+    const date = new Date(localTime);
+    setEndTime(date.toISOString());
 
-    // Get the UTC time string
-    setEndTime(date.toISOString()) // Returns in the format "YYYY-MM-DDTHH:mm:ss.sssZ"
-  }
+    if (startTime) {
+      const closestRange = getClosestTimeRange(new Date(startTime), date);
+      setAggregationOptions(aggregationOptionsMap[closestRange] || []);
+      setSelectedAggregation(defaultAggregationValues[closestRange] || '');
+    }
+  };
 
   useEffect(() => {
     const fetchDeviceType = devices => {
@@ -255,41 +296,39 @@ const ApplicationDataVisualization = () => {
 
   const fetchData = () => {
     const mappedData = selectedReadings.reduce((acc, column) => {
-      const [devEui, attribute] = column.split('-')
-
+      const [devEui, attribute] = column.split('-');
+  
       if (!acc[devEui]) {
-        acc[devEui] = []
+        acc[devEui] = [];
       }
-
-      acc[devEui].push(attribute)
-      return acc
-    }, {})
-
-    // Default body structure
+  
+      acc[devEui].push(attribute);
+      return acc;
+    }, {});
+  
     const body = {
       data: mappedData,
-    }
-
+    };
+  
     if (toggleView === 'dateTimePicker') {
       if (startTime && endTime) {
-        body.start_time = startTime
-        body.end_time = endTime
+        body.start_time = startTime;
+        body.end_time = endTime;
+        body.aggregation = selectedAggregation; // Include aggregation for custom range
       }
     } else if (toggleView === 'timeButtons') {
-      body.period = selectedTime
-      body.aggregation = selectedAggregation
+      body.period = selectedTime;
+      body.aggregation = selectedAggregation;
     }
-
-    const sensorIds = Object.keys(mappedData)
-    const payloadTypes = Object.values(mappedData).flat()
-
-    body.sensor_ids = sensorIds
-    body.payload_types = payloadTypes
-
-    // Choose the correct endpoint based on toggleView
-    const endpoint = toggleView === 'dateTimePicker' ? serverDataEndpoint : serverDataButtonEndpoint
-
-    // Send the request to the correct endpoint with the body
+  
+    const sensorIds = Object.keys(mappedData);
+    const payloadTypes = Object.values(mappedData).flat();
+  
+    body.sensor_ids = sensorIds;
+    body.payload_types = payloadTypes;
+  
+    const endpoint = toggleView === 'dateTimePicker' ? serverDataEndpoint : serverDataButtonEndpoint;
+  
     fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -298,51 +337,48 @@ const ApplicationDataVisualization = () => {
       .then(response => response.json())
       .then(json => {
         if (json && json.data) {
-          const dataset = {}
+          const dataset = {};
           json.data.forEach(item => {
-            const timestamp = new Date(item.timestamp).getTime()
-            const sensorValue = parseFloat(item.value) || null
-
+            const timestamp = new Date(item.timestamp).getTime();
+            const sensorValue = parseFloat(item.value) || null;
+  
             if (!dataset[timestamp]) {
-              dataset[timestamp] = { timestamp }
+              dataset[timestamp] = { timestamp };
             }
-
-            dataset[timestamp][`${item.dev_eui}-${item.payload_type}`] = sensorValue
-
-            // Ensure other devices have null values for missing data
+  
+            dataset[timestamp][`${item.dev_eui}-${item.payload_type}`] = sensorValue;
+  
             for (const device of Object.keys(selectedDevices).filter(
               dev_eui => dev_eui !== item.dev_eui,
             )) {
               if (!dataset[timestamp][`${device}-${item.payload_type}`])
-                dataset[timestamp][`${device}-${item.payload_type}`] = null
+                dataset[timestamp][`${device}-${item.payload_type}`] = null;
             }
-          })
-
-          const datasetArray = Object.values(dataset).sort((a, b) => a.timestamp - b.timestamp)
-
-          // Build the series for the graph
+          });
+  
+          const datasetArray = Object.values(dataset).sort((a, b) => a.timestamp - b.timestamp);
+  
           const series = Object.keys(mappedData).flatMap(deviceId =>
             mappedData[deviceId].map(payloadValue => {
               const column = availableReadingColumns[deviceId].find(
                 item => item.payload_value === payloadValue,
-              )
-              const displayName = column ? column.display_name : payloadValue
-
+              );
+              const displayName = column ? column.display_name : payloadValue;
+  
               return {
                 dataKey: `${deviceId}-${payloadValue}`,
                 label: `${selectedDevices[deviceId]} ${displayName}`,
-              }
+              };
             }),
-          )
-
-          // Update the graph data
-          setGraphData({ dataset: datasetArray, series })
+          );
+  
+          setGraphData({ dataset: datasetArray, series });
         } else {
-          console.error('No data field in response:', json)
+          console.error('No data field in response:', json);
         }
       })
-      .catch(error => console.error('Error fetching data:', error))
-  }
+      .catch(error => console.error('Error fetching data:', error));
+  };
 
   useRootClass(style.stageFlex, 'stage')
 
@@ -516,32 +552,62 @@ const ApplicationDataVisualization = () => {
               </div>
 
               <div style={{ margin: '20px 0px', display: 'flex', gap: '10px' }}>
-                {toggleView === 'dateTimePicker' && (
-                  <div>
-                    <LocalizationProvider dateAdapter={AdapterDayjs}>
-                      <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <div>
-                          <DateTimePicker
-                            label="Start Time"
-                            value={null}
-                            onChange={convertLocalToUTCStart}
-                          />
-                        </div>
-                        <div style={{ margin: '0 20px' }}> --------- </div>
-                        <div>
-                          <DateTimePicker
-                            label="End Time"
-                            value={null}
-                            onChange={convertLocalToUTCEnd}
-                          />
-                        </div>
+              {toggleView === 'dateTimePicker' && (
+                <div>
+                  <LocalizationProvider dateAdapter={AdapterDayjs}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      {/* Start Time Picker */}
+                      <div>
+                        <DateTimePicker
+                          label="Start Time"
+                          value={null}
+                          onChange={convertLocalToUTCStart}
+                        />
                       </div>
-                    </LocalizationProvider>
-                    <div style={{ margin: '15px 0px' }}>
-                      <SubmitButton>Fetch Data</SubmitButton>
+
+                      {/* Separator */}
+                      <div style={{ margin: '0 10px' }}> --------- </div>
+
+                      {/* End Time Picker */}
+                      <div>
+                        <DateTimePicker
+                          label="End Time"
+                          value={null}
+                          onChange={convertLocalToUTCEnd}
+                        />
+                      </div>
+
+                      {/* Aggregate By Dropdown */}
+                      {startTime && endTime && (
+                        <div style={{ display: 'flex', alignItems: 'center', marginLeft: '10px' }}>
+                          <FormControl sx={{ width: 175 }}> {/* Adjust marginTop to align with DateTimePicker */}
+                            <InputLabel id="aggregation-label">Aggregate By</InputLabel>
+                            <Select
+                              labelId="aggregation-label"
+                              value={selectedAggregation}
+                              onChange={handleAggregationChange}
+                              displayEmpty
+                              renderValue={selected => selected || 'Select Aggregation'}
+                              label="Aggregate By" 
+                            >
+                              {aggregationOptions.map(option => (
+                                <MenuItem key={option} value={option}>
+                                  {option}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </div>
+                      )}
                     </div>
+                  </LocalizationProvider>
+
+                  {/* Fetch Data Button */}
+                  <div style={{ margin: '15px 0px' }}>
+                    <SubmitButton>Fetch Data</SubmitButton>
                   </div>
-                )}
+                </div>
+              )}
                 {toggleView === 'timeButtons' && (
                   <div style={{ margin: '5px 0px', display: 'flex', gap: '10px' }}>
                     {timesOptions.map(time => (
@@ -556,14 +622,15 @@ const ApplicationDataVisualization = () => {
                     ))}
                     <SubmitButton>Fetch Data</SubmitButton>
                     {selectedTime !== '1H' && (
-                      <div style={{ marginLeft: '25px', marginTop: '-84px' }}>
-                        <h3>Aggregate By</h3>
+                      <div style={{ marginLeft: '25px', marginTop: '-20px' }}>
                         <FormControl sx={{ width: 175 }}>
+                        <InputLabel id="aggregation-label">Aggregate By</InputLabel>
                           <Select
                             value={selectedAggregation}
                             onChange={handleAggregationChange}
                             displayEmpty
                             renderValue={selected => selected || 'Select Aggregation'}
+                            label="Aggregate By" 
                           >
                             {aggregationOptions.map(option => (
                               <MenuItem key={option} value={option}>
