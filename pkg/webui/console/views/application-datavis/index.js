@@ -246,7 +246,7 @@ const ApplicationDataVisualization = () => {
       return acc
     }, {})
 
-    fetch(serverDataEndpoint, {
+    fetch(serverDataButtonEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

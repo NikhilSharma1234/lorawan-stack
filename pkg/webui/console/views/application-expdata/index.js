@@ -64,16 +64,13 @@ const ApplicationDataExport = () => {
   const [, set] = useState(false)
   const [clicks, setClicks] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [fetchDataLoading, setFetchDataLoading] = useState(false)
+  const [firstTime, setFirstTime] = useState(true)
   const [tableColumns, setTableColumns] = useState([])
   const [AIModal, setAIModal] = useState(false)
   const [AILoading, setAILoading] = useState(true)
   const [csvURL, setCsvURL] = useState(null)
-  const [messages, setMessages] = useState([
-    {
-      role: 'user',
-      content: 'Tell me interesting details about the data. No visuals.',
-    },
-  ])
+  const [messages, setMessages] = useState([])
   const [AITextBox, setAITextBox] = useState('')
   const ITEM_HEIGHT = 48
   const ITEM_PADDING_TOP = 8
@@ -130,6 +127,14 @@ const ApplicationDataExport = () => {
               }
             }
           }
+          setMessages([
+            {
+              role: 'user',
+              displayContent:
+                'Tell me interesting details about the data. Summarize the data for me',
+              content: `Tell me interesting details about the data. No visuals. Each unique dev_eui represents a unique sensor and so if a column is missing data for a dev_eui that probably means that sensor doesn't record that value. Here is the mapping for column headers and dev_eui's. ${JSON.stringify(devicesWithType)}. Summarize the data for me.`,
+            },
+          ])
           setAvailableDevices(devicesWithType)
           setLoading(false)
         })
@@ -173,8 +178,13 @@ const ApplicationDataExport = () => {
 
   const fetchData = () => {
     set(true)
+    console.log('here once or twice hehe')
+    setFetchDataLoading(true)
+    setFirstTime(true)
+    setAILoading(true)
+    setAITextBox('')
     const requestParams = {
-      devices: Object.keys(selectedDevices),
+      devices: selectedDevices,
       startTime,
       endTime,
     }
@@ -295,6 +305,7 @@ const ApplicationDataExport = () => {
       })
       .catch(error => {
         console.error('Error fetching data:', error)
+        setFetchDataLoading(false)
       })
   }
 
@@ -315,9 +326,15 @@ const ApplicationDataExport = () => {
         console.log(messages)
         setMessages([...messagesNewest, { role: 'assistant', content: json.data }])
         setAILoading(false)
+        setFetchDataLoading(false)
+        if (firstTime) {
+          handleStart()
+          setFirstTime(false)
+        }
       })
       .catch(error => {
         console.error('Error fetching data:', error)
+        setFetchDataLoading(false)
       })
   }
 
@@ -555,9 +572,6 @@ const ApplicationDataExport = () => {
             </div>
             <div>
               <ButtonGroup variant="contained" aria-label="Basic button group">
-                <IconButton disabled={isRunning} onClick={() => handleStart()}>
-                  <PlayArrowIcon />
-                </IconButton>
                 <IconButton disabled={!isRunning} onClick={() => handlePause()}>
                   <PauseIcon />
                 </IconButton>
@@ -648,7 +662,7 @@ const ApplicationDataExport = () => {
                       alignItems: 'center',
                       margin: '20px 0px',
                     }}
-                    isSubmitting={false}
+                    isSubmitting={fetchDataLoading}
                     isValidating={false}
                     onClick={() => fetchData}
                   >
@@ -674,7 +688,7 @@ const ApplicationDataExport = () => {
           </Formik>
         </div>
       </div>
-      {data ? (
+      {data && !fetchDataLoading ? (
         <Paper sx={{ height: 625, width: '100%' }}>
           <DataGrid
             getRowId={row => row.item_number}
@@ -713,7 +727,9 @@ const ApplicationDataExport = () => {
                 const imageRegex = /!\[.*?\]\((.*?)\)/
                 const match = msg.content.match(imageRegex)
                 const imageUrl = match ? match[1] : null
-                const textWithoutImage = msg.content.replace(imageRegex, '').trim()
+                const textWithoutImage = msg.displayContent
+                  ? msg.displayContent
+                  : msg.content.replace(imageRegex, '').trim()
 
                 return (
                   <div
