@@ -114,6 +114,8 @@ func generateConsoleCSPString(config *Config, nonce string, others ...webui.Cont
 			"ncar-da-15.rc.unr.edu:30127",
 			"ncar-da-15.rc.unr.edu:30128",
 			"ncar-da-15.rc.unr.edu:30129",
+			"https://www.chatcsv.co",
+			"https://www.chatcsv.co/api/v1/chat",
 		}, baseURLs...),
 		StyleSource: append([]string{
 			"'self'",

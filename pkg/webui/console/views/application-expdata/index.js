@@ -33,9 +33,11 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import PauseIcon from '@mui/icons-material/Pause'
 import StopIcon from '@mui/icons-material/Stop'
 
+import Modal from '@ttn-lw/components/modal'
 import { useBreadcrumbs } from '@ttn-lw/components/breadcrumbs/context'
 import Breadcrumb from '@ttn-lw/components/breadcrumbs/breadcrumb'
 import SubmitButton from '@ttn-lw/components/submit-button'
+import Button from '@ttn-lw/components/button'
 
 import style from '@console/views/app/app.styl'
 
@@ -63,6 +65,16 @@ const ApplicationDataExport = () => {
   const [clicks, setClicks] = useState(0)
   const [loading, setLoading] = useState(true)
   const [tableColumns, setTableColumns] = useState([])
+  const [AIModal, setAIModal] = useState(false)
+  const [AILoading, setAILoading] = useState(true)
+  const [csvURL, setCsvURL] = useState(null)
+  const [messages, setMessages] = useState([
+    {
+      role: 'user',
+      content: 'Tell me interesting details about the data. No visuals.',
+    },
+  ])
+  const [AITextBox, setAITextBox] = useState('')
   const ITEM_HEIGHT = 48
   const ITEM_PADDING_TOP = 8
   const MenuProps = {
@@ -211,7 +223,7 @@ const ApplicationDataExport = () => {
           const newItem = { ...item } // Copy the original item
 
           if (newItem.timestamp) {
-            newItem.timestamp = formatTimestamp(newItem.timestamp);
+            newItem.timestamp = formatTimestamp(newItem.timestamp)
           }
 
           for (const [displayName, keys] of Object.entries(displayNameToKeys)) {
@@ -278,6 +290,31 @@ const ApplicationDataExport = () => {
         setAvailableColumns(filteredAvailableColumns) // List of available columns
         setSelectedColumns(filteredAvailableColumns) // Initially selecting all columns
         setData(mergedData) // Use the merged data
+        setCsvURL(json.CSV_URL)
+        fetchAIResponse(json.CSV_URL, messages)
+      })
+      .catch(error => {
+        console.error('Error fetching data:', error)
+      })
+  }
+
+  const fetchAIResponse = async (url, messagesNewest) => {
+    const server = process.env.FLASK_AI_ENDPOINT
+    const requestParams = {
+      url,
+      messages: messagesNewest,
+    }
+    fetch(server, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestParams),
+    })
+      .then(response => response.json())
+      .then(json => {
+        console.log(json)
+        console.log(messages)
+        setMessages([...messagesNewest, { role: 'assistant', content: json.data }])
+        setAILoading(false)
       })
       .catch(error => {
         console.error('Error fetching data:', error)
@@ -326,6 +363,13 @@ const ApplicationDataExport = () => {
     [selectedColumns],
   )
 
+  const sendNewMessage = async () => {
+    setAILoading(true)
+    setAITextBox('')
+    setMessages([...messages, { role: 'user', content: AITextBox }])
+    fetchAIResponse(csvURL, [...messages, { role: 'user', content: AITextBox }])
+  }
+
   const handleExportData = () => {
     const alwaysIncludedColumns = ['timestamp', 'dev_eui'] // Define columns to always include
 
@@ -360,9 +404,9 @@ const ApplicationDataExport = () => {
     downloadJSON(newData)
   }
 
-  const formatTimestamp = (timestamp) => {
-    const date = new Date(timestamp);
-  
+  const formatTimestamp = timestamp => {
+    const date = new Date(timestamp)
+
     // Format the date as MM/DD/YYYY, hh:mm:ss AM/PM
     const options = {
       year: 'numeric',
@@ -372,36 +416,35 @@ const ApplicationDataExport = () => {
       minute: '2-digit',
       second: '2-digit',
       hour12: true,
-    };
+    }
 
-    const formattedDate = date.toLocaleString('en-US', options);
-    return formattedDate.replace(',', ''); 
-  };
-  
+    const formattedDate = date.toLocaleString('en-US', options)
+    return formattedDate.replace(',', '')
+  }
+
   const convertJSONToCSV = newData => {
-    let csv = '';
-  
-    const headers = Object.keys(newData[0]);
-    csv += `${headers.join(',')}\n`;
-  
+    let csv = ''
+
+    const headers = Object.keys(newData[0])
+    csv += `${headers.join(',')}\n`
+
     newData.forEach(obj => {
       const values = headers.map(header => {
-        const value = obj[header];
+        const value = obj[header]
         if (header === 'timestamp' && value) {
-          return formatTimestamp(value);  // Ensure timestamp is formatted
+          return formatTimestamp(value) // Ensure timestamp is formatted
         }
         // Handle escaping for other fields as necessary
         if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
-          return `"${value.replace(/"/g, '""')}"`;
+          return `"${value.replace(/"/g, '""')}"`
         }
-        return value;
-      });
-      csv += `${values.join(',')}\n`;
-    });
-  
-    return csv;
-  };
-  
+        return value
+      })
+      csv += `${values.join(',')}\n`
+    })
+
+    return csv
+  }
 
   const increment = () => {
     setClicks(clicks + 1)
@@ -491,8 +534,6 @@ const ApplicationDataExport = () => {
               justifyContent: 'space-between',
               alignItems: 'center',
             }}
-            validationSchema={validationSchema}
-            onSubmit={fetchData}
           >
             <div>
               <h3>Select Time Range</h3>
@@ -598,6 +639,7 @@ const ApplicationDataExport = () => {
                     display: 'flex',
                     alignItems: 'center',
                     margin: '20px 0px',
+                    justifyContent: 'space-between',
                   }}
                 >
                   <SubmitButton
@@ -608,10 +650,24 @@ const ApplicationDataExport = () => {
                     }}
                     isSubmitting={false}
                     isValidating={false}
-                    onClick={fetchData}
+                    onClick={() => fetchData}
                   >
                     Fetch Data
                   </SubmitButton>
+                  {data && (
+                    <Button
+                      type="button"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        margin: '20px 0px',
+                      }}
+                      busy={AILoading}
+                      onClick={() => setAIModal(true)}
+                    >
+                      AI Analysis
+                    </Button>
+                  )}
                 </div>
               </Form>
             )}
@@ -630,6 +686,99 @@ const ApplicationDataExport = () => {
           />
         </Paper>
       ) : null}
+      {AIModal && (
+        <Modal
+          title="AI Analysis"
+          subtitle="Chat with the AI to perform analysis"
+          bottomLine="Not all content is correct"
+          buttonMessage="Done"
+          onComplete={() => {
+            setAIModal(false)
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {/* Chat Messages - Scrollable */}
+            <div
+              style={{
+                flexGrow: 1,
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+                padding: '10px',
+              }}
+            >
+              {messages.map((msg, index) => {
+                // Regular expression to match Markdown-style image syntax
+                const imageRegex = /!\[.*?\]\((.*?)\)/
+                const match = msg.content.match(imageRegex)
+                const imageUrl = match ? match[1] : null
+                const textWithoutImage = msg.content.replace(imageRegex, '').trim()
+
+                return (
+                  <div
+                    key={index}
+                    style={{
+                      maxWidth: '60%',
+                      padding: '10px 15px',
+                      borderRadius: '15px',
+                      fontSize: '16px',
+                      wordWrap: 'break-word',
+                      alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                      backgroundColor: msg.role === 'user' ? '#d4f8c6' : '#e5e5e5',
+                    }}
+                  >
+                    {textWithoutImage && <p style={{ margin: 0 }}>{textWithoutImage}</p>}
+                    {imageUrl && (
+                      <img
+                        src={imageUrl}
+                        alt="Chat Image"
+                        style={{
+                          width: '100%',
+                          maxWidth: '300px',
+                          marginTop: '5px',
+                          borderRadius: '10px',
+                        }}
+                      />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Input Box - Stuck to Bottom */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                borderTop: '1px solid #ccc',
+                padding: '10px',
+                background: '#fff', // Ensures input doesn't blend with chat
+              }}
+            >
+              <OutlinedInput
+                fullWidth
+                value={AITextBox}
+                onChange={e => {
+                  setAITextBox(e.target.value)
+                }}
+                disabled={AILoading}
+                placeholder="Type a message..."
+                style={{
+                  flexGrow: 1,
+                  padding: '4px',
+                  border: '1px solid #ccc',
+                  borderRadius: '5px',
+                  fontSize: '16px',
+                }}
+              />
+              <IconButton onClick={sendNewMessage} disabled={AILoading}>
+                <PlayArrowIcon />
+              </IconButton>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
