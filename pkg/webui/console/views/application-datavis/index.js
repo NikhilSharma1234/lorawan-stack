@@ -17,9 +17,9 @@ import { Formik, Form } from 'formik'
 import { useDispatch } from 'react-redux'
 import { useParams } from 'react-router-dom'
 import { LineChart } from '@mui/x-charts/LineChart'
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { axisClasses } from '@mui/x-charts'
 import {
   Select,
@@ -36,6 +36,7 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import PauseIcon from '@mui/icons-material/Pause'
 import StopIcon from '@mui/icons-material/Stop'
 
+import Modal from '@ttn-lw/components/modal'
 import Breadcrumb from '@ttn-lw/components/breadcrumbs/breadcrumb'
 import { useBreadcrumbs } from '@ttn-lw/components/breadcrumbs/context'
 import Button from '@ttn-lw/components/button'
@@ -61,6 +62,11 @@ const ApplicationDataVisualization = () => {
   const [loading, setLoading] = useState(true)
   const [startTime, setStartTime] = useState(null)
   const [endTime, setEndTime] = useState(null)
+  const [messages, setMessages] = useState([])
+  const [AILoading, setAILoading] = useState(true)
+  const [fetchDataLoading, setFetchDataLoading] = useState(false)
+  const [firstTime, setFirstTime] = useState(true)
+  const [AITextBox, setAITextBox] = useState('')
 
   // ['dev_eui-readingType', '123-temperature']
   const [selectedReadings, setSelectedReadings] = useState([])
@@ -84,6 +90,8 @@ const ApplicationDataVisualization = () => {
   const [timer, setTimer] = useState(0)
   const [isRunning, setIsRunning] = useState(false)
   const [clicks, setClicks] = useState(0)
+  const [csvURL, setCsvURL] = useState(null)
+  const [AIModal, setAIModal] = useState(false)
 
   const aggregationOptionsMap = {
     '1H': ['None'],
@@ -162,8 +170,8 @@ const ApplicationDataVisualization = () => {
   }
 
   const handleToggleChange = (event, newView) => {
-    if (newView) setToggleView(newView);
-  };
+    if (newView) setToggleView(newView)
+  }
 
   const convertLocalToUTCStart = localTime => {
     // Create a Date object from the local timestamp
@@ -208,6 +216,15 @@ const ApplicationDataVisualization = () => {
               }
             }
           }
+          setMessages([
+            {
+              role: 'user',
+              displayContent:
+                'Tell me interesting details about the data. Summarize the data for me',
+              content: `No visuals. This data represents enviornmental monitoring sensors deployed in a particular location. Only use the display names to refer to a column and don't mention dev_eui. Each unique dev_eui represents a unique sensor. Here is the mapping for payload_type and it's display name and dev_eui's. ${JSON.stringify(devicesWithType)}. Imagine that I was looking at a graph of this data and now summarize the graph for me in a simple way as if you provided the graph already and mention any cool trends. Also tell me the time period for which this data represents in a simple fashion.`,
+            },
+          ])
+          console.log(JSON.stringify(devicesWithType))
           setAvailableDevices(devicesWithType)
           setLoading(false)
         })
@@ -234,6 +251,10 @@ const ApplicationDataVisualization = () => {
   }, [appId, dispatch, serverDeviceEndpoint])
 
   const fetchData = () => {
+    setFetchDataLoading(true)
+    setFirstTime(true)
+    setAILoading(true)
+    setAITextBox('')
     const mappedData = selectedReadings.reduce((acc, column) => {
       const [devEui, attribute] = column.split('-')
 
@@ -292,9 +313,50 @@ const ApplicationDataVisualization = () => {
             }
           }),
         )
+        setCsvURL(json.CSV_URL)
+        fetchAIResponse(json.CSV_URL, messages)
         setGraphData({ dataset: datasetArray, series })
       })
-      .catch(error => console.error('Error fetching data:', error))
+      .catch(error => {
+        console.error('Error fetching data:', error)
+        setFetchDataLoading(false)
+      })
+  }
+
+  const fetchAIResponse = async (url, messagesNewest) => {
+    const server = process.env.FLASK_AI_ENDPOINT
+    const requestParams = {
+      url,
+      messages: messagesNewest,
+    }
+    fetch(server, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestParams),
+    })
+      .then(response => response.json())
+      .then(json => {
+        console.log(json)
+        console.log(messages)
+        setMessages([...messagesNewest, { role: 'assistant', content: json.data }])
+        setAILoading(false)
+        setFetchDataLoading(false)
+        if (firstTime) {
+          handleStart()
+          setFirstTime(false)
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching data:', error)
+        setFetchDataLoading(false)
+      })
+  }
+
+  const sendNewMessage = async () => {
+    setAILoading(true)
+    setAITextBox('')
+    setMessages([...messages, { role: 'user', content: AITextBox }])
+    fetchAIResponse(csvURL, [...messages, { role: 'user', content: AITextBox }])
   }
 
   useRootClass(style.stageFlex, 'stage')
@@ -370,13 +432,13 @@ const ApplicationDataVisualization = () => {
                     multiple
                     value={values.selectedDevices}
                     onChange={event => {
-                      const { value } = event.target;
-                      setFieldValue('selectedDevices', value);
-                      handleDeviceChange(event);
-                      const newReadings = values.selectedReadings.filter(reading => 
-                        value.includes(reading.split('-')[0])
-                      );
-                      setFieldValue('selectedReadings', newReadings);
+                      const { value } = event.target
+                      setFieldValue('selectedDevices', value)
+                      handleDeviceChange(event)
+                      const newReadings = values.selectedReadings.filter(reading =>
+                        value.includes(reading.split('-')[0]),
+                      )
+                      setFieldValue('selectedReadings', newReadings)
                     }}
                     input={<OutlinedInput label="Selected Devices" />}
                     renderValue={() =>
@@ -502,7 +564,7 @@ const ApplicationDataVisualization = () => {
                   primary={selectedTime === time}
                 />
               ))}
-              <SubmitButton>Fetch Data</SubmitButton>
+              <SubmitButton isSubmitting={fetchDataLoading}>Fetch Data</SubmitButton>
               {selectedTime !== '1H' && (
                 <div style={{ marginLeft: '25px', marginTop: '-84px' }}>
                   <h3>Aggregate By</h3>
@@ -522,12 +584,26 @@ const ApplicationDataVisualization = () => {
                   </FormControl>
                 </div>
               )}
+              {graphData && graphData.dataset && graphData.dataset.length > 0 && (
+                <Button
+                  type="button"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    margin: '20px 0px',
+                  }}
+                  busy={AILoading}
+                  onClick={() => setAIModal(true)}
+                >
+                  AI Analysis
+                </Button>
+              )}
             </div>
           </Form>
         )}
       </Formik>
       <div style={{ paddingRight: '50px', paddingTop: '25px' }}>
-        {graphData && graphData.dataset && graphData.dataset.length > 0 && (
+        {graphData && graphData.dataset && graphData.dataset.length > 0 && !fetchDataLoading && (
           <LineChart
             dataset={graphData.dataset}
             xAxis={[
@@ -560,6 +636,101 @@ const ApplicationDataVisualization = () => {
           />
         )}
       </div>
+      {AIModal && (
+        <Modal
+          title="AI Analysis"
+          subtitle="Chat with the AI to perform analysis"
+          bottomLine="Not all content is correct"
+          buttonMessage="Done"
+          onComplete={() => {
+            setAIModal(false)
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {/* Chat Messages - Scrollable */}
+            <div
+              style={{
+                flexGrow: 1,
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+                padding: '10px',
+              }}
+            >
+              {messages.map((msg, index) => {
+                // Regular expression to match Markdown-style image syntax
+                const imageRegex = /!\[.*?\]\((.*?)\)/
+                const match = msg.content.match(imageRegex)
+                const imageUrl = match ? match[1] : null
+                const textWithoutImage = msg.displayContent
+                  ? msg.displayContent
+                  : msg.content.replace(imageRegex, '').trim()
+
+                return (
+                  <div
+                    key={index}
+                    style={{
+                      maxWidth: '60%',
+                      padding: '10px 15px',
+                      borderRadius: '15px',
+                      fontSize: '16px',
+                      wordWrap: 'break-word',
+                      alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                      backgroundColor: msg.role === 'user' ? '#d4f8c6' : '#e5e5e5',
+                    }}
+                  >
+                    {textWithoutImage && <p style={{ margin: 0 }}>{textWithoutImage}</p>}
+                    {imageUrl && (
+                      <img
+                        src={imageUrl}
+                        alt="Chat Image"
+                        style={{
+                          width: '100%',
+                          maxWidth: '300px',
+                          marginTop: '5px',
+                          borderRadius: '10px',
+                        }}
+                      />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Input Box - Stuck to Bottom */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                borderTop: '1px solid #ccc',
+                padding: '10px',
+                background: '#fff', // Ensures input doesn't blend with chat
+              }}
+            >
+              <OutlinedInput
+                fullWidth
+                value={AITextBox}
+                onChange={e => {
+                  setAITextBox(e.target.value)
+                }}
+                disabled={AILoading}
+                placeholder="Type a message..."
+                style={{
+                  flexGrow: 1,
+                  padding: '4px',
+                  border: '1px solid #ccc',
+                  borderRadius: '5px',
+                  fontSize: '16px',
+                }}
+              />
+              <IconButton onClick={sendNewMessage} disabled={AILoading}>
+                <PlayArrowIcon />
+              </IconButton>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

@@ -132,7 +132,7 @@ const ApplicationDataExport = () => {
               role: 'user',
               displayContent:
                 'Tell me interesting details about the data. Summarize the data for me',
-              content: `Tell me interesting details about the data. No visuals. Each unique dev_eui represents a unique sensor and so if a column is missing data for a dev_eui that probably means that sensor doesn't record that value. Here is the mapping for column headers and dev_eui's. ${JSON.stringify(devicesWithType)}. Summarize the data for me.`,
+              content: `Tell me interesting details about the data. No visuals. Only use the display names to refer to a column. Each unique dev_eui represents a unique sensor and so if a column is missing data for a dev_eui that probably means that sensor doesn't record that value. Here is the mapping for column headers and dev_eui's. ${JSON.stringify(devicesWithType)}. Summarize the data for me in a simple way.`,
             },
           ])
           setAvailableDevices(devicesWithType)
