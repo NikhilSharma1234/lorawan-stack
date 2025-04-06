@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import React, { useCallback, useMemo } from 'react'
+import React, { useCallback, useMemo, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 
 import Events from '@console/components/events'
@@ -30,12 +30,15 @@ import {
   setApplicationEventsFilter,
 } from '@console/store/actions/applications'
 
+import sendUserEvent from '@console/store/reducers/sendUserEvent'
+
 import {
   selectApplicationEvents,
   selectApplicationEventsPaused,
   selectApplicationEventsTruncated,
   selectApplicationEventsFilter,
 } from '@console/store/selectors/applications'
+import { selectUserId } from '@account/store/selectors/user'
 
 const ApplicationEvents = props => {
   const { appId, widget } = props
@@ -44,6 +47,7 @@ const ApplicationEvents = props => {
   const paused = useSelector(state => selectApplicationEventsPaused(state, appId))
   const truncated = useSelector(state => selectApplicationEventsTruncated(state, appId))
   const filter = useSelector(state => selectApplicationEventsFilter(state, appId))
+  const userId = useSelector(selectUserId)
 
   const dispatch = useDispatch()
 
@@ -61,6 +65,10 @@ const ApplicationEvents = props => {
     },
     [appId, dispatch],
   )
+
+  useEffect(() => {
+    sendUserEvent(userId, 'Navigation', `Navigated to the Live Data Page.`, 'data', appId)
+  }, [appId, userId])
 
   const onFilterChange = useCallback(
     filterId => {

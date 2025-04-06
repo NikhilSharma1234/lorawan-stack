@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Col, Row, Container } from 'react-grid-system'
 import { defineMessages } from 'react-intl'
 import { useParams } from 'react-router-dom'
@@ -37,7 +37,10 @@ import { isOtherClusterApp } from '@console/lib/application-utils'
 import { mayViewApplicationInfo } from '@console/lib/feature-checks'
 import { checkFromState } from '@account/lib/feature-checks'
 
+import sendUserEvent from '@console/store/reducers/sendUserEvent'
+
 import { selectSelectedApplication } from '@console/store/selectors/applications'
+import { selectUserId } from '@account/store/selectors/user'
 
 import style from './application-overview.styl'
 
@@ -48,11 +51,16 @@ const m = defineMessages({
 
 const ApplicationOverview = () => {
   const { appId } = useParams()
+  const userId = useSelector(selectUserId)
   const application = useSelector(selectSelectedApplication)
   const may = useSelector(state => checkFromState(mayViewApplicationInfo, state))
   const { created_at, updated_at } = application
   const shouldRedirect = isOtherClusterApp(application)
   const condition = !shouldRedirect && may
+
+  useEffect(() => {
+    sendUserEvent(userId, 'Navigation', `Navigated to the project overview page.`, '', appId)
+  }, [appId, userId])
 
   const sheetData = [
     {

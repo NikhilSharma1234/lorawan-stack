@@ -48,10 +48,14 @@ import useRootClass from '@ttn-lw/lib/hooks/use-root-class'
 
 import { getDevicesList } from '@console/store/actions/devices'
 
+import sendUserEvent from '@console/store/reducers/sendUserEvent'
+
+import { selectUserId } from '@account/store/selectors/user'
 import { selectSelectedApplicationId } from '@console/store/selectors/applications'
 
 const ApplicationDataExport = () => {
   const appId = useSelector(selectSelectedApplicationId)
+  const userId = useSelector(selectUserId)
   const dispatch = useDispatch()
   const [selectedDevices, setSelectedDevices] = useState({})
   const [availableDevices, setAvailableDevices] = useState({})
@@ -101,6 +105,7 @@ const ApplicationDataExport = () => {
   // })
 
   useEffect(() => {
+    sendUserEvent(userId, 'Navigation', `Navigated to the Data Export Page.`, 'expdata', appId)
     const fetchDeviceType = devices => {
       fetch(serverDeviceEndpoint, {
         method: 'POST',
@@ -158,7 +163,7 @@ const ApplicationDataExport = () => {
       fetchDeviceType(devices)
     }
     fetchDevices()
-  }, [appId, dispatch, serverDeviceEndpoint])
+  }, [appId, dispatch, serverDeviceEndpoint, userId])
 
   const convertLocalToUTCStart = localTime => {
     // Create a Date object from the local timestamp
@@ -183,6 +188,13 @@ const ApplicationDataExport = () => {
     setFirstTime(true)
     setAILoading(true)
     setAITextBox('')
+    sendUserEvent(
+      userId,
+      'FetchData',
+      `Fetch Data clicked on the data export page with the period: ${startTime} - ${endTime} and selected devices: ${JSON.stringify(selectedDevices)}`,
+      'expdata',
+      appId,
+    )
     const requestParams = {
       devices: selectedDevices,
       startTime,

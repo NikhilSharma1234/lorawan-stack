@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Col, Row, Container } from 'react-grid-system'
+import { useSelector } from 'react-redux'
+import { useParams } from 'react-router-dom'
 
 import IntlHelmet from '@ttn-lw/lib/components/intl-helmet'
 
@@ -21,15 +23,27 @@ import DevicesTable from '@console/containers/devices-table'
 
 import sharedMessages from '@ttn-lw/lib/shared-messages'
 
-const ApplicationDeviceList = () => (
-  <Container>
-    <Row>
-      <IntlHelmet title={sharedMessages.devices} />
-      <Col>
-        <DevicesTable />
-      </Col>
-    </Row>
-  </Container>
-)
+import sendUserEvent from '@console/store/reducers/sendUserEvent'
+
+import { selectUserId } from '@account/store/selectors/user'
+
+const ApplicationDeviceList = () => {
+  const userId = useSelector(selectUserId)
+  const { appId } = useParams()
+  useEffect(() => {
+    sendUserEvent(userId, 'Navigation', `Navigated to the End Devices Page.`, 'devices', appId)
+  }, [appId, userId])
+
+  return (
+    <Container>
+      <Row>
+        <IntlHelmet title={sharedMessages.devices} />
+        <Col>
+          <DevicesTable />
+        </Col>
+      </Row>
+    </Container>
+  )
+}
 
 export default ApplicationDeviceList

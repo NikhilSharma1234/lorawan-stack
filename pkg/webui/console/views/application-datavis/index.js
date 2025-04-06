@@ -14,7 +14,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { Formik, Form } from 'formik'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { useParams } from 'react-router-dom'
 import { LineChart } from '@mui/x-charts/LineChart'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
@@ -51,7 +51,12 @@ import sharedMessages from '@ttn-lw/lib/shared-messages'
 
 import { getDevicesList } from '@console/store/actions/devices'
 
+import sendUserEvent from '@console/store/reducers/sendUserEvent'
+
+import { selectUserId } from '@account/store/selectors/user'
+
 const ApplicationDataVisualization = () => {
+  const userId = useSelector(selectUserId)
   const { appId } = useParams()
   const dispatch = useDispatch()
   const [selectedDevices, setSelectedDevices] = useState({})
@@ -190,6 +195,13 @@ const ApplicationDataVisualization = () => {
   }
 
   useEffect(() => {
+    sendUserEvent(
+      userId,
+      'Navigation',
+      `Navigated to the Data Visualization Page.`,
+      'expdata',
+      appId,
+    )
     const fetchDeviceType = devices => {
       fetch(serverDeviceEndpoint, {
         method: 'POST',
@@ -248,7 +260,7 @@ const ApplicationDataVisualization = () => {
       fetchDeviceType(devices)
     }
     fetchDevices()
-  }, [appId, dispatch, serverDeviceEndpoint])
+  }, [appId, dispatch, serverDeviceEndpoint, userId])
 
   const fetchData = () => {
     setFetchDataLoading(true)
@@ -266,6 +278,14 @@ const ApplicationDataVisualization = () => {
 
       return acc
     }, {})
+
+    sendUserEvent(
+      userId,
+      'FetchData',
+      `Fetch Data clicked on the data visualization page with the period: ${selectedTime} and selected readings: ${JSON.stringify(mappedData)}`,
+      'datavis',
+      appId,
+    )
 
     fetch(serverDataButtonEndpoint, {
       method: 'POST',

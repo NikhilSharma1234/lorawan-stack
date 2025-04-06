@@ -15,7 +15,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Button, Card, CardActions, CardContent, Container, Typography } from '@mui/material'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import classnames from 'classnames'
 import { MapContainer, Marker, TileLayer, Popup } from 'react-leaflet'
 import { latLngBounds } from 'leaflet'
@@ -33,7 +33,12 @@ import sharedMessages from '@ttn-lw/lib/shared-messages'
 
 import { getDevicesList } from '@console/store/actions/devices'
 
+import sendUserEvent from '@console/store/reducers/sendUserEvent'
+
+import { selectUserId } from '@account/store/selectors/user'
+
 const ApplicationMap = () => {
+  const userId = useSelector(selectUserId)
   const { appId } = useParams()
   const [zoom, setZoom] = useState(10)
   const serverDeviceEndpoint = process.env.FLASK_DEVICE_ENDPOINT
@@ -44,6 +49,7 @@ const ApplicationMap = () => {
   const navigate = useNavigate()
 
   useEffect(() => {
+    sendUserEvent(userId, 'Navigation', `Navigated to the Project Map Page.`, 'map', appId)
     const fetchDeviceType = devices => {
       fetch(serverDeviceEndpoint, {
         method: 'POST',
@@ -116,7 +122,7 @@ const ApplicationMap = () => {
       fetchDeviceType({ ...devicesToMark, ...devicesWithNoLocation })
     }
     fetchDevices()
-  }, [appId, dispatch, serverDeviceEndpoint])
+  }, [appId, dispatch, serverDeviceEndpoint, userId])
 
   const bounds = useCallback(() => {
     latLngBounds(
