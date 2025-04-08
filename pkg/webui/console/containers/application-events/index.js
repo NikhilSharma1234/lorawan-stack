@@ -67,7 +67,7 @@ const ApplicationEvents = props => {
   )
 
   useEffect(() => {
-    sendUserEvent(userId, 'Navigation', `Navigated to the Live Data Page.`, 'data', appId)
+    sendUserEvent(userId, 'Navigation', `Navigated to the Live Data Page.`, null, 'data', appId)
   }, [appId, userId])
 
   const onFilterChange = useCallback(

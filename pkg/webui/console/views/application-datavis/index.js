@@ -199,6 +199,7 @@ const ApplicationDataVisualization = () => {
       userId,
       'Navigation',
       `Navigated to the Data Visualization Page.`,
+      null,
       'expdata',
       appId,
     )
@@ -283,6 +284,12 @@ const ApplicationDataVisualization = () => {
       userId,
       'FetchData',
       `Fetch Data clicked on the data visualization page with the period: ${selectedTime} and selected readings: ${JSON.stringify(mappedData)}`,
+      JSON.stringify({
+        selectedTimeFrame: selectedTime,
+        readings: mappedData,
+        aggregation: selectedAggregation,
+        devices: availableDevices,
+      }),
       'datavis',
       appId,
     )

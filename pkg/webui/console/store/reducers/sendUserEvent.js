@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-const sendUserEvent = async (user_id, event_type, event_description, page, project) => {
+const sendUserEvent = async (user_id, event_type, event_description, extra, page, project) => {
   const server = process.env.FLASK_EVENT_ENDPOINT
   const requestParams = {
     user_id,
     event_type,
     event_description,
+    extra,
     page,
     project,
   }

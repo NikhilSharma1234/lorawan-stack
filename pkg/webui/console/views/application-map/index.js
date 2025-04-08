@@ -49,7 +49,7 @@ const ApplicationMap = () => {
   const navigate = useNavigate()
 
   useEffect(() => {
-    sendUserEvent(userId, 'Navigation', `Navigated to the Project Map Page.`, 'map', appId)
+    sendUserEvent(userId, 'Navigation', `Navigated to the Project Map Page.`, null, 'map', appId)
     const fetchDeviceType = devices => {
       fetch(serverDeviceEndpoint, {
         method: 'POST',

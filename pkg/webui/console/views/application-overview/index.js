@@ -59,7 +59,7 @@ const ApplicationOverview = () => {
   const condition = !shouldRedirect && may
 
   useEffect(() => {
-    sendUserEvent(userId, 'Navigation', `Navigated to the project overview page.`, '', appId)
+    sendUserEvent(userId, 'Navigation', `Navigated to the project overview page.`, null, '', appId)
   }, [appId, userId])
 
   const sheetData = [

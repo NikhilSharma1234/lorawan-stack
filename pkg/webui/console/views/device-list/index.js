@@ -31,7 +31,14 @@ const ApplicationDeviceList = () => {
   const userId = useSelector(selectUserId)
   const { appId } = useParams()
   useEffect(() => {
-    sendUserEvent(userId, 'Navigation', `Navigated to the End Devices Page.`, 'devices', appId)
+    sendUserEvent(
+      userId,
+      'Navigation',
+      `Navigated to the End Devices Page.`,
+      null,
+      'devices',
+      appId,
+    )
   }, [appId, userId])
 
   return (

@@ -105,7 +105,14 @@ const ApplicationDataExport = () => {
   // })
 
   useEffect(() => {
-    sendUserEvent(userId, 'Navigation', `Navigated to the Data Export Page.`, 'expdata', appId)
+    sendUserEvent(
+      userId,
+      'Navigation',
+      `Navigated to the Data Export Page.`,
+      null,
+      'expdata',
+      appId,
+    )
     const fetchDeviceType = devices => {
       fetch(serverDeviceEndpoint, {
         method: 'POST',
@@ -192,6 +199,11 @@ const ApplicationDataExport = () => {
       userId,
       'FetchData',
       `Fetch Data clicked on the data export page with the period: ${startTime} - ${endTime} and selected devices: ${JSON.stringify(selectedDevices)}`,
+      JSON.stringify({
+        startOfTime: startTime,
+        endOfTIme: endTime,
+        selectedDevicesForPage: selectedDevices,
+      }),
       'expdata',
       appId,
     )
