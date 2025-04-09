@@ -72,6 +72,7 @@ const ApplicationDataVisualization = () => {
   const [fetchDataLoading, setFetchDataLoading] = useState(false)
   const [firstTime, setFirstTime] = useState(true)
   const [AITextBox, setAITextBox] = useState('')
+  const formikRef = useRef()
 
   // ['dev_eui-readingType', '123-temperature']
   const [selectedReadings, setSelectedReadings] = useState([])
@@ -97,6 +98,7 @@ const ApplicationDataVisualization = () => {
   const [clicks, setClicks] = useState(0)
   const [csvURL, setCsvURL] = useState(null)
   const [AIModal, setAIModal] = useState(false)
+  const [readyToRunFetchData, setReadyToRunFetchData] = useState(false)
 
   const aggregationOptionsMap = {
     '1H': ['None'],
@@ -156,13 +158,14 @@ const ApplicationDataVisualization = () => {
     const {
       target: { value },
     } = event
+    console.log(value)
     setSelectedReadings(value)
   }, [])
 
-  const selectTime = time => {
+  const selectTime = useCallback(time => {
     setSelectedTime(time)
     setSelectedAggregation(defaultAggregationValues[time] || '')
-  }
+  })
 
   useEffect(() => {
     setAggregationOptions(aggregationOptionsMap[selectedTime] || [])
@@ -237,9 +240,18 @@ const ApplicationDataVisualization = () => {
               content: `No visuals. This data represents enviornmental monitoring sensors deployed in a particular location. Only use the display names to refer to a column and don't mention dev_eui. Each unique dev_eui represents a unique sensor. Here is the mapping for payload_type and it's display name and dev_eui's. ${JSON.stringify(devicesWithType)}. Imagine that I was looking at a graph of this data and now summarize the graph for me in a simple way as if you provided the graph already and mention any cool trends. Also tell me the time period for which this data represents in a simple fashion.`,
             },
           ])
-          console.log(JSON.stringify(devicesWithType))
           setAvailableDevices(devicesWithType)
           setLoading(false)
+          const params = new URLSearchParams(window.location.search)
+          const devicesQueryParam = JSON.parse(params.get('devices'))
+          if (devicesQueryParam) {
+            if (formikRef.current) {
+              formikRef.current.setFieldValue('selectedDevices', Object.keys(devicesQueryParam))
+            }
+            setSelectedDevices(devicesQueryParam)
+          }
+          console.log(params.get('aggregator'))
+          console.log(params.get('devices'))
         })
         .catch(error => console.error('Error fetching data:', error))
     }
@@ -262,6 +274,62 @@ const ApplicationDataVisualization = () => {
     }
     fetchDevices()
   }, [appId, dispatch, serverDeviceEndpoint, userId])
+
+  useEffect(() => {
+    if (!selectedDevices || Object.keys(selectedDevices).length === 0) return
+    if (!availableDevices || Object.keys(availableDevices).length === 0) return
+
+    const newAvailableColumns = {}
+
+    for (const key of Object.keys(selectedDevices)) {
+      newAvailableColumns[key] = []
+
+      const device = availableDevices[key]
+      if (device?.readings) {
+        for (const reading of device.readings) {
+          newAvailableColumns[key].push({
+            payload_value: reading.payload_value,
+            display_name: reading.display_name,
+          })
+        }
+      }
+    }
+
+    setAvailableReadingColumns(newAvailableColumns)
+    const params = new URLSearchParams(window.location.search)
+    const readingsQueryParam = JSON.parse(params.get('readings'))
+
+    if (readingsQueryParam) {
+      const result = Object.entries(readingsQueryParam).flatMap(([deviceId, readings]) =>
+        readings.map(reading => `${deviceId}-${reading}`),
+      )
+      if (formikRef.current) {
+        formikRef.current.setFieldValue('selectedReadings', result)
+      }
+      setSelectedReadings(result)
+    }
+
+    const timeFrameQueryParam = params.get('timeFrame')
+    if (timeFrameQueryParam) {
+      setSelectedTime(timeFrameQueryParam)
+    }
+  }, [availableDevices, selectedDevices])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const aggregatorQueryParam = params.get('aggregator')
+    if (aggregatorQueryParam && aggregatorQueryParam !== 'None') {
+      setSelectedAggregation(aggregatorQueryParam)
+    }
+    setReadyToRunFetchData(true)
+  }, [selectedTime])
+
+  useEffect(() => {
+    if (readyToRunFetchData) {
+      setReadyToRunFetchData(false)
+      fetchData()
+    }
+  }, [startTime, endTime, fetchData, readyToRunFetchData])
 
   const fetchData = () => {
     setFetchDataLoading(true)
@@ -472,6 +540,7 @@ const ApplicationDataVisualization = () => {
           selectedDevices: Object.keys(selectedDevices),
           selectedReadings,
         }}
+        innerRef={formikRef}
         validationSchema={validationSchema}
         onSubmit={fetchData}
       >
@@ -497,9 +566,7 @@ const ApplicationDataVisualization = () => {
                       setFieldValue('selectedReadings', newReadings)
                     }}
                     input={<OutlinedInput label="Selected Devices" />}
-                    renderValue={() =>
-                      values.selectedDevices.map(devId => availableDevices[devId]?.name).join(', ')
-                    }
+                    renderValue={() => Object.values(selectedDevices).join(', ')}
                     MenuProps={MenuProps}
                   >
                     {loading ? (

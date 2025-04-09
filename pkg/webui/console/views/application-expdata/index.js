@@ -32,6 +32,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import PauseIcon from '@mui/icons-material/Pause'
 import StopIcon from '@mui/icons-material/Stop'
+import dayjs, { Dayjs } from 'dayjs'
 
 import Modal from '@ttn-lw/components/modal'
 import { useBreadcrumbs } from '@ttn-lw/components/breadcrumbs/context'
@@ -62,7 +63,9 @@ const ApplicationDataExport = () => {
   const [availableColumns, setAvailableColumns] = useState([])
   const [selectedColumns, setSelectedColumns] = useState([])
   const [exportOption, setExportOption] = React.useState('CSV')
+  const [startTimeDayJs, setStartTimeDayJs] = React.useState(null)
   const [startTime, setStartTime] = useState(null)
+  const [endTimeDayJs, setEndTimeDayJs] = React.useState(null)
   const [endTime, setEndTime] = useState(null)
   const [data, setData] = useState(null)
   const [, set] = useState(false)
@@ -76,6 +79,8 @@ const ApplicationDataExport = () => {
   const [csvURL, setCsvURL] = useState(null)
   const [messages, setMessages] = useState([])
   const [AITextBox, setAITextBox] = useState('')
+  const formikRef = useRef()
+  const [readyToRunFetchData, setReadyToRunFetchData] = useState(false)
   const ITEM_HEIGHT = 48
   const ITEM_PADDING_TOP = 8
   const MenuProps = {
@@ -149,6 +154,31 @@ const ApplicationDataExport = () => {
           ])
           setAvailableDevices(devicesWithType)
           setLoading(false)
+          const params = new URLSearchParams(window.location.search)
+          console.log(params.get('endTime'))
+          const devicesQueryParam = JSON.parse(params.get('devices'))
+          if (params.get('devices')) {
+            if (formikRef.current) {
+              formikRef.current.setFieldValue('selectedDevices', Object.values(devicesQueryParam))
+            }
+            setSelectedDevices(devicesQueryParam)
+          }
+          const startTimeQueryParam = params.get('startTime')
+          if (startTimeQueryParam) {
+            setStartTimeDayJs(dayjs(startTimeQueryParam))
+            const startTimeObj = new Date(startTimeQueryParam)
+            setStartTime(startTimeObj.toISOString())
+          }
+          const endTimeQueryParam = params.get('endTime')
+          if (endTimeQueryParam) {
+            setEndTimeDayJs(dayjs(endTimeQueryParam))
+            const endTimeObj = new Date(endTimeQueryParam)
+            setEndTime(endTimeObj.toISOString())
+          }
+          setReadyToRunFetchData(true)
+
+          // QueryParamsToObject()
+          // http://localhost:8080/console/applications/nikhil-project/expdata?startTime=2025-04-01T07%3A00%3A00.000Z&endTime=2025-04-07T07%3A00%3A00.000Z&devices=%7B%22A84041B6F65929CB%22%3A%22nikhil-dragino%22%2C%220025CA0A00015AA8%22%3A%22nikhil-laird%22%7D
         })
         .catch(error => console.error('Error fetching data:', error))
     }
@@ -172,6 +202,13 @@ const ApplicationDataExport = () => {
     fetchDevices()
   }, [appId, dispatch, serverDeviceEndpoint, userId])
 
+  useEffect(() => {
+    if (startTime && endTime && readyToRunFetchData) {
+      setReadyToRunFetchData(false)
+      fetchData()
+    }
+  }, [startTime, endTime, fetchData, readyToRunFetchData])
+
   const convertLocalToUTCStart = localTime => {
     // Create a Date object from the local timestamp
     const date = new Date(localTime)
@@ -188,7 +225,7 @@ const ApplicationDataExport = () => {
     setEndTime(date.toISOString()) // Returns in the format "YYYY-MM-DDTHH:mm:ss.sssZ"
   }
 
-  const fetchData = () => {
+  const fetchData = useCallback(() => {
     set(true)
     console.log('here once or twice hehe')
     setFetchDataLoading(true)
@@ -207,6 +244,7 @@ const ApplicationDataExport = () => {
       'expdata',
       appId,
     )
+    console.log(startTime, endTime)
     const requestParams = {
       devices: selectedDevices,
       startTime,
@@ -331,7 +369,7 @@ const ApplicationDataExport = () => {
         console.error('Error fetching data:', error)
         setFetchDataLoading(false)
       })
-  }
+  })
 
   const fetchAIResponse = async (url, messagesNewest) => {
     const server = process.env.FLASK_AI_ENDPOINT
@@ -377,6 +415,7 @@ const ApplicationDataExport = () => {
         for (const key of value) {
           newSelectedDevices[key] = availableDevices[key].name
         }
+        console.log(newSelectedDevices)
         setSelectedDevices(newSelectedDevices)
       }
     },
@@ -612,13 +651,23 @@ const ApplicationDataExport = () => {
                   <div>
                     <DateTimePicker
                       label="Start Time"
-                      value={null}
-                      onChange={convertLocalToUTCStart}
+                      value={startTimeDayJs}
+                      onChange={newValue => {
+                        setStartTimeDayJs(newValue)
+                        convertLocalToUTCStart(newValue)
+                      }}
                     />
                   </div>
                   <div style={{ margin: '0 20px' }}> --------- </div>
                   <div>
-                    <DateTimePicker label="End Time" value={null} onChange={convertLocalToUTCEnd} />
+                    <DateTimePicker
+                      label="End Time"
+                      value={endTimeDayJs}
+                      onChange={newValue => {
+                        setEndTimeDayJs(newValue)
+                        convertLocalToUTCEnd(newValue)
+                      }}
+                    />
                   </div>
                 </div>
               </LocalizationProvider>
@@ -649,6 +698,7 @@ const ApplicationDataExport = () => {
             }}
             validationSchema={validationSchema}
             onSubmit={fetchData}
+            innerRef={formikRef}
           >
             {({ setFieldValue, values, errors, touched }) => (
               <Form>
