@@ -344,7 +344,6 @@ const ApplicationDataVisualization = () => {
       .catch(error => console.error('Error fetching data:', error))
   }
 
-  useRootClass(style.stageFlex, 'stage')
 
   useBreadcrumbs(
     'apps.single.data',
@@ -381,7 +380,7 @@ const ApplicationDataVisualization = () => {
         >
           <DialogTitle style={{ alignSelf: 'center' }}>Data Visualization Video Guide</DialogTitle>
           <DialogContent>
-            <video controls style={{ width: '100%' }}>
+          <video controls style={{ width: '100%' }}>
               <source src={videoFile} type="video/mp4" />
               Your browser does not support the video tag.
             </video>
@@ -538,7 +537,7 @@ const ApplicationDataVisualization = () => {
                       </div>
                     </LocalizationProvider>
                     <div style={{ margin: '15px 0px' }}>
-                      <SubmitButton>Fetch Data</SubmitButton>
+                      <SubmitButton isSubmitting={false} isValidating={false}>Fetch Data</SubmitButton>
                     </div>
                   </div>
                 )}
@@ -554,7 +553,7 @@ const ApplicationDataVisualization = () => {
                         primary={selectedTime === time}
                       />
                     ))}
-                    <SubmitButton>Fetch Data</SubmitButton>
+                    <SubmitButton isSubmitting={false} isValidating={false}>Fetch Data</SubmitButton>
                     {selectedTime !== '1H' && (
                       <div style={{ marginLeft: '25px', marginTop: '-84px' }}>
                         <h3>Aggregate By</h3>

@@ -31,6 +31,9 @@ import {
   IconPayloadFormat,
   IconUplink,
   IconLayoutDashboard,
+  IconFileDownload,
+  IconMap,
+  IconSlideshow
 } from '@ttn-lw/components/icon'
 import SideNavigation from '@ttn-lw/components/sidebar/side-menu'
 import DedicatedEntity from '@ttn-lw/components/sidebar/dedicated-entity'
@@ -122,13 +125,13 @@ const AppSideNavigation = () => {
         )}
         
         {mayViewApplicationEvents.check(rights) && (
-          <SideNavigation.Item title={sharedMessages.expData} path={`/applications/${appId}/expdata`} icon="expdata" />
+          <SideNavigation.Item title={sharedMessages.expData} path={`/applications/${appId}/expdata`} icon={IconFileDownload} />
         )}
         {mayViewApplicationEvents.check(rights) && (
-          <SideNavigation.Item title={sharedMessages.dataVis} path={`/applications/${appId}/datavis`} icon="datavis" />
+          <SideNavigation.Item title={sharedMessages.dataVis} path={`/applications/${appId}/datavis`} icon={IconSlideshow}/>
         )}
         {mayViewApplicationEvents.check(rights) && (
-          <SideNavigation.Item title={sharedMessages.map} path={`/applications/${appId}/map`} icon="map" />
+          <SideNavigation.Item title={sharedMessages.map} path={`/applications/${appId}/map`}  icon={IconMap} />
         )}
 
         {maySetApplicationPayloadFormatters.check(rights) && (

@@ -46,7 +46,7 @@ const Data = () => {
       content={sharedMessages.liveData}
     />,
   )
-
+  
   useRootClass(appStyle.stage, 'stage')
 
   if (!device) {

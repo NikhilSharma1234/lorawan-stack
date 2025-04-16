@@ -28,6 +28,8 @@ import ShellPlugin from 'webpack-shell-plugin'
 import CopyWebpackPlugin from 'copy-webpack-plugin'
 import ReactRefreshWebpackPlugin from '@pmmmwh/react-refresh-webpack-plugin'
 
+const Dotenv = require('dotenv-webpack');
+
 import pjson from '../package.json'
 
 const { version } = pjson
@@ -292,6 +294,11 @@ export default {
   },
   plugins: env({
     all: [
+      new Dotenv({
+        path: './.env.extra', // Path to .env file (this is the default)
+        safe: true, // load .env.example (defaults to "false" which does not use dotenv-safe)
+        systemvars: true,
+      }),
       new webpack.EnvironmentPlugin({
         NODE_ENV,
         CI,
