@@ -16,7 +16,7 @@ import React, { useCallback, useImperativeHandle, useRef, useState } from 'react
 import { defineMessages, useIntl } from 'react-intl'
 import classnames from 'classnames'
 
-import Icon from '@ttn-lw/components/icon'
+import Icon, { IconEye, IconEyeOff } from '@ttn-lw/components/icon'
 import Spinner from '@ttn-lw/components/spinner'
 import Button from '@ttn-lw/components/button'
 import Tooltip from '@ttn-lw/components/tooltip'
@@ -219,6 +219,8 @@ const Input = React.forwardRef((props, ref) => {
           readOnly={readOnly}
           title={inputTitle}
           autoComplete={autoComplete}
+          data-1p-ignore={!sensitive}
+          data-lpignore={!sensitive}
           {...passedProps}
         />
         {v && <Valid show={v} />}
@@ -232,7 +234,7 @@ const Input = React.forwardRef((props, ref) => {
             small
           >
             <Button
-              icon={hidden ? 'visibility' : 'visibility_off'}
+              icon={hidden ? IconEye : IconEyeOff}
               className={style.hideToggle}
               onClick={handleHideToggleClick}
               naked
@@ -244,7 +246,12 @@ const Input = React.forwardRef((props, ref) => {
       </div>
       {hasAction && (
         <div className={style.actions}>
-          <Button className={style.button} {...action} disabled={disabled || actionDisable} />
+          <Button
+            className={style.button}
+            secondary
+            {...action}
+            disabled={disabled || actionDisable}
+          />
         </div>
       )}
       {children}
@@ -295,7 +302,7 @@ Input.propTypes = {
   disabled: PropTypes.bool,
   error: PropTypes.bool,
   forwardedRef: PropTypes.shape({ current: PropTypes.shape({}) }),
-  icon: PropTypes.string,
+  icon: PropTypes.icon,
   inputRef: PropTypes.shape({ current: PropTypes.shape({}) }),
   inputWidth: PropTypes.inputWidth,
   label: PropTypes.string,

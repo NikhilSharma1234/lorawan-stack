@@ -719,6 +719,24 @@ func (x *ApplicationUplink) MarshalProtoJSON(s *jsonplugin.MarshalState) {
 		s.WriteObjectField("network_ids")
 		x.NetworkIds.MarshalProtoJSON(s.WithField("network_ids"))
 	}
+	if x.LastBatteryPercentage != nil || s.HasField("last_battery_percentage") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("last_battery_percentage")
+		// NOTE: LastBatteryPercentage does not seem to implement MarshalProtoJSON.
+		golang.MarshalMessage(s, x.LastBatteryPercentage)
+	}
+	if x.Attributes != nil || s.HasField("attributes") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("attributes")
+		s.WriteObjectStart()
+		var wroteElement bool
+		for k, v := range x.Attributes {
+			s.WriteMoreIf(&wroteElement)
+			s.WriteObjectStringField(k)
+			s.WriteString(v)
+		}
+		s.WriteObjectEnd()
+	}
 	s.WriteObjectEnd()
 }
 
@@ -881,6 +899,26 @@ func (x *ApplicationUplink) UnmarshalProtoJSON(s *jsonplugin.UnmarshalState) {
 			}
 			x.NetworkIds = &NetworkIdentifiers{}
 			x.NetworkIds.UnmarshalProtoJSON(s.WithField("network_ids", true))
+		case "last_battery_percentage", "lastBatteryPercentage":
+			s.AddField("last_battery_percentage")
+			if s.ReadNil() {
+				x.LastBatteryPercentage = nil
+				return
+			}
+			// NOTE: LastBatteryPercentage does not seem to implement UnmarshalProtoJSON.
+			var v LastBatteryPercentage
+			golang.UnmarshalMessage(s, &v)
+			x.LastBatteryPercentage = &v
+		case "attributes":
+			s.AddField("attributes")
+			if s.ReadNil() {
+				x.Attributes = nil
+				return
+			}
+			x.Attributes = make(map[string]string)
+			s.ReadStringMap(func(key string) {
+				x.Attributes[key] = s.ReadString()
+			})
 		}
 	})
 }
@@ -994,6 +1032,18 @@ func (x *ApplicationUplinkNormalized) MarshalProtoJSON(s *jsonplugin.MarshalStat
 		s.WriteMoreIf(&wroteField)
 		s.WriteObjectField("network_ids")
 		x.NetworkIds.MarshalProtoJSON(s.WithField("network_ids"))
+	}
+	if x.Attributes != nil || s.HasField("attributes") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("attributes")
+		s.WriteObjectStart()
+		var wroteElement bool
+		for k, v := range x.Attributes {
+			s.WriteMoreIf(&wroteElement)
+			s.WriteObjectStringField(k)
+			s.WriteString(v)
+		}
+		s.WriteObjectEnd()
 	}
 	s.WriteObjectEnd()
 }
@@ -1124,6 +1174,16 @@ func (x *ApplicationUplinkNormalized) UnmarshalProtoJSON(s *jsonplugin.Unmarshal
 			}
 			x.NetworkIds = &NetworkIdentifiers{}
 			x.NetworkIds.UnmarshalProtoJSON(s.WithField("network_ids", true))
+		case "attributes":
+			s.AddField("attributes")
+			if s.ReadNil() {
+				x.Attributes = nil
+				return
+			}
+			x.Attributes = make(map[string]string)
+			s.ReadStringMap(func(key string) {
+				x.Attributes[key] = s.ReadString()
+			})
 		}
 	})
 }
@@ -1252,6 +1312,41 @@ func (x *ApplicationJoinAccept) MarshalProtoJSON(s *jsonplugin.MarshalState) {
 			golang.MarshalTimestamp(s, x.ReceivedAt)
 		}
 	}
+	if x.Locations != nil || s.HasField("locations") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("locations")
+		s.WriteObjectStart()
+		var wroteElement bool
+		for k, v := range x.Locations {
+			s.WriteMoreIf(&wroteElement)
+			s.WriteObjectStringField(k)
+			v.MarshalProtoJSON(s.WithField("locations"))
+		}
+		s.WriteObjectEnd()
+	}
+	if x.VersionIds != nil || s.HasField("version_ids") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("version_ids")
+		// NOTE: EndDeviceVersionIdentifiers does not seem to implement MarshalProtoJSON.
+		golang.MarshalMessage(s, x.VersionIds)
+	}
+	if x.NetworkIds != nil || s.HasField("network_ids") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("network_ids")
+		x.NetworkIds.MarshalProtoJSON(s.WithField("network_ids"))
+	}
+	if x.Attributes != nil || s.HasField("attributes") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("attributes")
+		s.WriteObjectStart()
+		var wroteElement bool
+		for k, v := range x.Attributes {
+			s.WriteMoreIf(&wroteElement)
+			s.WriteObjectStringField(k)
+			s.WriteString(v)
+		}
+		s.WriteObjectEnd()
+	}
 	s.WriteObjectEnd()
 }
 
@@ -1311,6 +1406,45 @@ func (x *ApplicationJoinAccept) UnmarshalProtoJSON(s *jsonplugin.UnmarshalState)
 				return
 			}
 			x.ReceivedAt = v
+		case "locations":
+			s.AddField("locations")
+			if s.ReadNil() {
+				x.Locations = nil
+				return
+			}
+			x.Locations = make(map[string]*Location)
+			s.ReadStringMap(func(key string) {
+				var v Location
+				v.UnmarshalProtoJSON(s)
+				x.Locations[key] = &v
+			})
+		case "version_ids", "versionIds":
+			s.AddField("version_ids")
+			if s.ReadNil() {
+				x.VersionIds = nil
+				return
+			}
+			// NOTE: EndDeviceVersionIdentifiers does not seem to implement UnmarshalProtoJSON.
+			var v EndDeviceVersionIdentifiers
+			golang.UnmarshalMessage(s, &v)
+			x.VersionIds = &v
+		case "network_ids", "networkIds":
+			if s.ReadNil() {
+				x.NetworkIds = nil
+				return
+			}
+			x.NetworkIds = &NetworkIdentifiers{}
+			x.NetworkIds.UnmarshalProtoJSON(s.WithField("network_ids", true))
+		case "attributes":
+			s.AddField("attributes")
+			if s.ReadNil() {
+				x.Attributes = nil
+				return
+			}
+			x.Attributes = make(map[string]string)
+			s.ReadStringMap(func(key string) {
+				x.Attributes[key] = s.ReadString()
+			})
 		}
 	})
 }
@@ -1471,6 +1605,41 @@ func (x *ApplicationDownlink) MarshalProtoJSON(s *jsonplugin.MarshalState) {
 		// NOTE: ApplicationDownlink_ConfirmedRetry does not seem to implement MarshalProtoJSON.
 		golang.MarshalMessage(s, x.ConfirmedRetry)
 	}
+	if x.Locations != nil || s.HasField("locations") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("locations")
+		s.WriteObjectStart()
+		var wroteElement bool
+		for k, v := range x.Locations {
+			s.WriteMoreIf(&wroteElement)
+			s.WriteObjectStringField(k)
+			v.MarshalProtoJSON(s.WithField("locations"))
+		}
+		s.WriteObjectEnd()
+	}
+	if x.VersionIds != nil || s.HasField("version_ids") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("version_ids")
+		// NOTE: EndDeviceVersionIdentifiers does not seem to implement MarshalProtoJSON.
+		golang.MarshalMessage(s, x.VersionIds)
+	}
+	if x.NetworkIds != nil || s.HasField("network_ids") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("network_ids")
+		x.NetworkIds.MarshalProtoJSON(s.WithField("network_ids"))
+	}
+	if x.Attributes != nil || s.HasField("attributes") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("attributes")
+		s.WriteObjectStart()
+		var wroteElement bool
+		for k, v := range x.Attributes {
+			s.WriteMoreIf(&wroteElement)
+			s.WriteObjectStringField(k)
+			s.WriteString(v)
+		}
+		s.WriteObjectEnd()
+	}
 	s.WriteObjectEnd()
 }
 
@@ -1548,6 +1717,45 @@ func (x *ApplicationDownlink) UnmarshalProtoJSON(s *jsonplugin.UnmarshalState) {
 			var v ApplicationDownlink_ConfirmedRetry
 			golang.UnmarshalMessage(s, &v)
 			x.ConfirmedRetry = &v
+		case "locations":
+			s.AddField("locations")
+			if s.ReadNil() {
+				x.Locations = nil
+				return
+			}
+			x.Locations = make(map[string]*Location)
+			s.ReadStringMap(func(key string) {
+				var v Location
+				v.UnmarshalProtoJSON(s)
+				x.Locations[key] = &v
+			})
+		case "version_ids", "versionIds":
+			s.AddField("version_ids")
+			if s.ReadNil() {
+				x.VersionIds = nil
+				return
+			}
+			// NOTE: EndDeviceVersionIdentifiers does not seem to implement UnmarshalProtoJSON.
+			var v EndDeviceVersionIdentifiers
+			golang.UnmarshalMessage(s, &v)
+			x.VersionIds = &v
+		case "network_ids", "networkIds":
+			if s.ReadNil() {
+				x.NetworkIds = nil
+				return
+			}
+			x.NetworkIds = &NetworkIdentifiers{}
+			x.NetworkIds.UnmarshalProtoJSON(s.WithField("network_ids", true))
+		case "attributes":
+			s.AddField("attributes")
+			if s.ReadNil() {
+				x.Attributes = nil
+				return
+			}
+			x.Attributes = make(map[string]string)
+			s.ReadStringMap(func(key string) {
+				x.Attributes[key] = s.ReadString()
+			})
 		}
 	})
 }
@@ -1639,6 +1847,41 @@ func (x *ApplicationDownlinkFailed) MarshalProtoJSON(s *jsonplugin.MarshalState)
 		// NOTE: ErrorDetails does not seem to implement MarshalProtoJSON.
 		golang.MarshalMessage(s, x.Error)
 	}
+	if x.Locations != nil || s.HasField("locations") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("locations")
+		s.WriteObjectStart()
+		var wroteElement bool
+		for k, v := range x.Locations {
+			s.WriteMoreIf(&wroteElement)
+			s.WriteObjectStringField(k)
+			v.MarshalProtoJSON(s.WithField("locations"))
+		}
+		s.WriteObjectEnd()
+	}
+	if x.VersionIds != nil || s.HasField("version_ids") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("version_ids")
+		// NOTE: EndDeviceVersionIdentifiers does not seem to implement MarshalProtoJSON.
+		golang.MarshalMessage(s, x.VersionIds)
+	}
+	if x.NetworkIds != nil || s.HasField("network_ids") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("network_ids")
+		x.NetworkIds.MarshalProtoJSON(s.WithField("network_ids"))
+	}
+	if x.Attributes != nil || s.HasField("attributes") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("attributes")
+		s.WriteObjectStart()
+		var wroteElement bool
+		for k, v := range x.Attributes {
+			s.WriteMoreIf(&wroteElement)
+			s.WriteObjectStringField(k)
+			s.WriteString(v)
+		}
+		s.WriteObjectEnd()
+	}
 	s.WriteObjectEnd()
 }
 
@@ -1673,6 +1916,45 @@ func (x *ApplicationDownlinkFailed) UnmarshalProtoJSON(s *jsonplugin.UnmarshalSt
 			var v ErrorDetails
 			golang.UnmarshalMessage(s, &v)
 			x.Error = &v
+		case "locations":
+			s.AddField("locations")
+			if s.ReadNil() {
+				x.Locations = nil
+				return
+			}
+			x.Locations = make(map[string]*Location)
+			s.ReadStringMap(func(key string) {
+				var v Location
+				v.UnmarshalProtoJSON(s)
+				x.Locations[key] = &v
+			})
+		case "version_ids", "versionIds":
+			s.AddField("version_ids")
+			if s.ReadNil() {
+				x.VersionIds = nil
+				return
+			}
+			// NOTE: EndDeviceVersionIdentifiers does not seem to implement UnmarshalProtoJSON.
+			var v EndDeviceVersionIdentifiers
+			golang.UnmarshalMessage(s, &v)
+			x.VersionIds = &v
+		case "network_ids", "networkIds":
+			if s.ReadNil() {
+				x.NetworkIds = nil
+				return
+			}
+			x.NetworkIds = &NetworkIdentifiers{}
+			x.NetworkIds.UnmarshalProtoJSON(s.WithField("network_ids", true))
+		case "attributes":
+			s.AddField("attributes")
+			if s.ReadNil() {
+				x.Attributes = nil
+				return
+			}
+			x.Attributes = make(map[string]string)
+			s.ReadStringMap(func(key string) {
+				x.Attributes[key] = s.ReadString()
+			})
 		}
 	})
 }
@@ -1710,6 +1992,41 @@ func (x *ApplicationInvalidatedDownlinks) MarshalProtoJSON(s *jsonplugin.Marshal
 		s.WriteMoreIf(&wroteField)
 		s.WriteObjectField("session_key_id")
 		s.WriteBytes(x.SessionKeyId)
+	}
+	if x.Locations != nil || s.HasField("locations") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("locations")
+		s.WriteObjectStart()
+		var wroteElement bool
+		for k, v := range x.Locations {
+			s.WriteMoreIf(&wroteElement)
+			s.WriteObjectStringField(k)
+			v.MarshalProtoJSON(s.WithField("locations"))
+		}
+		s.WriteObjectEnd()
+	}
+	if x.VersionIds != nil || s.HasField("version_ids") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("version_ids")
+		// NOTE: EndDeviceVersionIdentifiers does not seem to implement MarshalProtoJSON.
+		golang.MarshalMessage(s, x.VersionIds)
+	}
+	if x.NetworkIds != nil || s.HasField("network_ids") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("network_ids")
+		x.NetworkIds.MarshalProtoJSON(s.WithField("network_ids"))
+	}
+	if x.Attributes != nil || s.HasField("attributes") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("attributes")
+		s.WriteObjectStart()
+		var wroteElement bool
+		for k, v := range x.Attributes {
+			s.WriteMoreIf(&wroteElement)
+			s.WriteObjectStringField(k)
+			s.WriteString(v)
+		}
+		s.WriteObjectEnd()
 	}
 	s.WriteObjectEnd()
 }
@@ -1752,6 +2069,45 @@ func (x *ApplicationInvalidatedDownlinks) UnmarshalProtoJSON(s *jsonplugin.Unmar
 		case "session_key_id", "sessionKeyId":
 			s.AddField("session_key_id")
 			x.SessionKeyId = s.ReadBytes()
+		case "locations":
+			s.AddField("locations")
+			if s.ReadNil() {
+				x.Locations = nil
+				return
+			}
+			x.Locations = make(map[string]*Location)
+			s.ReadStringMap(func(key string) {
+				var v Location
+				v.UnmarshalProtoJSON(s)
+				x.Locations[key] = &v
+			})
+		case "version_ids", "versionIds":
+			s.AddField("version_ids")
+			if s.ReadNil() {
+				x.VersionIds = nil
+				return
+			}
+			// NOTE: EndDeviceVersionIdentifiers does not seem to implement UnmarshalProtoJSON.
+			var v EndDeviceVersionIdentifiers
+			golang.UnmarshalMessage(s, &v)
+			x.VersionIds = &v
+		case "network_ids", "networkIds":
+			if s.ReadNil() {
+				x.NetworkIds = nil
+				return
+			}
+			x.NetworkIds = &NetworkIdentifiers{}
+			x.NetworkIds.UnmarshalProtoJSON(s.WithField("network_ids", true))
+		case "attributes":
+			s.AddField("attributes")
+			if s.ReadNil() {
+				x.Attributes = nil
+				return
+			}
+			x.Attributes = make(map[string]string)
+			s.ReadStringMap(func(key string) {
+				x.Attributes[key] = s.ReadString()
+			})
 		}
 	})
 }
@@ -1843,6 +2199,142 @@ func (x *DownlinkQueueOperationErrorDetails) UnmarshalJSON(b []byte) error {
 	return jsonplugin.DefaultUnmarshalerConfig.Unmarshal(b, x)
 }
 
+// MarshalProtoJSON marshals the ApplicationServiceData message to JSON.
+func (x *ApplicationServiceData) MarshalProtoJSON(s *jsonplugin.MarshalState) {
+	if x == nil {
+		s.WriteNil()
+		return
+	}
+	s.WriteObjectStart()
+	var wroteField bool
+	if x.Service != "" || s.HasField("service") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("service")
+		s.WriteString(x.Service)
+	}
+	if x.Data != nil || s.HasField("data") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("data")
+		if x.Data == nil {
+			s.WriteNil()
+		} else {
+			golang.MarshalStruct(s, x.Data)
+		}
+	}
+	if x.Locations != nil || s.HasField("locations") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("locations")
+		s.WriteObjectStart()
+		var wroteElement bool
+		for k, v := range x.Locations {
+			s.WriteMoreIf(&wroteElement)
+			s.WriteObjectStringField(k)
+			v.MarshalProtoJSON(s.WithField("locations"))
+		}
+		s.WriteObjectEnd()
+	}
+	if x.VersionIds != nil || s.HasField("version_ids") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("version_ids")
+		// NOTE: EndDeviceVersionIdentifiers does not seem to implement MarshalProtoJSON.
+		golang.MarshalMessage(s, x.VersionIds)
+	}
+	if x.NetworkIds != nil || s.HasField("network_ids") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("network_ids")
+		x.NetworkIds.MarshalProtoJSON(s.WithField("network_ids"))
+	}
+	if x.Attributes != nil || s.HasField("attributes") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("attributes")
+		s.WriteObjectStart()
+		var wroteElement bool
+		for k, v := range x.Attributes {
+			s.WriteMoreIf(&wroteElement)
+			s.WriteObjectStringField(k)
+			s.WriteString(v)
+		}
+		s.WriteObjectEnd()
+	}
+	s.WriteObjectEnd()
+}
+
+// MarshalJSON marshals the ApplicationServiceData to JSON.
+func (x *ApplicationServiceData) MarshalJSON() ([]byte, error) {
+	return jsonplugin.DefaultMarshalerConfig.Marshal(x)
+}
+
+// UnmarshalProtoJSON unmarshals the ApplicationServiceData message from JSON.
+func (x *ApplicationServiceData) UnmarshalProtoJSON(s *jsonplugin.UnmarshalState) {
+	if s.ReadNil() {
+		return
+	}
+	s.ReadObject(func(key string) {
+		switch key {
+		default:
+			s.ReadAny() // ignore unknown field
+		case "service":
+			s.AddField("service")
+			x.Service = s.ReadString()
+		case "data":
+			s.AddField("data")
+			if s.ReadNil() {
+				x.Data = nil
+				return
+			}
+			v := golang.UnmarshalStruct(s)
+			if s.Err() != nil {
+				return
+			}
+			x.Data = v
+		case "locations":
+			s.AddField("locations")
+			if s.ReadNil() {
+				x.Locations = nil
+				return
+			}
+			x.Locations = make(map[string]*Location)
+			s.ReadStringMap(func(key string) {
+				var v Location
+				v.UnmarshalProtoJSON(s)
+				x.Locations[key] = &v
+			})
+		case "version_ids", "versionIds":
+			s.AddField("version_ids")
+			if s.ReadNil() {
+				x.VersionIds = nil
+				return
+			}
+			// NOTE: EndDeviceVersionIdentifiers does not seem to implement UnmarshalProtoJSON.
+			var v EndDeviceVersionIdentifiers
+			golang.UnmarshalMessage(s, &v)
+			x.VersionIds = &v
+		case "network_ids", "networkIds":
+			if s.ReadNil() {
+				x.NetworkIds = nil
+				return
+			}
+			x.NetworkIds = &NetworkIdentifiers{}
+			x.NetworkIds.UnmarshalProtoJSON(s.WithField("network_ids", true))
+		case "attributes":
+			s.AddField("attributes")
+			if s.ReadNil() {
+				x.Attributes = nil
+				return
+			}
+			x.Attributes = make(map[string]string)
+			s.ReadStringMap(func(key string) {
+				x.Attributes[key] = s.ReadString()
+			})
+		}
+	})
+}
+
+// UnmarshalJSON unmarshals the ApplicationServiceData from JSON.
+func (x *ApplicationServiceData) UnmarshalJSON(b []byte) error {
+	return jsonplugin.DefaultUnmarshalerConfig.Unmarshal(b, x)
+}
+
 // MarshalProtoJSON marshals the ApplicationUp message to JSON.
 func (x *ApplicationUp) MarshalProtoJSON(s *jsonplugin.MarshalState) {
 	if x == nil {
@@ -1915,8 +2407,7 @@ func (x *ApplicationUp) MarshalProtoJSON(s *jsonplugin.MarshalState) {
 		case *ApplicationUp_ServiceData:
 			s.WriteMoreIf(&wroteField)
 			s.WriteObjectField("service_data")
-			// NOTE: ApplicationServiceData does not seem to implement MarshalProtoJSON.
-			golang.MarshalMessage(s, ov.ServiceData)
+			ov.ServiceData.MarshalProtoJSON(s.WithField("service_data"))
 		}
 	}
 	if x.Simulated || s.HasField("simulated") {
@@ -2057,17 +2548,14 @@ func (x *ApplicationUp) UnmarshalProtoJSON(s *jsonplugin.UnmarshalState) {
 			ov.LocationSolved = &ApplicationLocation{}
 			ov.LocationSolved.UnmarshalProtoJSON(s.WithField("location_solved", true))
 		case "service_data", "serviceData":
-			s.AddField("service_data")
 			ov := &ApplicationUp_ServiceData{}
 			x.Up = ov
 			if s.ReadNil() {
 				ov.ServiceData = nil
 				return
 			}
-			// NOTE: ApplicationServiceData does not seem to implement UnmarshalProtoJSON.
-			var v ApplicationServiceData
-			golang.UnmarshalMessage(s, &v)
-			ov.ServiceData = &v
+			ov.ServiceData = &ApplicationServiceData{}
+			ov.ServiceData.UnmarshalProtoJSON(s.WithField("service_data", true))
 		case "simulated":
 			s.AddField("simulated")
 			x.Simulated = s.ReadBool()

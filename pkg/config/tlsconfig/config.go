@@ -20,20 +20,21 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"os"
+	"strings"
 	"sync/atomic"
 
 	"go.thethings.network/lorawan-stack/v3/pkg/errors"
 	"go.thethings.network/lorawan-stack/v3/pkg/fetch"
 	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
+	"golang.org/x/net/idna"
 )
 
 // ACME represents ACME configuration.
 type ACME struct {
 	manager *autocert.Manager
 
-	// TODO: Remove Enable (https://github.com/TheThingsNetwork/lorawan-stack/issues/1450)
-	Enable      bool     `name:"enable" description:"Enable automated certificate management (ACME). This setting is deprecated; set the TLS config source to acme instead"` //nolint:lll
+	Enable      bool     `name:"enable" description:"Enable automated certificate management (ACME)"`
 	Endpoint    string   `name:"endpoint" description:"ACME endpoint"`
 	Dir         string   `name:"dir" description:"Location of ACME storage directory"`
 	Email       string   `name:"email" description:"Email address to register with the ACME account"`
@@ -42,8 +43,9 @@ type ACME struct {
 }
 
 var (
-	errMissingACMEDir      = errors.Define("missing_acme_dir", "missing ACME storage directory")
-	errMissingACMEEndpoint = errors.Define("missing_acme_endpoint", "missing ACME endpoint")
+	errMissingACMEDir         = errors.Define("missing_acme_dir", "missing ACME storage directory")
+	errMissingACMEEndpoint    = errors.Define("missing_acme_endpoint", "missing ACME endpoint")
+	errMissingACMEDefaultHost = errors.Define("missing_acme_default_host", "missing ACME default host")
 )
 
 // Initialize initializes the autocert manager for the ACME configuration.
@@ -62,7 +64,7 @@ func (a *ACME) Initialize() (*autocert.Manager, error) {
 	a.manager = &autocert.Manager{
 		Cache:      autocert.DirCache(a.Dir),
 		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(a.Hosts...),
+		HostPolicy: a.buildHostPolicy(),
 		Client: &acme.Client{
 			DirectoryURL: a.Endpoint,
 		},
@@ -80,6 +82,39 @@ func (a ACME) IsZero() bool {
 		len(a.Hosts) == 0
 }
 
+var errACMEHostNotWhitelisted = errors.DefineFailedPrecondition(
+	"acme_host_not_whitelisted", "host `{host}` for ACME not whitelisted",
+)
+
+func (a ACME) buildHostPolicy() autocert.HostPolicy {
+	var (
+		exact     = make(map[string]bool, len(a.Hosts))
+		wildcards = make(map[string]bool, len(a.Hosts))
+	)
+	for _, h := range a.Hosts {
+		h, wildcard := strings.CutPrefix(h, "*.")
+		h, err := idna.Lookup.ToASCII(h)
+		if err != nil {
+			continue
+		}
+		if wildcard {
+			wildcards[h] = true
+		} else {
+			exact[h] = true
+		}
+	}
+	return func(_ context.Context, host string) error {
+		if exact[host] {
+			return nil
+		}
+		parts := strings.SplitN(host, ".", 2)
+		if len(parts) == 2 && wildcards[parts[1]] {
+			return nil
+		}
+		return errACMEHostNotWhitelisted.WithAttributes("host", host)
+	}
+}
+
 // ServerKeyVault defines configuration for loading a TLS server certificate from the key vault.
 type ServerKeyVault struct {
 	CertificateProvider interface {
@@ -92,6 +127,7 @@ type ServerKeyVault struct {
 type Config struct {
 	Client     `name:",squash"`
 	ServerAuth `name:",squash"`
+	ACME       ACME `name:"acme"`
 }
 
 // FileReader is the interface used to read TLS certificates and keys.
@@ -191,7 +227,7 @@ type ServerAuth struct {
 	FileReader   FileReader     `json:"-" yaml:"-" name:"-"`
 	Certificate  string         `json:"certificate" yaml:"certificate" name:"certificate" description:"Location of TLS certificate"` //nolint:lll
 	Key          string         `json:"key" yaml:"key" name:"key" description:"Location of TLS private key"`
-	ACME         ACME           `name:"acme"`
+	ACME         *ACME          `json:"-" yaml:"-" name:"-"`
 	KeyVault     ServerKeyVault `name:"key-vault"`
 	CipherSuites []string       `name:"cipher-suites" description:"List of IANA names of TLS cipher suites to use (DEPRECATED)"` //nolint:lll
 }
@@ -253,7 +289,7 @@ func (c *ServerAuth) ApplyTo(tlsConfig *tls.Config) error {
 		atomicCert.Store(cert)
 		// TODO: Reload certificates on signal.
 		tlsConfig.GetCertificate = func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
-			cert := atomicCert.Load().(*tls.Certificate)
+			cert := atomicCert.Load().(*tls.Certificate) //nolint:revive
 			return cert, nil
 		}
 	case "acme":
@@ -295,10 +331,11 @@ type ClientKeyVault struct {
 
 // ClientAuth is (client-side) configuration for TLS client authentication.
 type ClientAuth struct {
-	Source      string         `name:"source" description:"Source of the TLS certificate (file, key-vault)"`
+	Source      string         `name:"source" description:"Source of the TLS certificate (file, acme, key-vault)"`
 	FileReader  FileReader     `json:"-" yaml:"-" name:"-"`
 	Certificate string         `json:"certificate" yaml:"certificate" name:"certificate" description:"Location of TLS certificate"` //nolint:lll
 	Key         string         `json:"key" yaml:"key" name:"key" description:"Location of TLS private key"`
+	ACME        *ACME          `json:"-" yaml:"-" name:"-"`
 	KeyVault    ClientKeyVault `name:"key-vault"`
 }
 
@@ -320,8 +357,30 @@ func (c *ClientAuth) ApplyTo(tlsConfig *tls.Config) error {
 		atomicCert.Store(cert)
 		// TODO: Reload certificates on signal.
 		tlsConfig.GetClientCertificate = func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
-			cert := atomicCert.Load().(*tls.Certificate)
+			cert := atomicCert.Load().(*tls.Certificate) //nolint:revive
 			return cert, nil
+		}
+	case "acme":
+		if c.ACME == nil {
+			return errInvalidTLSConfigSource.WithAttributes("source", c.Source)
+		}
+		if c.ACME.DefaultHost == "" {
+			return errMissingACMEDefaultHost.New()
+		}
+		manager, err := c.ACME.Initialize()
+		if err != nil {
+			return err
+		}
+		tlsConfig.GetClientCertificate = func(info *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+			// NOTE: This is a hack to get a client certificate from the ACME manager, while being a client and not having
+			// access to the *tls.ClientHelloInfo which was sent earlier in the handshake.
+			return manager.GetCertificate(&tls.ClientHelloInfo{
+				ServerName: c.ACME.DefaultHost,
+				// Autocert has a mechanism to determine whether ECDSA is supported; via SignatureSchemas, SupportedCurves and
+				// CipherSuites. We only have information about the server's supported signature schemes, assuming that Autocert
+				// is able to correctly determine whether ECDSA is supported or not.
+				SignatureSchemes: info.SignatureSchemes,
+			})
 		}
 	case "key-vault":
 		tlsConfig.GetClientCertificate = func(r *tls.CertificateRequestInfo) (*tls.Certificate, error) {

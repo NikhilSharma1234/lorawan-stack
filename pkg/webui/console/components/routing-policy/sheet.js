@@ -15,7 +15,7 @@
 import React from 'react'
 import classnames from 'classnames'
 
-import Icon from '@ttn-lw/components/icon'
+import Icon, { IconCheck, IconX } from '@ttn-lw/components/icon'
 import Tooltip from '@ttn-lw/components/tooltip'
 
 import Message from '@ttn-lw/lib/components/message'
@@ -29,10 +29,13 @@ import style from './routing-policy-sheet.styl'
 
 const RoutingPolicy = ({ enabled, message, positiveMessage, negativeMessage }) => (
   <Tooltip content={<Message content={enabled ? positiveMessage : negativeMessage} />}>
-    <span className={style.policy} data-enabled={enabled}>
+    <span className={classnames(style.policy, 'd-flex al-center')} data-enabled={enabled}>
       <Icon
-        icon={enabled ? 'check' : 'clear'}
-        className={classnames(style.icon, { 'c-success': enabled, 'c-error': !enabled })}
+        icon={enabled ? IconCheck : IconX}
+        className={classnames('mr-cs-xxs', {
+          'c-text-success-normal': enabled,
+          'c-text-error-normal': !enabled,
+        })}
       />
       <Message content={message} />
     </span>
@@ -54,8 +57,8 @@ const RoutingPolicySheet = ({ policy }) => {
   const { uplink = {}, downlink = {} } = policy
 
   return (
-    <div className={style.container} data-test-id="routing-policy-sheet">
-      <div className={style.uplink}>
+    <div className="d-flex direction-row" data-test-id="routing-policy-sheet">
+      <div className={classnames(style.uplink, 'mr-ls-m')}>
         <Message content={sharedMessages.uplink} component="h4" />
         <RoutingPolicy
           enabled={uplink.join_request}

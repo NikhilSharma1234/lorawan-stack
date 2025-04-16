@@ -8,7 +8,7 @@ env:
 jobs:
   release:
     name: Tag release
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
       id-token: write
@@ -80,7 +80,7 @@ jobs:
       - name: Update APT
         run: sudo apt-get -yq update
       - name: Install Snapcraft
-        run: sudo apt-get -yq --no-install-suggests --no-install-recommends install snapcraft
+        run: sudo snap install snapcraft --classic
       - name: Create Snapcraft folders
         run: |
           mkdir -p $HOME/.cache/snapcraft/download
@@ -117,9 +117,9 @@ jobs:
           printf '%s' '${{ secrets.SIGNATURE_PASSPHRASE }}' >/tmp/gpg_passphrase
           cat /tmp/gpg_passphrase | gpg --passphrase-fd 0 --no-tty --batch --import gpg_signing_key
       - name: Run Goreleaser
-        uses: goreleaser/goreleaser-action@v5
+        uses: goreleaser/goreleaser-action@v6
         with:
-          version: "v1.18.2"
+          version: "~> v2"
           args: release --config .goreleaser.release.yml --release-notes /tmp/release-notes.md --timeout 120m
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_LOGIN }}

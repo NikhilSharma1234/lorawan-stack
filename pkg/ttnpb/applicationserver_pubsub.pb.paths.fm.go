@@ -129,11 +129,15 @@ var ListApplicationPubSubsRequestFieldPathsNested = []string{
 	"application_ids",
 	"application_ids.application_id",
 	"field_mask",
+	"limit",
+	"page",
 }
 
 var ListApplicationPubSubsRequestFieldPathsTopLevel = []string{
 	"application_ids",
 	"field_mask",
+	"limit",
+	"page",
 }
 var SetApplicationPubSubRequestFieldPathsNested = []string{
 	"field_mask",

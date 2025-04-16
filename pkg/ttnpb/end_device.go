@@ -1829,6 +1829,8 @@ func (v *MACState) FieldIsZero(p string) bool {
 		return v.LorawanVersion == 0
 	case "pending_application_downlink":
 		return v.PendingApplicationDownlink == nil
+	case "pending_application_downlink.attributes":
+		return v.PendingApplicationDownlink.FieldIsZero("attributes")
 	case "pending_application_downlink.class_b_c":
 		return v.PendingApplicationDownlink.FieldIsZero("class_b_c")
 	case "pending_application_downlink.class_b_c.absolute_time":
@@ -1855,10 +1857,38 @@ func (v *MACState) FieldIsZero(p string) bool {
 		return v.PendingApplicationDownlink.FieldIsZero("f_port")
 	case "pending_application_downlink.frm_payload":
 		return v.PendingApplicationDownlink.FieldIsZero("frm_payload")
+	case "pending_application_downlink.locations":
+		return v.PendingApplicationDownlink.FieldIsZero("locations")
+	case "pending_application_downlink.network_ids":
+		return v.PendingApplicationDownlink.FieldIsZero("network_ids")
+	case "pending_application_downlink.network_ids.cluster_address":
+		return v.PendingApplicationDownlink.FieldIsZero("network_ids.cluster_address")
+	case "pending_application_downlink.network_ids.cluster_id":
+		return v.PendingApplicationDownlink.FieldIsZero("network_ids.cluster_id")
+	case "pending_application_downlink.network_ids.net_id":
+		return v.PendingApplicationDownlink.FieldIsZero("network_ids.net_id")
+	case "pending_application_downlink.network_ids.ns_id":
+		return v.PendingApplicationDownlink.FieldIsZero("network_ids.ns_id")
+	case "pending_application_downlink.network_ids.tenant_address":
+		return v.PendingApplicationDownlink.FieldIsZero("network_ids.tenant_address")
+	case "pending_application_downlink.network_ids.tenant_id":
+		return v.PendingApplicationDownlink.FieldIsZero("network_ids.tenant_id")
 	case "pending_application_downlink.priority":
 		return v.PendingApplicationDownlink.FieldIsZero("priority")
 	case "pending_application_downlink.session_key_id":
 		return v.PendingApplicationDownlink.FieldIsZero("session_key_id")
+	case "pending_application_downlink.version_ids":
+		return v.PendingApplicationDownlink.FieldIsZero("version_ids")
+	case "pending_application_downlink.version_ids.band_id":
+		return v.PendingApplicationDownlink.FieldIsZero("version_ids.band_id")
+	case "pending_application_downlink.version_ids.brand_id":
+		return v.PendingApplicationDownlink.FieldIsZero("version_ids.brand_id")
+	case "pending_application_downlink.version_ids.firmware_version":
+		return v.PendingApplicationDownlink.FieldIsZero("version_ids.firmware_version")
+	case "pending_application_downlink.version_ids.hardware_version":
+		return v.PendingApplicationDownlink.FieldIsZero("version_ids.hardware_version")
+	case "pending_application_downlink.version_ids.model_id":
+		return v.PendingApplicationDownlink.FieldIsZero("version_ids.model_id")
 	case "pending_join_request":
 		return v.PendingJoinRequest == nil
 	case "pending_join_request.cf_list":
@@ -2998,3 +3028,25 @@ func (d *EndDevice) UpdateTimestamps(src *EndDevice) {
 
 // EndDeviceFieldPathsNestedWithoutWrappers is the set of EndDevice nested paths without the wrapper paths.
 var EndDeviceFieldPathsNestedWithoutWrappers = FieldsWithoutWrappers(EndDeviceFieldPathsNested)
+
+// FieldIsZero returns whether path p is zero.
+func (v *NetworkIdentifiers) FieldIsZero(p string) bool {
+	if v == nil {
+		return true
+	}
+	switch p {
+	case "cluster_address":
+		return v.ClusterAddress == ""
+	case "cluster_id":
+		return v.ClusterId == ""
+	case "net_id":
+		return len(v.NetId) == 0
+	case "ns_id":
+		return len(v.NsId) == 0
+	case "tenant_address":
+		return v.TenantAddress == ""
+	case "tenant_id": // nolint:goconst
+		return v.TenantId == ""
+	}
+	panic(fmt.Sprintf("unknown path '%s'", p))
+}

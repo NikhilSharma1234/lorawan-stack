@@ -15,7 +15,7 @@
 package component
 
 func (c *Component) initACME() error {
-	if c.config.TLS.Source != "acme" && !c.config.TLS.ACME.Enable {
+	if !c.config.TLS.ACME.Enable {
 		return nil
 	}
 	var err error

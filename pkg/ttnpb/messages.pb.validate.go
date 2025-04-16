@@ -718,6 +718,114 @@ var _ interface {
 	ErrorName() string
 } = GatewayUplinkMessageValidationError{}
 
+// ValidateFields checks the field values on LastBatteryPercentage with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *LastBatteryPercentage) ValidateFields(paths ...string) error {
+	if m == nil {
+		return nil
+	}
+
+	if len(paths) == 0 {
+		paths = LastBatteryPercentageFieldPathsNested
+	}
+
+	for name, subs := range _processPaths(append(paths[:0:0], paths...)) {
+		_ = subs
+		switch name {
+		case "f_cnt":
+			// no validation rules for FCnt
+		case "value":
+
+			if wrapper := m.GetValue(); wrapper != nil {
+
+				if val := wrapper.GetValue(); val < 0 || val > 100 {
+					return LastBatteryPercentageValidationError{
+						field:  "value",
+						reason: "value must be inside range [0, 100]",
+					}
+				}
+
+			}
+
+		case "received_at":
+
+			if v, ok := interface{}(m.GetReceivedAt()).(interface{ ValidateFields(...string) error }); ok {
+				if err := v.ValidateFields(subs...); err != nil {
+					return LastBatteryPercentageValidationError{
+						field:  "received_at",
+						reason: "embedded message failed validation",
+						cause:  err,
+					}
+				}
+			}
+
+		default:
+			return LastBatteryPercentageValidationError{
+				field:  name,
+				reason: "invalid field path",
+			}
+		}
+	}
+	return nil
+}
+
+// LastBatteryPercentageValidationError is the validation error returned by
+// LastBatteryPercentage.ValidateFields if the designated constraints aren't met.
+type LastBatteryPercentageValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e LastBatteryPercentageValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e LastBatteryPercentageValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e LastBatteryPercentageValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e LastBatteryPercentageValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e LastBatteryPercentageValidationError) ErrorName() string {
+	return "LastBatteryPercentageValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e LastBatteryPercentageValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sLastBatteryPercentage.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = LastBatteryPercentageValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = LastBatteryPercentageValidationError{}
+
 // ValidateFields checks the field values on ApplicationUplink with the rules
 // defined in the proto definition for this message. If any rules are
 // violated, an error is returned.
@@ -916,6 +1024,53 @@ func (m *ApplicationUplink) ValidateFields(paths ...string) error {
 				}
 			}
 
+		case "last_battery_percentage":
+
+			if v, ok := interface{}(m.GetLastBatteryPercentage()).(interface{ ValidateFields(...string) error }); ok {
+				if err := v.ValidateFields(subs...); err != nil {
+					return ApplicationUplinkValidationError{
+						field:  "last_battery_percentage",
+						reason: "embedded message failed validation",
+						cause:  err,
+					}
+				}
+			}
+
+		case "attributes":
+
+			if len(m.GetAttributes()) > 10 {
+				return ApplicationUplinkValidationError{
+					field:  "attributes",
+					reason: "value must contain no more than 10 pair(s)",
+				}
+			}
+
+			for key, val := range m.GetAttributes() {
+				_ = val
+
+				if utf8.RuneCountInString(key) > 36 {
+					return ApplicationUplinkValidationError{
+						field:  fmt.Sprintf("attributes[%v]", key),
+						reason: "value length must be at most 36 runes",
+					}
+				}
+
+				if !_ApplicationUplink_Attributes_Pattern.MatchString(key) {
+					return ApplicationUplinkValidationError{
+						field:  fmt.Sprintf("attributes[%v]", key),
+						reason: "value does not match regex pattern \"^[a-z0-9](?:[-]?[a-z0-9]){2,}$\"",
+					}
+				}
+
+				if utf8.RuneCountInString(val) > 200 {
+					return ApplicationUplinkValidationError{
+						field:  fmt.Sprintf("attributes[%v]", key),
+						reason: "value length must be at most 200 runes",
+					}
+				}
+
+			}
+
 		default:
 			return ApplicationUplinkValidationError{
 				field:  name,
@@ -985,6 +1140,8 @@ var _ interface {
 var _ApplicationUplink_FPort_NotInLookup = map[uint32]struct{}{
 	224: {},
 }
+
+var _ApplicationUplink_Attributes_Pattern = regexp.MustCompile("^[a-z0-9](?:[-]?[a-z0-9]){2,}$")
 
 // ValidateFields checks the field values on ApplicationUplinkNormalized with
 // the rules defined in the proto definition for this message. If any rules
@@ -1153,6 +1310,41 @@ func (m *ApplicationUplinkNormalized) ValidateFields(paths ...string) error {
 				}
 			}
 
+		case "attributes":
+
+			if len(m.GetAttributes()) > 10 {
+				return ApplicationUplinkNormalizedValidationError{
+					field:  "attributes",
+					reason: "value must contain no more than 10 pair(s)",
+				}
+			}
+
+			for key, val := range m.GetAttributes() {
+				_ = val
+
+				if utf8.RuneCountInString(key) > 36 {
+					return ApplicationUplinkNormalizedValidationError{
+						field:  fmt.Sprintf("attributes[%v]", key),
+						reason: "value length must be at most 36 runes",
+					}
+				}
+
+				if !_ApplicationUplinkNormalized_Attributes_Pattern.MatchString(key) {
+					return ApplicationUplinkNormalizedValidationError{
+						field:  fmt.Sprintf("attributes[%v]", key),
+						reason: "value does not match regex pattern \"^[a-z0-9](?:[-]?[a-z0-9]){2,}$\"",
+					}
+				}
+
+				if utf8.RuneCountInString(val) > 200 {
+					return ApplicationUplinkNormalizedValidationError{
+						field:  fmt.Sprintf("attributes[%v]", key),
+						reason: "value length must be at most 200 runes",
+					}
+				}
+
+			}
+
 		default:
 			return ApplicationUplinkNormalizedValidationError{
 				field:  name,
@@ -1223,6 +1415,8 @@ var _ interface {
 var _ApplicationUplinkNormalized_FPort_NotInLookup = map[uint32]struct{}{
 	224: {},
 }
+
+var _ApplicationUplinkNormalized_Attributes_Pattern = regexp.MustCompile("^[a-z0-9](?:[-]?[a-z0-9]){2,}$")
 
 // ValidateFields checks the field values on ApplicationLocation with the rules
 // defined in the proto definition for this message. If any rules are
@@ -1427,6 +1621,84 @@ func (m *ApplicationJoinAccept) ValidateFields(paths ...string) error {
 				}
 			}
 
+		case "locations":
+
+			for key, val := range m.GetLocations() {
+				_ = val
+
+				// no validation rules for Locations[key]
+
+				if v, ok := interface{}(val).(interface{ ValidateFields(...string) error }); ok {
+					if err := v.ValidateFields(subs...); err != nil {
+						return ApplicationJoinAcceptValidationError{
+							field:  fmt.Sprintf("locations[%v]", key),
+							reason: "embedded message failed validation",
+							cause:  err,
+						}
+					}
+				}
+
+			}
+
+		case "version_ids":
+
+			if v, ok := interface{}(m.GetVersionIds()).(interface{ ValidateFields(...string) error }); ok {
+				if err := v.ValidateFields(subs...); err != nil {
+					return ApplicationJoinAcceptValidationError{
+						field:  "version_ids",
+						reason: "embedded message failed validation",
+						cause:  err,
+					}
+				}
+			}
+
+		case "network_ids":
+
+			if v, ok := interface{}(m.GetNetworkIds()).(interface{ ValidateFields(...string) error }); ok {
+				if err := v.ValidateFields(subs...); err != nil {
+					return ApplicationJoinAcceptValidationError{
+						field:  "network_ids",
+						reason: "embedded message failed validation",
+						cause:  err,
+					}
+				}
+			}
+
+		case "attributes":
+
+			if len(m.GetAttributes()) > 10 {
+				return ApplicationJoinAcceptValidationError{
+					field:  "attributes",
+					reason: "value must contain no more than 10 pair(s)",
+				}
+			}
+
+			for key, val := range m.GetAttributes() {
+				_ = val
+
+				if utf8.RuneCountInString(key) > 36 {
+					return ApplicationJoinAcceptValidationError{
+						field:  fmt.Sprintf("attributes[%v]", key),
+						reason: "value length must be at most 36 runes",
+					}
+				}
+
+				if !_ApplicationJoinAccept_Attributes_Pattern.MatchString(key) {
+					return ApplicationJoinAcceptValidationError{
+						field:  fmt.Sprintf("attributes[%v]", key),
+						reason: "value does not match regex pattern \"^[a-z0-9](?:[-]?[a-z0-9]){2,}$\"",
+					}
+				}
+
+				if utf8.RuneCountInString(val) > 200 {
+					return ApplicationJoinAcceptValidationError{
+						field:  fmt.Sprintf("attributes[%v]", key),
+						reason: "value length must be at most 200 runes",
+					}
+				}
+
+			}
+
 		default:
 			return ApplicationJoinAcceptValidationError{
 				field:  name,
@@ -1492,6 +1764,8 @@ var _ interface {
 	Cause() error
 	ErrorName() string
 } = ApplicationJoinAcceptValidationError{}
+
+var _ApplicationJoinAccept_Attributes_Pattern = regexp.MustCompile("^[a-z0-9](?:[-]?[a-z0-9]){2,}$")
 
 // ValidateFields checks the field values on ApplicationDownlink with the rules
 // defined in the proto definition for this message. If any rules are
@@ -1607,6 +1881,84 @@ func (m *ApplicationDownlink) ValidateFields(paths ...string) error {
 				}
 			}
 
+		case "locations":
+
+			for key, val := range m.GetLocations() {
+				_ = val
+
+				// no validation rules for Locations[key]
+
+				if v, ok := interface{}(val).(interface{ ValidateFields(...string) error }); ok {
+					if err := v.ValidateFields(subs...); err != nil {
+						return ApplicationDownlinkValidationError{
+							field:  fmt.Sprintf("locations[%v]", key),
+							reason: "embedded message failed validation",
+							cause:  err,
+						}
+					}
+				}
+
+			}
+
+		case "version_ids":
+
+			if v, ok := interface{}(m.GetVersionIds()).(interface{ ValidateFields(...string) error }); ok {
+				if err := v.ValidateFields(subs...); err != nil {
+					return ApplicationDownlinkValidationError{
+						field:  "version_ids",
+						reason: "embedded message failed validation",
+						cause:  err,
+					}
+				}
+			}
+
+		case "network_ids":
+
+			if v, ok := interface{}(m.GetNetworkIds()).(interface{ ValidateFields(...string) error }); ok {
+				if err := v.ValidateFields(subs...); err != nil {
+					return ApplicationDownlinkValidationError{
+						field:  "network_ids",
+						reason: "embedded message failed validation",
+						cause:  err,
+					}
+				}
+			}
+
+		case "attributes":
+
+			if len(m.GetAttributes()) > 10 {
+				return ApplicationDownlinkValidationError{
+					field:  "attributes",
+					reason: "value must contain no more than 10 pair(s)",
+				}
+			}
+
+			for key, val := range m.GetAttributes() {
+				_ = val
+
+				if utf8.RuneCountInString(key) > 36 {
+					return ApplicationDownlinkValidationError{
+						field:  fmt.Sprintf("attributes[%v]", key),
+						reason: "value length must be at most 36 runes",
+					}
+				}
+
+				if !_ApplicationDownlink_Attributes_Pattern.MatchString(key) {
+					return ApplicationDownlinkValidationError{
+						field:  fmt.Sprintf("attributes[%v]", key),
+						reason: "value does not match regex pattern \"^[a-z0-9](?:[-]?[a-z0-9]){2,}$\"",
+					}
+				}
+
+				if utf8.RuneCountInString(val) > 200 {
+					return ApplicationDownlinkValidationError{
+						field:  fmt.Sprintf("attributes[%v]", key),
+						reason: "value length must be at most 200 runes",
+					}
+				}
+
+			}
+
 		default:
 			return ApplicationDownlinkValidationError{
 				field:  name,
@@ -1676,6 +2028,8 @@ var _ interface {
 var _ApplicationDownlink_FPort_NotInLookup = map[uint32]struct{}{
 	224: {},
 }
+
+var _ApplicationDownlink_Attributes_Pattern = regexp.MustCompile("^[a-z0-9](?:[-]?[a-z0-9]){2,}$")
 
 // ValidateFields checks the field values on ApplicationDownlinks with the
 // rules defined in the proto definition for this message. If any rules are
@@ -1828,6 +2182,84 @@ func (m *ApplicationDownlinkFailed) ValidateFields(paths ...string) error {
 				}
 			}
 
+		case "locations":
+
+			for key, val := range m.GetLocations() {
+				_ = val
+
+				// no validation rules for Locations[key]
+
+				if v, ok := interface{}(val).(interface{ ValidateFields(...string) error }); ok {
+					if err := v.ValidateFields(subs...); err != nil {
+						return ApplicationDownlinkFailedValidationError{
+							field:  fmt.Sprintf("locations[%v]", key),
+							reason: "embedded message failed validation",
+							cause:  err,
+						}
+					}
+				}
+
+			}
+
+		case "version_ids":
+
+			if v, ok := interface{}(m.GetVersionIds()).(interface{ ValidateFields(...string) error }); ok {
+				if err := v.ValidateFields(subs...); err != nil {
+					return ApplicationDownlinkFailedValidationError{
+						field:  "version_ids",
+						reason: "embedded message failed validation",
+						cause:  err,
+					}
+				}
+			}
+
+		case "network_ids":
+
+			if v, ok := interface{}(m.GetNetworkIds()).(interface{ ValidateFields(...string) error }); ok {
+				if err := v.ValidateFields(subs...); err != nil {
+					return ApplicationDownlinkFailedValidationError{
+						field:  "network_ids",
+						reason: "embedded message failed validation",
+						cause:  err,
+					}
+				}
+			}
+
+		case "attributes":
+
+			if len(m.GetAttributes()) > 10 {
+				return ApplicationDownlinkFailedValidationError{
+					field:  "attributes",
+					reason: "value must contain no more than 10 pair(s)",
+				}
+			}
+
+			for key, val := range m.GetAttributes() {
+				_ = val
+
+				if utf8.RuneCountInString(key) > 36 {
+					return ApplicationDownlinkFailedValidationError{
+						field:  fmt.Sprintf("attributes[%v]", key),
+						reason: "value length must be at most 36 runes",
+					}
+				}
+
+				if !_ApplicationDownlinkFailed_Attributes_Pattern.MatchString(key) {
+					return ApplicationDownlinkFailedValidationError{
+						field:  fmt.Sprintf("attributes[%v]", key),
+						reason: "value does not match regex pattern \"^[a-z0-9](?:[-]?[a-z0-9]){2,}$\"",
+					}
+				}
+
+				if utf8.RuneCountInString(val) > 200 {
+					return ApplicationDownlinkFailedValidationError{
+						field:  fmt.Sprintf("attributes[%v]", key),
+						reason: "value length must be at most 200 runes",
+					}
+				}
+
+			}
+
 		default:
 			return ApplicationDownlinkFailedValidationError{
 				field:  name,
@@ -1895,6 +2327,8 @@ var _ interface {
 	ErrorName() string
 } = ApplicationDownlinkFailedValidationError{}
 
+var _ApplicationDownlinkFailed_Attributes_Pattern = regexp.MustCompile("^[a-z0-9](?:[-]?[a-z0-9]){2,}$")
+
 // ValidateFields checks the field values on ApplicationInvalidatedDownlinks
 // with the rules defined in the proto definition for this message. If any
 // rules are violated, an error is returned.
@@ -1936,6 +2370,84 @@ func (m *ApplicationInvalidatedDownlinks) ValidateFields(paths ...string) error 
 					field:  "session_key_id",
 					reason: "value length must be at most 2048 bytes",
 				}
+			}
+
+		case "locations":
+
+			for key, val := range m.GetLocations() {
+				_ = val
+
+				// no validation rules for Locations[key]
+
+				if v, ok := interface{}(val).(interface{ ValidateFields(...string) error }); ok {
+					if err := v.ValidateFields(subs...); err != nil {
+						return ApplicationInvalidatedDownlinksValidationError{
+							field:  fmt.Sprintf("locations[%v]", key),
+							reason: "embedded message failed validation",
+							cause:  err,
+						}
+					}
+				}
+
+			}
+
+		case "version_ids":
+
+			if v, ok := interface{}(m.GetVersionIds()).(interface{ ValidateFields(...string) error }); ok {
+				if err := v.ValidateFields(subs...); err != nil {
+					return ApplicationInvalidatedDownlinksValidationError{
+						field:  "version_ids",
+						reason: "embedded message failed validation",
+						cause:  err,
+					}
+				}
+			}
+
+		case "network_ids":
+
+			if v, ok := interface{}(m.GetNetworkIds()).(interface{ ValidateFields(...string) error }); ok {
+				if err := v.ValidateFields(subs...); err != nil {
+					return ApplicationInvalidatedDownlinksValidationError{
+						field:  "network_ids",
+						reason: "embedded message failed validation",
+						cause:  err,
+					}
+				}
+			}
+
+		case "attributes":
+
+			if len(m.GetAttributes()) > 10 {
+				return ApplicationInvalidatedDownlinksValidationError{
+					field:  "attributes",
+					reason: "value must contain no more than 10 pair(s)",
+				}
+			}
+
+			for key, val := range m.GetAttributes() {
+				_ = val
+
+				if utf8.RuneCountInString(key) > 36 {
+					return ApplicationInvalidatedDownlinksValidationError{
+						field:  fmt.Sprintf("attributes[%v]", key),
+						reason: "value length must be at most 36 runes",
+					}
+				}
+
+				if !_ApplicationInvalidatedDownlinks_Attributes_Pattern.MatchString(key) {
+					return ApplicationInvalidatedDownlinksValidationError{
+						field:  fmt.Sprintf("attributes[%v]", key),
+						reason: "value does not match regex pattern \"^[a-z0-9](?:[-]?[a-z0-9]){2,}$\"",
+					}
+				}
+
+				if utf8.RuneCountInString(val) > 200 {
+					return ApplicationInvalidatedDownlinksValidationError{
+						field:  fmt.Sprintf("attributes[%v]", key),
+						reason: "value length must be at most 200 runes",
+					}
+				}
+
 			}
 
 		default:
@@ -2004,6 +2516,8 @@ var _ interface {
 	Cause() error
 	ErrorName() string
 } = ApplicationInvalidatedDownlinksValidationError{}
+
+var _ApplicationInvalidatedDownlinks_Attributes_Pattern = regexp.MustCompile("^[a-z0-9](?:[-]?[a-z0-9]){2,}$")
 
 // ValidateFields checks the field values on DownlinkQueueOperationErrorDetails
 // with the rules defined in the proto definition for this message. If any
@@ -2164,6 +2678,84 @@ func (m *ApplicationServiceData) ValidateFields(paths ...string) error {
 				}
 			}
 
+		case "locations":
+
+			for key, val := range m.GetLocations() {
+				_ = val
+
+				// no validation rules for Locations[key]
+
+				if v, ok := interface{}(val).(interface{ ValidateFields(...string) error }); ok {
+					if err := v.ValidateFields(subs...); err != nil {
+						return ApplicationServiceDataValidationError{
+							field:  fmt.Sprintf("locations[%v]", key),
+							reason: "embedded message failed validation",
+							cause:  err,
+						}
+					}
+				}
+
+			}
+
+		case "version_ids":
+
+			if v, ok := interface{}(m.GetVersionIds()).(interface{ ValidateFields(...string) error }); ok {
+				if err := v.ValidateFields(subs...); err != nil {
+					return ApplicationServiceDataValidationError{
+						field:  "version_ids",
+						reason: "embedded message failed validation",
+						cause:  err,
+					}
+				}
+			}
+
+		case "network_ids":
+
+			if v, ok := interface{}(m.GetNetworkIds()).(interface{ ValidateFields(...string) error }); ok {
+				if err := v.ValidateFields(subs...); err != nil {
+					return ApplicationServiceDataValidationError{
+						field:  "network_ids",
+						reason: "embedded message failed validation",
+						cause:  err,
+					}
+				}
+			}
+
+		case "attributes":
+
+			if len(m.GetAttributes()) > 10 {
+				return ApplicationServiceDataValidationError{
+					field:  "attributes",
+					reason: "value must contain no more than 10 pair(s)",
+				}
+			}
+
+			for key, val := range m.GetAttributes() {
+				_ = val
+
+				if utf8.RuneCountInString(key) > 36 {
+					return ApplicationServiceDataValidationError{
+						field:  fmt.Sprintf("attributes[%v]", key),
+						reason: "value length must be at most 36 runes",
+					}
+				}
+
+				if !_ApplicationServiceData_Attributes_Pattern.MatchString(key) {
+					return ApplicationServiceDataValidationError{
+						field:  fmt.Sprintf("attributes[%v]", key),
+						reason: "value does not match regex pattern \"^[a-z0-9](?:[-]?[a-z0-9]){2,}$\"",
+					}
+				}
+
+				if utf8.RuneCountInString(val) > 200 {
+					return ApplicationServiceDataValidationError{
+						field:  fmt.Sprintf("attributes[%v]", key),
+						reason: "value length must be at most 200 runes",
+					}
+				}
+
+			}
+
 		default:
 			return ApplicationServiceDataValidationError{
 				field:  name,
@@ -2229,6 +2821,8 @@ var _ interface {
 	Cause() error
 	ErrorName() string
 } = ApplicationServiceDataValidationError{}
+
+var _ApplicationServiceData_Attributes_Pattern = regexp.MustCompile("^[a-z0-9](?:[-]?[a-z0-9]){2,}$")
 
 // ValidateFields checks the field values on ApplicationUp with the rules
 // defined in the proto definition for this message. If any rules are

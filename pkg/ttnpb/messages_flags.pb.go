@@ -38,6 +38,9 @@ func AddSelectFlagsForApplicationUplink(flags *pflag.FlagSet, prefix string, hid
 	AddSelectFlagsForEndDeviceVersionIdentifiers(flags, flagsplugin.Prefix("version-ids", prefix), hidden)
 	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("network-ids", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("network-ids", prefix), true), flagsplugin.WithHidden(hidden)))
 	AddSelectFlagsForNetworkIdentifiers(flags, flagsplugin.Prefix("network-ids", prefix), hidden)
+	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("last-battery-percentage", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("last-battery-percentage", prefix), true), flagsplugin.WithHidden(hidden)))
+	// NOTE: last_battery_percentage (LastBatteryPercentage) does not seem to have select flags.
+	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("attributes", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("attributes", prefix), false), flagsplugin.WithHidden(hidden)))
 }
 
 // SelectFromFlags outputs the fieldmask paths forApplicationUplink message from select flags.
@@ -157,6 +160,17 @@ func PathsFromSelectFlagsForApplicationUplink(flags *pflag.FlagSet, prefix strin
 	} else {
 		paths = append(paths, selectPaths...)
 	}
+	if val, selected, err := flagsplugin.GetBool(flags, flagsplugin.Prefix("last_battery_percentage", prefix)); err != nil {
+		return nil, err
+	} else if selected && val {
+		paths = append(paths, flagsplugin.Prefix("last_battery_percentage", prefix))
+	}
+	// NOTE: last_battery_percentage (LastBatteryPercentage) does not seem to have select flags.
+	if val, selected, err := flagsplugin.GetBool(flags, flagsplugin.Prefix("attributes", prefix)); err != nil {
+		return nil, err
+	} else if selected && val {
+		paths = append(paths, flagsplugin.Prefix("attributes", prefix))
+	}
 	return paths, nil
 }
 
@@ -181,6 +195,8 @@ func AddSetFlagsForApplicationUplink(flags *pflag.FlagSet, prefix string, hidden
 	// FIXME: Skipping Locations because maps with message value types are currently not supported.
 	AddSetFlagsForEndDeviceVersionIdentifiers(flags, flagsplugin.Prefix("version-ids", prefix), hidden)
 	AddSetFlagsForNetworkIdentifiers(flags, flagsplugin.Prefix("network-ids", prefix), hidden)
+	// FIXME: Skipping LastBatteryPercentage because it does not seem to implement AddSetFlags.
+	flags.AddFlag(flagsplugin.NewStringStringMapFlag(flagsplugin.Prefix("attributes", prefix), "", flagsplugin.WithHidden(hidden)))
 }
 
 // SetFromFlags sets the ApplicationUplink message from flags.
@@ -295,6 +311,13 @@ func (m *ApplicationUplink) SetFromFlags(flags *pflag.FlagSet, prefix string) (p
 			paths = append(paths, setPaths...)
 		}
 	}
+	// FIXME: Skipping LastBatteryPercentage because it does not seem to implement AddSetFlags.
+	if val, changed, err := flagsplugin.GetStringStringMap(flags, flagsplugin.Prefix("attributes", prefix)); err != nil {
+		return nil, err
+	} else if changed {
+		m.Attributes = val
+		paths = append(paths, flagsplugin.Prefix("attributes", prefix))
+	}
 	return paths, nil
 }
 
@@ -317,6 +340,7 @@ func AddSelectFlagsForApplicationUplinkNormalized(flags *pflag.FlagSet, prefix s
 	AddSelectFlagsForEndDeviceVersionIdentifiers(flags, flagsplugin.Prefix("version-ids", prefix), hidden)
 	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("network-ids", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("network-ids", prefix), true), flagsplugin.WithHidden(hidden)))
 	AddSelectFlagsForNetworkIdentifiers(flags, flagsplugin.Prefix("network-ids", prefix), hidden)
+	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("attributes", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("attributes", prefix), false), flagsplugin.WithHidden(hidden)))
 }
 
 // SelectFromFlags outputs the fieldmask paths forApplicationUplinkNormalized message from select flags.
@@ -406,6 +430,11 @@ func PathsFromSelectFlagsForApplicationUplinkNormalized(flags *pflag.FlagSet, pr
 	} else {
 		paths = append(paths, selectPaths...)
 	}
+	if val, selected, err := flagsplugin.GetBool(flags, flagsplugin.Prefix("attributes", prefix)); err != nil {
+		return nil, err
+	} else if selected && val {
+		paths = append(paths, flagsplugin.Prefix("attributes", prefix))
+	}
 	return paths, nil
 }
 
@@ -450,6 +479,12 @@ func AddSelectFlagsForApplicationJoinAccept(flags *pflag.FlagSet, prefix string,
 	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("invalidated-downlinks", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("invalidated-downlinks", prefix), false), flagsplugin.WithHidden(hidden)))
 	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("pending-session", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("pending-session", prefix), false), flagsplugin.WithHidden(hidden)))
 	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("received-at", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("received-at", prefix), false), flagsplugin.WithHidden(hidden)))
+	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("locations", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("locations", prefix), false), flagsplugin.WithHidden(hidden)))
+	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("version-ids", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("version-ids", prefix), true), flagsplugin.WithHidden(hidden)))
+	AddSelectFlagsForEndDeviceVersionIdentifiers(flags, flagsplugin.Prefix("version-ids", prefix), hidden)
+	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("network-ids", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("network-ids", prefix), true), flagsplugin.WithHidden(hidden)))
+	AddSelectFlagsForNetworkIdentifiers(flags, flagsplugin.Prefix("network-ids", prefix), hidden)
+	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("attributes", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("attributes", prefix), false), flagsplugin.WithHidden(hidden)))
 }
 
 // SelectFromFlags outputs the fieldmask paths forApplicationJoinAccept message from select flags.
@@ -483,6 +518,36 @@ func PathsFromSelectFlagsForApplicationJoinAccept(flags *pflag.FlagSet, prefix s
 		return nil, err
 	} else if selected && val {
 		paths = append(paths, flagsplugin.Prefix("received_at", prefix))
+	}
+	if val, selected, err := flagsplugin.GetBool(flags, flagsplugin.Prefix("locations", prefix)); err != nil {
+		return nil, err
+	} else if selected && val {
+		paths = append(paths, flagsplugin.Prefix("locations", prefix))
+	}
+	if val, selected, err := flagsplugin.GetBool(flags, flagsplugin.Prefix("version_ids", prefix)); err != nil {
+		return nil, err
+	} else if selected && val {
+		paths = append(paths, flagsplugin.Prefix("version_ids", prefix))
+	}
+	if selectPaths, err := PathsFromSelectFlagsForEndDeviceVersionIdentifiers(flags, flagsplugin.Prefix("version_ids", prefix)); err != nil {
+		return nil, err
+	} else {
+		paths = append(paths, selectPaths...)
+	}
+	if val, selected, err := flagsplugin.GetBool(flags, flagsplugin.Prefix("network_ids", prefix)); err != nil {
+		return nil, err
+	} else if selected && val {
+		paths = append(paths, flagsplugin.Prefix("network_ids", prefix))
+	}
+	if selectPaths, err := PathsFromSelectFlagsForNetworkIdentifiers(flags, flagsplugin.Prefix("network_ids", prefix)); err != nil {
+		return nil, err
+	} else {
+		paths = append(paths, selectPaths...)
+	}
+	if val, selected, err := flagsplugin.GetBool(flags, flagsplugin.Prefix("attributes", prefix)); err != nil {
+		return nil, err
+	} else if selected && val {
+		paths = append(paths, flagsplugin.Prefix("attributes", prefix))
 	}
 	return paths, nil
 }
@@ -585,6 +650,12 @@ func AddSelectFlagsForApplicationDownlink(flags *pflag.FlagSet, prefix string, h
 	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("correlation-ids", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("correlation-ids", prefix), false), flagsplugin.WithHidden(hidden)))
 	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("confirmed-retry", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("confirmed-retry", prefix), true), flagsplugin.WithHidden(hidden)))
 	AddSelectFlagsForApplicationDownlink_ConfirmedRetry(flags, flagsplugin.Prefix("confirmed-retry", prefix), hidden)
+	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("locations", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("locations", prefix), false), flagsplugin.WithHidden(hidden)))
+	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("version-ids", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("version-ids", prefix), true), flagsplugin.WithHidden(hidden)))
+	AddSelectFlagsForEndDeviceVersionIdentifiers(flags, flagsplugin.Prefix("version-ids", prefix), hidden)
+	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("network-ids", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("network-ids", prefix), true), flagsplugin.WithHidden(hidden)))
+	AddSelectFlagsForNetworkIdentifiers(flags, flagsplugin.Prefix("network-ids", prefix), hidden)
+	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("attributes", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("attributes", prefix), false), flagsplugin.WithHidden(hidden)))
 }
 
 // SelectFromFlags outputs the fieldmask paths forApplicationDownlink message from select flags.
@@ -654,6 +725,36 @@ func PathsFromSelectFlagsForApplicationDownlink(flags *pflag.FlagSet, prefix str
 	} else {
 		paths = append(paths, selectPaths...)
 	}
+	if val, selected, err := flagsplugin.GetBool(flags, flagsplugin.Prefix("locations", prefix)); err != nil {
+		return nil, err
+	} else if selected && val {
+		paths = append(paths, flagsplugin.Prefix("locations", prefix))
+	}
+	if val, selected, err := flagsplugin.GetBool(flags, flagsplugin.Prefix("version_ids", prefix)); err != nil {
+		return nil, err
+	} else if selected && val {
+		paths = append(paths, flagsplugin.Prefix("version_ids", prefix))
+	}
+	if selectPaths, err := PathsFromSelectFlagsForEndDeviceVersionIdentifiers(flags, flagsplugin.Prefix("version_ids", prefix)); err != nil {
+		return nil, err
+	} else {
+		paths = append(paths, selectPaths...)
+	}
+	if val, selected, err := flagsplugin.GetBool(flags, flagsplugin.Prefix("network_ids", prefix)); err != nil {
+		return nil, err
+	} else if selected && val {
+		paths = append(paths, flagsplugin.Prefix("network_ids", prefix))
+	}
+	if selectPaths, err := PathsFromSelectFlagsForNetworkIdentifiers(flags, flagsplugin.Prefix("network_ids", prefix)); err != nil {
+		return nil, err
+	} else {
+		paths = append(paths, selectPaths...)
+	}
+	if val, selected, err := flagsplugin.GetBool(flags, flagsplugin.Prefix("attributes", prefix)); err != nil {
+		return nil, err
+	} else if selected && val {
+		paths = append(paths, flagsplugin.Prefix("attributes", prefix))
+	}
 	return paths, nil
 }
 
@@ -670,6 +771,10 @@ func AddSetFlagsForApplicationDownlink(flags *pflag.FlagSet, prefix string, hidd
 	flags.AddFlag(flagsplugin.NewStringFlag(flagsplugin.Prefix("priority", prefix), flagsplugin.EnumValueDesc(TxSchedulePriority_value), flagsplugin.WithHidden(hidden)))
 	flags.AddFlag(flagsplugin.NewStringSliceFlag(flagsplugin.Prefix("correlation-ids", prefix), "", flagsplugin.WithHidden(hidden)))
 	AddSetFlagsForApplicationDownlink_ConfirmedRetry(flags, flagsplugin.Prefix("confirmed-retry", prefix), hidden)
+	// FIXME: Skipping Locations because maps with message value types are currently not supported.
+	AddSetFlagsForEndDeviceVersionIdentifiers(flags, flagsplugin.Prefix("version-ids", prefix), hidden)
+	AddSetFlagsForNetworkIdentifiers(flags, flagsplugin.Prefix("network-ids", prefix), hidden)
+	flags.AddFlag(flagsplugin.NewStringStringMapFlag(flagsplugin.Prefix("attributes", prefix), "", flagsplugin.WithHidden(hidden)))
 }
 
 // SetFromFlags sets the ApplicationDownlink message from flags.
@@ -747,6 +852,33 @@ func (m *ApplicationDownlink) SetFromFlags(flags *pflag.FlagSet, prefix string) 
 			paths = append(paths, setPaths...)
 		}
 	}
+	// FIXME: Skipping Locations because maps with message value types are currently not supported.
+	if changed := flagsplugin.IsAnyPrefixSet(flags, flagsplugin.Prefix("version_ids", prefix)); changed {
+		if m.VersionIds == nil {
+			m.VersionIds = &EndDeviceVersionIdentifiers{}
+		}
+		if setPaths, err := m.VersionIds.SetFromFlags(flags, flagsplugin.Prefix("version_ids", prefix)); err != nil {
+			return nil, err
+		} else {
+			paths = append(paths, setPaths...)
+		}
+	}
+	if changed := flagsplugin.IsAnyPrefixSet(flags, flagsplugin.Prefix("network_ids", prefix)); changed {
+		if m.NetworkIds == nil {
+			m.NetworkIds = &NetworkIdentifiers{}
+		}
+		if setPaths, err := m.NetworkIds.SetFromFlags(flags, flagsplugin.Prefix("network_ids", prefix)); err != nil {
+			return nil, err
+		} else {
+			paths = append(paths, setPaths...)
+		}
+	}
+	if val, changed, err := flagsplugin.GetStringStringMap(flags, flagsplugin.Prefix("attributes", prefix)); err != nil {
+		return nil, err
+	} else if changed {
+		m.Attributes = val
+		paths = append(paths, flagsplugin.Prefix("attributes", prefix))
+	}
 	return paths, nil
 }
 
@@ -756,6 +888,12 @@ func AddSelectFlagsForApplicationDownlinkFailed(flags *pflag.FlagSet, prefix str
 	AddSelectFlagsForApplicationDownlink(flags, flagsplugin.Prefix("downlink", prefix), hidden)
 	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("error", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("error", prefix), true), flagsplugin.WithHidden(hidden)))
 	// NOTE: error (ErrorDetails) does not seem to have select flags.
+	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("locations", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("locations", prefix), false), flagsplugin.WithHidden(hidden)))
+	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("version-ids", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("version-ids", prefix), true), flagsplugin.WithHidden(hidden)))
+	AddSelectFlagsForEndDeviceVersionIdentifiers(flags, flagsplugin.Prefix("version-ids", prefix), hidden)
+	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("network-ids", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("network-ids", prefix), true), flagsplugin.WithHidden(hidden)))
+	AddSelectFlagsForNetworkIdentifiers(flags, flagsplugin.Prefix("network-ids", prefix), hidden)
+	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("attributes", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("attributes", prefix), false), flagsplugin.WithHidden(hidden)))
 }
 
 // SelectFromFlags outputs the fieldmask paths forApplicationDownlinkFailed message from select flags.
@@ -776,6 +914,36 @@ func PathsFromSelectFlagsForApplicationDownlinkFailed(flags *pflag.FlagSet, pref
 		paths = append(paths, flagsplugin.Prefix("error", prefix))
 	}
 	// NOTE: error (ErrorDetails) does not seem to have select flags.
+	if val, selected, err := flagsplugin.GetBool(flags, flagsplugin.Prefix("locations", prefix)); err != nil {
+		return nil, err
+	} else if selected && val {
+		paths = append(paths, flagsplugin.Prefix("locations", prefix))
+	}
+	if val, selected, err := flagsplugin.GetBool(flags, flagsplugin.Prefix("version_ids", prefix)); err != nil {
+		return nil, err
+	} else if selected && val {
+		paths = append(paths, flagsplugin.Prefix("version_ids", prefix))
+	}
+	if selectPaths, err := PathsFromSelectFlagsForEndDeviceVersionIdentifiers(flags, flagsplugin.Prefix("version_ids", prefix)); err != nil {
+		return nil, err
+	} else {
+		paths = append(paths, selectPaths...)
+	}
+	if val, selected, err := flagsplugin.GetBool(flags, flagsplugin.Prefix("network_ids", prefix)); err != nil {
+		return nil, err
+	} else if selected && val {
+		paths = append(paths, flagsplugin.Prefix("network_ids", prefix))
+	}
+	if selectPaths, err := PathsFromSelectFlagsForNetworkIdentifiers(flags, flagsplugin.Prefix("network_ids", prefix)); err != nil {
+		return nil, err
+	} else {
+		paths = append(paths, selectPaths...)
+	}
+	if val, selected, err := flagsplugin.GetBool(flags, flagsplugin.Prefix("attributes", prefix)); err != nil {
+		return nil, err
+	} else if selected && val {
+		paths = append(paths, flagsplugin.Prefix("attributes", prefix))
+	}
 	return paths, nil
 }
 
@@ -784,6 +952,12 @@ func AddSelectFlagsForApplicationInvalidatedDownlinks(flags *pflag.FlagSet, pref
 	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("downlinks", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("downlinks", prefix), false), flagsplugin.WithHidden(hidden)))
 	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("last-f-cnt-down", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("last-f-cnt-down", prefix), false), flagsplugin.WithHidden(hidden)))
 	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("session-key-id", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("session-key-id", prefix), false), flagsplugin.WithHidden(hidden)))
+	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("locations", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("locations", prefix), false), flagsplugin.WithHidden(hidden)))
+	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("version-ids", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("version-ids", prefix), true), flagsplugin.WithHidden(hidden)))
+	AddSelectFlagsForEndDeviceVersionIdentifiers(flags, flagsplugin.Prefix("version-ids", prefix), hidden)
+	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("network-ids", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("network-ids", prefix), true), flagsplugin.WithHidden(hidden)))
+	AddSelectFlagsForNetworkIdentifiers(flags, flagsplugin.Prefix("network-ids", prefix), hidden)
+	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("attributes", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("attributes", prefix), false), flagsplugin.WithHidden(hidden)))
 }
 
 // SelectFromFlags outputs the fieldmask paths forApplicationInvalidatedDownlinks message from select flags.
@@ -803,6 +977,36 @@ func PathsFromSelectFlagsForApplicationInvalidatedDownlinks(flags *pflag.FlagSet
 	} else if selected && val {
 		paths = append(paths, flagsplugin.Prefix("session_key_id", prefix))
 	}
+	if val, selected, err := flagsplugin.GetBool(flags, flagsplugin.Prefix("locations", prefix)); err != nil {
+		return nil, err
+	} else if selected && val {
+		paths = append(paths, flagsplugin.Prefix("locations", prefix))
+	}
+	if val, selected, err := flagsplugin.GetBool(flags, flagsplugin.Prefix("version_ids", prefix)); err != nil {
+		return nil, err
+	} else if selected && val {
+		paths = append(paths, flagsplugin.Prefix("version_ids", prefix))
+	}
+	if selectPaths, err := PathsFromSelectFlagsForEndDeviceVersionIdentifiers(flags, flagsplugin.Prefix("version_ids", prefix)); err != nil {
+		return nil, err
+	} else {
+		paths = append(paths, selectPaths...)
+	}
+	if val, selected, err := flagsplugin.GetBool(flags, flagsplugin.Prefix("network_ids", prefix)); err != nil {
+		return nil, err
+	} else if selected && val {
+		paths = append(paths, flagsplugin.Prefix("network_ids", prefix))
+	}
+	if selectPaths, err := PathsFromSelectFlagsForNetworkIdentifiers(flags, flagsplugin.Prefix("network_ids", prefix)); err != nil {
+		return nil, err
+	} else {
+		paths = append(paths, selectPaths...)
+	}
+	if val, selected, err := flagsplugin.GetBool(flags, flagsplugin.Prefix("attributes", prefix)); err != nil {
+		return nil, err
+	} else if selected && val {
+		paths = append(paths, flagsplugin.Prefix("attributes", prefix))
+	}
 	return paths, nil
 }
 
@@ -810,6 +1014,12 @@ func PathsFromSelectFlagsForApplicationInvalidatedDownlinks(flags *pflag.FlagSet
 func AddSelectFlagsForApplicationServiceData(flags *pflag.FlagSet, prefix string, hidden bool) {
 	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("service", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("service", prefix), false), flagsplugin.WithHidden(hidden)))
 	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("data", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("data", prefix), false), flagsplugin.WithHidden(hidden)))
+	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("locations", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("locations", prefix), false), flagsplugin.WithHidden(hidden)))
+	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("version-ids", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("version-ids", prefix), true), flagsplugin.WithHidden(hidden)))
+	AddSelectFlagsForEndDeviceVersionIdentifiers(flags, flagsplugin.Prefix("version-ids", prefix), hidden)
+	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("network-ids", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("network-ids", prefix), true), flagsplugin.WithHidden(hidden)))
+	AddSelectFlagsForNetworkIdentifiers(flags, flagsplugin.Prefix("network-ids", prefix), hidden)
+	flags.AddFlag(flagsplugin.NewBoolFlag(flagsplugin.Prefix("attributes", prefix), flagsplugin.SelectDesc(flagsplugin.Prefix("attributes", prefix), false), flagsplugin.WithHidden(hidden)))
 }
 
 // SelectFromFlags outputs the fieldmask paths forApplicationServiceData message from select flags.
@@ -823,6 +1033,36 @@ func PathsFromSelectFlagsForApplicationServiceData(flags *pflag.FlagSet, prefix 
 		return nil, err
 	} else if selected && val {
 		paths = append(paths, flagsplugin.Prefix("data", prefix))
+	}
+	if val, selected, err := flagsplugin.GetBool(flags, flagsplugin.Prefix("locations", prefix)); err != nil {
+		return nil, err
+	} else if selected && val {
+		paths = append(paths, flagsplugin.Prefix("locations", prefix))
+	}
+	if val, selected, err := flagsplugin.GetBool(flags, flagsplugin.Prefix("version_ids", prefix)); err != nil {
+		return nil, err
+	} else if selected && val {
+		paths = append(paths, flagsplugin.Prefix("version_ids", prefix))
+	}
+	if selectPaths, err := PathsFromSelectFlagsForEndDeviceVersionIdentifiers(flags, flagsplugin.Prefix("version_ids", prefix)); err != nil {
+		return nil, err
+	} else {
+		paths = append(paths, selectPaths...)
+	}
+	if val, selected, err := flagsplugin.GetBool(flags, flagsplugin.Prefix("network_ids", prefix)); err != nil {
+		return nil, err
+	} else if selected && val {
+		paths = append(paths, flagsplugin.Prefix("network_ids", prefix))
+	}
+	if selectPaths, err := PathsFromSelectFlagsForNetworkIdentifiers(flags, flagsplugin.Prefix("network_ids", prefix)); err != nil {
+		return nil, err
+	} else {
+		paths = append(paths, selectPaths...)
+	}
+	if val, selected, err := flagsplugin.GetBool(flags, flagsplugin.Prefix("attributes", prefix)); err != nil {
+		return nil, err
+	} else if selected && val {
+		paths = append(paths, flagsplugin.Prefix("attributes", prefix))
 	}
 	return paths, nil
 }

@@ -39,8 +39,7 @@ var (
 		"downlink_channel_mixed_bandwidths",
 		"downlink channel `{channel}` has mixed bandwidths `{bandwidth_low}` and `{bandwidth_high}` Hz",
 	)
-	errNotScheduled     = errors.DefineInvalidArgument("not_scheduled", "downlink message not scheduled")
-	errInvalidFrequency = errors.DefineInvalidArgument("invalid_frequency", "invalid frequency `{frequency}`")
+	errNotScheduled = errors.DefineInvalidArgument("not_scheduled", "downlink message not scheduled")
 )
 
 const eirpDelta = 2.15
@@ -68,11 +67,18 @@ func gatewayStatusFromClientHello(clientHello *lorav1.ClientHelloNotification) *
 	return res
 }
 
-var bandwidthFromHz = map[uint32]lorav1.Bandwidth{
-	125000: lorav1.Bandwidth_BANDWIDTH_125_KHZ,
-	250000: lorav1.Bandwidth_BANDWIDTH_250_KHZ,
-	500000: lorav1.Bandwidth_BANDWIDTH_500_KHZ,
-}
+var (
+	toBandwidth = map[lorav1.Bandwidth]uint32{
+		lorav1.Bandwidth_BANDWIDTH_125_KHZ: 125000,
+		lorav1.Bandwidth_BANDWIDTH_250_KHZ: 250000,
+		lorav1.Bandwidth_BANDWIDTH_500_KHZ: 500000,
+	}
+	fromBandwidth = map[uint32]lorav1.Bandwidth{
+		125000: lorav1.Bandwidth_BANDWIDTH_125_KHZ,
+		250000: lorav1.Bandwidth_BANDWIDTH_250_KHZ,
+		500000: lorav1.Bandwidth_BANDWIDTH_500_KHZ,
+	}
+)
 
 func buildLoRaGatewayConfig(fp *frequencyplans.FrequencyPlan) (*lorav1.GatewayConfig, error) {
 	phy, err := band.GetLatest(fp.BandID)
@@ -115,14 +121,14 @@ func buildLoRaGatewayConfig(fp *frequencyplans.FrequencyPlan) (*lorav1.GatewayCo
 		}
 		*multiSF = &lorav1.Board_IntermediateFrequencies_MultipleSF{
 			RfChain:   uint32(fp.UplinkChannels[i].Radio),
-			Frequency: int32(int64(fp.UplinkChannels[i].Frequency) - int64(fp.Radios[fp.UplinkChannels[i].Radio].Frequency)),
+			Frequency: int32(int64(fp.UplinkChannels[i].Frequency) - int64(fp.Radios[fp.UplinkChannels[i].Radio].Frequency)), //nolint:gosec,lll
 		}
 	}
 	if fp.FSKChannel != nil {
 		if dataRate := phy.DataRates[ttnpb.DataRateIndex(fp.FSKChannel.DataRate)].Rate.GetFsk(); dataRate != nil {
 			board.Ifs.Fsk = &lorav1.Board_IntermediateFrequencies_FSK{
 				RfChain:   uint32(fp.FSKChannel.Radio),
-				Frequency: int32(int64(fp.FSKChannel.Frequency) - int64(fp.Radios[fp.FSKChannel.Radio].Frequency)),
+				Frequency: int32(int64(fp.FSKChannel.Frequency) - int64(fp.Radios[fp.FSKChannel.Radio].Frequency)), //nolint:gosec,lll
 				Bitrate:   dataRate.BitRate,
 				Bandwidth: lorav1.Bandwidth_BANDWIDTH_125_KHZ,
 			}
@@ -132,11 +138,11 @@ func buildLoRaGatewayConfig(fp *frequencyplans.FrequencyPlan) (*lorav1.GatewayCo
 		if dataRate := phy.DataRates[ttnpb.DataRateIndex(fp.LoRaStandardChannel.DataRate)].Rate.GetLora(); dataRate != nil {
 			board.Ifs.LoraServiceChannel = &lorav1.Board_IntermediateFrequencies_LoraServiceChannel{
 				RfChain: uint32(fp.LoRaStandardChannel.Radio),
-				Frequency: int32(
-					int64(fp.LoRaStandardChannel.Frequency) - int64(fp.Radios[fp.LoRaStandardChannel.Radio].Frequency),
+				Frequency: int32( //nolint:gosec
+					int64(fp.LoRaStandardChannel.Frequency) - int64(fp.Radios[fp.LoRaStandardChannel.Radio].Frequency), //nolint:gosec,lll
 				),
 				SpreadingFactor: dataRate.SpreadingFactor,
-				Bandwidth:       bandwidthFromHz[dataRate.Bandwidth],
+				Bandwidth:       fromBandwidth[dataRate.Bandwidth],
 			}
 		}
 	}
@@ -169,7 +175,15 @@ func buildLoRaGatewayConfig(fp *frequencyplans.FrequencyPlan) (*lorav1.GatewayCo
 		}
 		tx = append(tx, &lorav1.TransmitChannel{
 			Frequency: ch.Frequency,
-			Bandwidth: bandwidthFromHz[drLow.Bandwidth],
+			Bandwidth: fromBandwidth[drLow.Bandwidth],
+		})
+	}
+	// Add the default RX2 frequency and bandwidth if it fits.
+	// The frequency plan's overrides are only relevant to end devices, so only the default RX2 parameters are considered.
+	if rx2DR := phy.DataRates[phy.DefaultRx2Parameters.DataRateIndex].Rate.GetLora(); len(tx) < 16 && rx2DR != nil {
+		tx = append(tx, &lorav1.TransmitChannel{
+			Frequency: phy.DefaultRx2Parameters.Frequency,
+			Bandwidth: fromBandwidth[rx2DR.Bandwidth],
 		})
 	}
 
@@ -195,31 +209,44 @@ var (
 )
 
 func toUplinkMessage(
-	ids *ttnpb.GatewayIdentifiers, fp *frequencyplans.FrequencyPlan, msg *lorav1.UplinkMessage,
+	ids *ttnpb.GatewayIdentifiers, gtwConf *lorav1.GatewayConfig, msg *lorav1.UplinkMessage,
 ) (*ttnpb.UplinkMessage, error) {
 	if msg.Board != 0 {
 		return nil, errInvalidBoard.WithAttributes("board", msg.Board)
 	}
-	phy, err := band.GetLatest(fp.BandID)
-	if err != nil {
-		return nil, err
-	}
 	var (
-		frequency  uint64
-		dataRate   = &ttnpb.DataRate{}
-		rxMetadata = &ttnpb.RxMetadata{
-			GatewayIds:  ids,
-			Timestamp:   msg.Timestamp,
-			Rssi:        -msg.RssiChannelNegated,
-			ChannelRssi: -msg.RssiChannelNegated,
-		}
+		board           = gtwConf.Boards[0]
+		rfChain         uint32
+		frequencyOffset int32
+		dataRate        = &ttnpb.DataRate{}
+		rssiChannel     float32
 	)
+	switch rssiType := msg.RssiChannel.(type) {
+	case *lorav1.UplinkMessage_RssiChannelNegated:
+		rssiChannel = -float32(rssiType.RssiChannelNegated)
+	case *lorav1.UplinkMessage_RssiChannelNegatedDeprecated:
+		rssiChannel = -rssiType.RssiChannelNegatedDeprecated
+	}
+	rxMetadata := &ttnpb.RxMetadata{
+		GatewayIds:  ids,
+		Timestamp:   msg.Timestamp,
+		Rssi:        rssiChannel,
+		ChannelRssi: rssiChannel,
+	}
 	switch {
 	case msg.IfChain < 8: // LoRa multi-SF
-		if int(msg.IfChain) >= len(fp.UplinkChannels) {
-			return nil, errInvalidIFChain.WithAttributes("if_chain", msg.IfChain)
-		}
-		frequency = fp.UplinkChannels[msg.IfChain].Frequency
+		multipleSF := []*lorav1.Board_IntermediateFrequencies_MultipleSF{
+			board.Ifs.MultipleSf0,
+			board.Ifs.MultipleSf1,
+			board.Ifs.MultipleSf2,
+			board.Ifs.MultipleSf3,
+			board.Ifs.MultipleSf4,
+			board.Ifs.MultipleSf5,
+			board.Ifs.MultipleSf6,
+			board.Ifs.MultipleSf7,
+		}[msg.IfChain]
+		rfChain = multipleSF.RfChain
+		frequencyOffset = multipleSF.Frequency
 		modulation := msg.GetLora()
 		if modulation == nil {
 			return nil, errInvalidModulation.New()
@@ -231,7 +258,12 @@ func toUplinkMessage(
 				CodingRate:      toCodingRate[modulation.CodeRate],
 			},
 		}
-		rxMetadata.SignalRssi = wrapperspb.Float(-modulation.RssiSignalNegated)
+		switch rssiSignalType := modulation.RssiSignal.(type) {
+		case *lorav1.UplinkMessage_Lora_RssiSignalNegated:
+			rxMetadata.SignalRssi = wrapperspb.Float(-float32(rssiSignalType.RssiSignalNegated))
+		case *lorav1.UplinkMessage_Lora_RssiSignalNegatedDeprecated:
+			rxMetadata.SignalRssi = wrapperspb.Float(-rssiSignalType.RssiSignalNegatedDeprecated)
+		}
 		rxMetadata.FrequencyOffset = int64(modulation.FrequencyOffset)
 		switch snrAbs := modulation.Snr.(type) {
 		case *lorav1.UplinkMessage_Lora_SnrPositive:
@@ -241,35 +273,34 @@ func toUplinkMessage(
 		}
 
 	case msg.IfChain == 8: // FSK
-		if fp.FSKChannel == nil {
-			return nil, errInvalidIFChain.WithAttributes("if_chain", msg.IfChain)
-		}
-		dr := phy.DataRates[ttnpb.DataRateIndex(fp.FSKChannel.DataRate)].Rate.GetFsk()
-		frequency = fp.FSKChannel.Frequency
+		rfChain = board.Ifs.Fsk.RfChain
+		frequencyOffset = board.Ifs.Fsk.Frequency
 		dataRate.Modulation = &ttnpb.DataRate_Fsk{
 			Fsk: &ttnpb.FSKDataRate{
-				BitRate: dr.BitRate,
+				BitRate: board.Ifs.Fsk.Bitrate,
 			},
 		}
 
 	case msg.IfChain == 9: // LoRa standard channel
-		if fp.LoRaStandardChannel == nil {
-			return nil, errInvalidIFChain.WithAttributes("if_chain", msg.IfChain)
-		}
-		dr := phy.DataRates[ttnpb.DataRateIndex(fp.LoRaStandardChannel.DataRate)].Rate.GetLora()
-		frequency = fp.LoRaStandardChannel.Frequency
+		rfChain = board.Ifs.LoraServiceChannel.RfChain
+		frequencyOffset = board.Ifs.LoraServiceChannel.Frequency
 		modulation := msg.GetLora()
 		if modulation == nil {
 			return nil, errInvalidModulation.New()
 		}
 		dataRate.Modulation = &ttnpb.DataRate_Lora{
 			Lora: &ttnpb.LoRaDataRate{
-				SpreadingFactor: dr.SpreadingFactor,
-				Bandwidth:       dr.Bandwidth,
+				SpreadingFactor: board.Ifs.LoraServiceChannel.SpreadingFactor,
+				Bandwidth:       toBandwidth[board.Ifs.LoraServiceChannel.Bandwidth],
 				CodingRate:      toCodingRate[modulation.CodeRate],
 			},
 		}
-		rxMetadata.SignalRssi = wrapperspb.Float(-modulation.RssiSignalNegated)
+		switch rssiSignalType := modulation.RssiSignal.(type) {
+		case *lorav1.UplinkMessage_Lora_RssiSignalNegated:
+			rxMetadata.SignalRssi = wrapperspb.Float(-float32(rssiSignalType.RssiSignalNegated))
+		case *lorav1.UplinkMessage_Lora_RssiSignalNegatedDeprecated:
+			rxMetadata.SignalRssi = wrapperspb.Float(-rssiSignalType.RssiSignalNegatedDeprecated)
+		}
 		rxMetadata.FrequencyOffset = int64(modulation.FrequencyOffset)
 		switch snrAbs := modulation.Snr.(type) {
 		case *lorav1.UplinkMessage_Lora_SnrPositive:
@@ -282,6 +313,8 @@ func toUplinkMessage(
 		return nil, errInvalidIFChain.WithAttributes("if_chain", msg.IfChain)
 	}
 
+	centerFrequency := []*lorav1.Board_RFChain{board.RfChain0, board.RfChain1}[rfChain].Frequency
+	frequency := uint64(int64(centerFrequency) + int64(frequencyOffset)) //nolint:gosec
 	return &ttnpb.UplinkMessage{
 		RawPayload: msg.Payload,
 		Settings: &ttnpb.TxSettings{
@@ -293,35 +326,38 @@ func toUplinkMessage(
 	}, nil
 }
 
-func fromDownlinkMessage(
-	fp *frequencyplans.FrequencyPlan, msg *ttnpb.DownlinkMessage,
-) (*lorav1.DownlinkMessage, error) {
+func fromDownlinkMessage(gtwConf *lorav1.GatewayConfig, msg *ttnpb.DownlinkMessage) (*lorav1.DownlinkMessage, error) {
 	scheduled := msg.GetScheduled()
 	if scheduled == nil || scheduled.Downlink == nil {
 		return nil, errNotScheduled.New()
 	}
-	var (
-		txChannel uint32
-		found     bool
-	)
-	for i, ch := range fp.DownlinkChannels {
-		if ch.Frequency == scheduled.Frequency {
-			txChannel = uint32(i)
-			found = true
-			break
-		}
-	}
-	if !found {
-		return nil, errInvalidFrequency.WithAttributes("frequency", scheduled.Frequency)
-	}
 	res := &lorav1.DownlinkMessage{
 		TxPower:   uint32(scheduled.Downlink.TxPower - eirpDelta),
-		TxChannel: txChannel,
 		Timestamp: scheduled.Timestamp,
 		Payload:   msg.RawPayload,
 	}
+	if dr := scheduled.DataRate.GetLora(); dr != nil {
+		// Only LoRa transmission channels are configured via gateway config so that TxChannelIndex can be used.
+		// FSK is always configured via TxChannelConfig, see below.
+		for i, ch := range gtwConf.Tx {
+			if ch.Frequency == scheduled.Frequency && ch.Bandwidth == fromBandwidth[dr.Bandwidth] {
+				res.TxChannel = &lorav1.DownlinkMessage_TxChannelIndex{
+					TxChannelIndex: uint32(i), //nolint:gosec
+				}
+				break
+			}
+		}
+	}
 	switch mod := scheduled.DataRate.Modulation.(type) {
 	case *ttnpb.DataRate_Lora:
+		if res.TxChannel == nil {
+			res.TxChannel = &lorav1.DownlinkMessage_TxChannelConfig{
+				TxChannelConfig: &lorav1.TransmitChannel{
+					Frequency: scheduled.Frequency,
+					Bandwidth: fromBandwidth[mod.Lora.Bandwidth],
+				},
+			}
+		}
 		res.DataRate = &lorav1.DownlinkMessage_Lora_{
 			Lora: &lorav1.DownlinkMessage_Lora{
 				SpreadingFactor: mod.Lora.SpreadingFactor,
@@ -330,6 +366,14 @@ func fromDownlinkMessage(
 			},
 		}
 	case *ttnpb.DataRate_Fsk:
+		if res.TxChannel == nil {
+			res.TxChannel = &lorav1.DownlinkMessage_TxChannelConfig{
+				TxChannelConfig: &lorav1.TransmitChannel{
+					Frequency: scheduled.Frequency,
+					Bandwidth: lorav1.Bandwidth_BANDWIDTH_125_KHZ,
+				},
+			}
+		}
 		res.DataRate = &lorav1.DownlinkMessage_Fsk{
 			Fsk: &lorav1.DownlinkMessage_FSK{
 				Bitrate:            mod.Fsk.BitRate,

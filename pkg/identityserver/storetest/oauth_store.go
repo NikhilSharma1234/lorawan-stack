@@ -356,6 +356,67 @@ func (st *StoreTest) TestOAuthStore(t *T) {
 	})
 }
 
+// TestOAuthStoreSupportUser tests the behavior of AccessTokens with the unique support userID.
+func (st *StoreTest) TestOAuthStoreSupportUser(t *T) {
+	supportUsr := st.population.NewUser()
+	supportUsr.Ids.UserId = ttnpb.SupportUserID
+	supportUsr.Name = "support"
+	supportUsr.PrimaryEmailAddress = "support@dummy-email.com"
+
+	ses1 := st.population.NewUserSession(supportUsr.GetIds())
+	cli1 := st.population.NewClient(nil)
+	cli1.SkipAuthorization = true
+
+	s, ok := st.PrepareDB(t).(interface {
+		Store
+		is.OAuthStore
+	})
+	defer st.DestroyDB(t, true, "users", "accounts", "user_sessions", "clients")
+	if !ok {
+		t.Skip("Store does not implement OAuthStore")
+	}
+	defer s.Close()
+
+	var createdAccessToken *ttnpb.OAuthAccessToken
+
+	t.Run("CreateAccessToken", func(t *T) {
+		a, ctx := test.New(t)
+		var err error
+		start := time.Now().Truncate(time.Second)
+
+		createdAccessToken, err = s.CreateAccessToken(ctx, &ttnpb.OAuthAccessToken{
+			UserIds:       supportUsr.GetIds(),
+			UserSessionId: ses1.GetSessionId(),
+			ClientIds:     cli1.GetIds(),
+			Id:            "token_id",
+			AccessToken:   "access_token",
+			RefreshToken:  "refresh_token",
+			Rights:        []ttnpb.Right{ttnpb.Right_RIGHT_ALL},
+			ExpiresAt:     timestamppb.New(start.Add(5 * time.Minute)),
+		}, "")
+		if a.So(err, should.BeNil) && a.So(createdAccessToken, should.NotBeNil) {
+			a.So(createdAccessToken.UserIds, should.Resemble, supportUsr.GetIds())
+			a.So(createdAccessToken.UserSessionId, should.Equal, ses1.GetSessionId())
+			a.So(createdAccessToken.ClientIds, should.Resemble, cli1.GetIds())
+			a.So(createdAccessToken.Id, should.Equal, "token_id")
+			a.So(createdAccessToken.AccessToken, should.Equal, "access_token")
+			a.So(createdAccessToken.RefreshToken, should.Equal, "refresh_token")
+			a.So(createdAccessToken.Rights, should.Resemble, []ttnpb.Right{ttnpb.Right_RIGHT_ALL})
+			a.So(*ttnpb.StdTime(createdAccessToken.ExpiresAt), should.Equal, start.Add(5*time.Minute))
+			a.So(*ttnpb.StdTime(createdAccessToken.CreatedAt), should.HappenWithin, 5*time.Second, start)
+		}
+	})
+
+	t.Run("GetAccessToken", func(t *T) {
+		a, ctx := test.New(t)
+		got, err := s.GetAccessToken(ctx, "token_id")
+		if a.So(err, should.BeNil) && a.So(got, should.NotBeNil) {
+			// NOTE: This should be limited due to referencing the unique support userID.
+			a.So(got.Rights, should.Resemble, ttnpb.AllReadAdminRights.GetRights())
+		}
+	})
+}
+
 func (st *StoreTest) TestOAuthStorePagination(t *T) {
 	a, ctx := test.New(t)
 
@@ -448,6 +509,91 @@ func (st *StoreTest) TestOAuthStorePagination(t *T) {
 			}
 
 			a.So(total, should.Equal, 7)
+		}
+	})
+}
+
+// TestOAuthStorePaginationDefaults tests the default pagination values.
+func (st *StoreTest) TestOAuthStorePaginationDefaults(t *T) {
+	store.SetPaginationDefaults(store.PaginationDefaults{
+		DefaultLimit: 7,
+	})
+
+	a, ctx := test.New(t)
+
+	usr1 := st.population.NewUser()
+
+	var clients []*ttnpb.Client
+	for i := 0; i < 15; i++ {
+		clients = append(clients, st.population.NewClient(usr1.GetOrganizationOrUserIdentifiers()))
+	}
+
+	s, ok := st.PrepareDB(t).(interface {
+		Store
+		is.OAuthStore
+	})
+	defer st.DestroyDB(t, false)
+	if !ok {
+		t.Skip("Store does not implement OAuthStore")
+	}
+	defer s.Close()
+
+	for i := 0; i < 15; i++ {
+		_, err := s.Authorize(ctx, &ttnpb.OAuthClientAuthorization{
+			UserIds:   usr1.GetIds(),
+			ClientIds: clients[i].GetIds(),
+		})
+		if !a.So(err, should.BeNil) {
+			t.FailNow()
+		}
+
+		time.Sleep(test.Delay)
+	}
+
+	for i := 0; i < 15; i++ {
+		_, err := s.CreateAccessToken(ctx, &ttnpb.OAuthAccessToken{
+			UserIds:   usr1.GetIds(),
+			ClientIds: clients[0].GetIds(),
+			Id:        fmt.Sprintf("TOKEN%d", i+1),
+		}, "")
+		if !a.So(err, should.BeNil) {
+			t.FailNow()
+		}
+
+		time.Sleep(test.Delay)
+	}
+
+	t.Run("ListAuthorizations_PageLimit", func(t *T) {
+		a, ctx := test.New(t)
+
+		var total uint64
+		paginateCtx := store.WithPagination(store.WithOrder(ctx, "created_at"), 0, 0, &total)
+		got, err := s.ListAuthorizations(paginateCtx, usr1.GetIds())
+		if a.So(err, should.BeNil) && a.So(got, should.NotBeNil) {
+			a.So(got, should.HaveLength, 7)
+		}
+
+		paginateCtx = store.WithPagination(store.WithOrder(ctx, "created_at"), 0, 2, &total)
+		got, err = s.ListAuthorizations(paginateCtx, usr1.GetIds())
+		if a.So(err, should.BeNil) && a.So(got, should.NotBeNil) {
+			a.So(got, should.HaveLength, 7)
+		}
+	})
+
+	t.Run("ListAccessTokens_PageLimit", func(t *T) {
+		a, ctx := test.New(t)
+
+		var total uint64
+		paginateCtx := store.WithPagination(store.WithOrder(ctx, "created_at"), 0, 0, &total)
+		got, err := s.ListAccessTokens(paginateCtx, usr1.GetIds(), clients[0].GetIds())
+		if a.So(err, should.BeNil) && a.So(got, should.NotBeNil) {
+			a.So(got, should.HaveLength, 7)
+		}
+
+		paginateCtx = store.WithPagination(store.WithOrder(ctx, "created_at"), 0, 2, &total)
+		got, err = s.ListAccessTokens(paginateCtx, usr1.GetIds(), clients[0].GetIds())
+		if a.So(err, should.BeNil) && a.So(got, should.NotBeNil) {
+			a.So(got, should.HaveLength, 7)
 		}
 	})
 }

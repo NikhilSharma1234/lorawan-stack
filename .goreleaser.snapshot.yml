@@ -1,7 +1,8 @@
 project_name: lorawan-stack
+version: 2
 
 changelog:
-  skip: true
+  disable: true
 
 release:
   disable: true

@@ -310,6 +310,7 @@ func HandleLinkADRAns(
 	dupCount uint,
 	fCntUp uint32,
 	fps *frequencyplans.Store,
+	adrEnabled bool,
 ) (events.Builders, error) {
 	if pld == nil {
 		return nil, ErrNoPayload.New()
@@ -321,7 +322,23 @@ func HandleLinkADRAns(
 	}
 
 	ev := EvtReceiveLinkADRAccept
-	if !pld.ChannelMaskAck || !pld.DataRateIndexAck || !pld.TxPowerIndexAck {
+	rejected := false
+
+	// LoRaWAN 1.0.4 spec L534-538:
+	// An end-device SHOULD accept the channel mask controls present in LinkADRReq, even
+	// when the ADR bit is not set. The end-device SHALL respond to all LinkADRReq commands
+	// with a LinkADRAns indicating which command elements were accepted and which were
+	// rejected. This behavior differs from when the uplink ADR bit is set, in which case the end-
+	// device accepts or rejects the entire command.
+	if macspec.LinkADRReqRejected(macState.LorawanVersion) {
+		rejected = !pld.ChannelMaskAck ||
+			(adrEnabled && !pld.DataRateIndexAck) ||
+			(adrEnabled && !pld.TxPowerIndexAck)
+	} else {
+		rejected = !pld.ChannelMaskAck || !pld.DataRateIndexAck || !pld.TxPowerIndexAck
+	}
+
+	if rejected {
 		ev = EvtReceiveLinkADRReject
 
 		// See "Table 6: LinkADRAns status bits signification" of LoRaWAN 1.1 specification

@@ -23,21 +23,32 @@ import (
 
 func (c *Component) getTLSConfig(ctx context.Context) tlsconfig.Config {
 	conf := c.GetBaseConfig(ctx).TLS
+
 	// TODO: Remove detection mechanism (https://github.com/TheThingsNetwork/lorawan-stack/issues/1450)
-	if conf.Source == "" {
+	if conf.ServerAuth.Source == "" {
 		switch {
+		case conf.ServerAuth.Certificate != "" && conf.ServerAuth.Key != "":
+			conf.ServerAuth.Source = "file"
+		case conf.ServerAuth.KeyVault.ID != "":
+			conf.ServerAuth.Source = "key-vault"
 		case conf.ACME.Enable:
-			conf.Source = "acme"
-		case conf.Certificate != "" && conf.Key != "":
-			conf.Source = "file"
-		case conf.KeyVault.ID != "":
-			conf.Source = "key-vault"
+			conf.ServerAuth.Source = "acme"
 		}
 	}
-	if conf.Source == "key-vault" {
-		conf.KeyVault.CertificateProvider = c.keyService
+
+	switch conf.ServerAuth.Source {
+	case "acme":
+		conf.ServerAuth.ACME = &conf.ACME
+	case "key-vault":
+		conf.ServerAuth.KeyVault.CertificateProvider = c.keyService
 	}
+
 	return conf
+}
+
+// GetTLSConfig gets the component's TLS config.
+func (c *Component) GetTLSConfig(ctx context.Context) tlsconfig.Config {
+	return c.getTLSConfig(ctx)
 }
 
 // GetTLSServerConfig gets the component's server TLS config and applies the given options.

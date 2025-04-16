@@ -43,7 +43,7 @@ func NewClusterComponentConnection(ctx context.Context,
 		tlsConf := config.TLS
 		tls := &tls.Config{
 			MinVersion:         tls.VersionTLS12,
-			InsecureSkipVerify: tlsConf.InsecureSkipVerify,
+			InsecureSkipVerify: tlsConf.Client.InsecureSkipVerify,
 		}
 		if err := tlsConf.Client.ApplyTo(tls); err != nil {
 			return nil, nil, err

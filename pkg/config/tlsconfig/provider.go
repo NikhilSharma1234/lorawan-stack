@@ -67,7 +67,7 @@ type ConfigurationProvider func(context.Context) Config
 // GetTLSServerConfig gets the component's server TLS config and applies the given options.
 func (p ConfigurationProvider) GetTLSServerConfig(ctx context.Context, opts ...Option) (*tls.Config, error) {
 	conf := p(ctx)
-	cipherSuites, err := conf.GetCipherSuites()
+	cipherSuites, err := conf.ServerAuth.GetCipherSuites()
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func (p ConfigurationProvider) GetTLSClientConfig(ctx context.Context, opts ...O
 	conf := p(ctx)
 	res := &tls.Config{
 		MinVersion:         tls.VersionTLS12,
-		InsecureSkipVerify: conf.InsecureSkipVerify, //nolint:gosec
+		InsecureSkipVerify: conf.Client.InsecureSkipVerify, //nolint:gosec
 	}
 	if err := conf.Client.ApplyTo(res); err != nil {
 		return nil, err

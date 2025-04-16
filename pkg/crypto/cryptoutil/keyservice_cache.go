@@ -51,7 +51,7 @@ func (c *cacheKeyService) getOrLoad(
 	cacheKey := fmt.Sprintf("%s:%s", cache, key)
 	if val, err := c.cache.Get(cacheKey); err == nil {
 		crypto.RegisterCacheHit(ctx, cache)
-		entry := val.(*cacheKeyServiceEntry)
+		entry := val.(*cacheKeyServiceEntry) //nolint:revive
 		return entry.value, entry.err
 	}
 	crypto.RegisterCacheMiss(ctx, cache)
@@ -66,5 +66,5 @@ func (c *cacheKeyService) Unwrap(ctx context.Context, ciphertext []byte, kekLabe
 			return c.KeyService.Unwrap(ctx, ciphertext, kekLabel)
 		},
 	)
-	return res.([]byte), err
+	return res.([]byte), err //nolint:revive
 }

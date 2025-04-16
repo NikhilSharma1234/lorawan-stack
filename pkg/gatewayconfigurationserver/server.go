@@ -16,11 +16,14 @@ package gatewayconfigurationserver
 
 import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"go.thethings.network/lorawan-stack/v3/pkg/basicstation/cups"
 	"go.thethings.network/lorawan-stack/v3/pkg/cluster"
 	"go.thethings.network/lorawan-stack/v3/pkg/component"
 	"go.thethings.network/lorawan-stack/v3/pkg/gatewayconfigurationserver/managed"
 	"go.thethings.network/lorawan-stack/v3/pkg/gatewayconfigurationserver/ttkg"
+	"go.thethings.network/lorawan-stack/v3/pkg/log"
 	"go.thethings.network/lorawan-stack/v3/pkg/rpcmiddleware/rpclog"
+	"go.thethings.network/lorawan-stack/v3/pkg/telemetry/tracing/tracer"
 	"go.thethings.network/lorawan-stack/v3/pkg/ttnpb"
 	"google.golang.org/grpc"
 )
@@ -60,12 +63,18 @@ func (s *Server) RegisterHandlers(mux *runtime.ServeMux, conn *grpc.ClientConn) 
 
 // New returns new *Server.
 func New(c *component.Component, conf *Config) (*Server, error) {
+	ctx := tracer.NewContextWithTracer(c.Context(), tracerNamespace)
+	ctx = log.NewContextWithField(ctx, "namespace", logNamespace)
+
 	gcs := &Server{
 		Component: c,
 		config:    conf,
 	}
 
-	bsCUPS := conf.BasicStation.NewServer(c)
+	bsCUPS, err := cups.NewServer(ctx, c, conf.BasicStation)
+	if err != nil {
+		return nil, err
+	}
 	_ = bsCUPS
 
 	ttkgServer := ttkg.New(c, ttkg.WithConfig(conf.TheThingsKickstarterGateway))
@@ -74,13 +83,12 @@ func New(c *component.Component, conf *Config) (*Server, error) {
 	c.GRPC.RegisterUnaryHook("/ttn.lorawan.v3.GatewayConfigurationService", rpclog.NamespaceHook, rpclog.UnaryNamespaceHook("gatewayconfigurationserver")) //nolint:lll
 	c.GRPC.RegisterUnaryHook("/ttn.lorawan.v3.GatewayConfigurationService", cluster.HookName, c.ClusterAuthUnaryHook())
 
-	if ttgcConf := c.GetBaseConfig(c.Context()).TTGC; ttgcConf.Enabled {
-		var err error
-		gcs.managedServer, err = managed.New(c.Context(), c, ttgcConf)
-		if err != nil {
-			return nil, err
-		}
+	ttgcConf := c.GetBaseConfig(ctx).TTGC
+	managedServer, err := managed.New(ctx, c, ttgcConf)
+	if err != nil {
+		return nil, err
 	}
+	gcs.managedServer = managedServer
 
 	c.RegisterGRPC(gcs)
 	c.RegisterWeb(gcs)

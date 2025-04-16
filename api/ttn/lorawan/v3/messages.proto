@@ -186,6 +186,19 @@ message GatewayUplinkMessage {
   string band_id = 2;
 }
 
+message LastBatteryPercentage {
+  // Frame counter value of last uplink containing DevStatusAns.
+  uint32 f_cnt = 1;
+  // The battery percentage of the end device.
+  // The value is defined in the [0, 100] interval.
+  google.protobuf.FloatValue value = 2 [(validate.rules).float = {
+    gte: 0,
+    lte: 100
+  }];
+  // Time when last DevStatus MAC command was received.
+  google.protobuf.Timestamp received_at = 3;
+}
+
 message ApplicationUplink {
   option (thethings.flags.message) = {
     select: true,
@@ -259,7 +272,26 @@ message ApplicationUplink {
   // Network identifiers, set by the Network Server that handles the message.
   NetworkIdentifiers network_ids = 16;
 
-  // next: 20
+  // Last battery percentage of the end device.
+  // Received via the DevStatus MAC command at last_dev_status_received_at or earlier.
+  // Set by the Network Server while handling the message.
+  LastBatteryPercentage last_battery_percentage = 20;
+
+  // Attributes for devices, set by the Application Server while handling the message.
+  map<string, string> attributes = 21 [(validate.rules).map = {
+    max_pairs: 10,
+    keys: {
+      string: {
+        pattern: "^[a-z0-9](?:[-]?[a-z0-9]){2,}$",
+        max_len: 36
+      }
+    },
+    values: {
+      string: {max_len: 200}
+    }
+  }];
+
+  // next: 22
 }
 
 message ApplicationUplinkNormalized {
@@ -312,7 +344,21 @@ message ApplicationUplinkNormalized {
   // Network identifiers, set by the Network Server that handles the message.
   NetworkIdentifiers network_ids = 14;
 
-  // next: 15
+  // Attributes for devices, set by the Application Server while handling the message.
+  map<string, string> attributes = 15 [(validate.rules).map = {
+    max_pairs: 10,
+    keys: {
+      string: {
+        pattern: "^[a-z0-9](?:[-]?[a-z0-9]){2,}$",
+        max_len: 36
+      }
+    },
+    values: {
+      string: {max_len: 200}
+    }
+  }];
+
+  // next: 16
 }
 
 message ApplicationLocation {
@@ -352,6 +398,31 @@ message ApplicationJoinAccept {
   bool pending_session = 4;
   // Server time when the Network Server received the message.
   google.protobuf.Timestamp received_at = 8 [(validate.rules).timestamp.required = true];
+
+  // End device location metadata, set by the Application Server while handling the message.
+  map<string, Location> locations = 9;
+
+  // End device version identifiers, set by the Application Server while handling the message.
+  EndDeviceVersionIdentifiers version_ids = 10;
+
+  // Network identifiers, set by the Network Server that handles the message.
+  NetworkIdentifiers network_ids = 11;
+
+  // Attributes for devices, set by the Application Server while handling the message.
+  map<string, string> attributes = 12 [(validate.rules).map = {
+    max_pairs: 10,
+    keys: {
+      string: {
+        pattern: "^[a-z0-9](?:[-]?[a-z0-9]){2,}$",
+        max_len: 36
+      }
+    },
+    values: {
+      string: {max_len: 200}
+    }
+  }];
+
+  // next: 13
 }
 
 message ApplicationDownlink {
@@ -438,7 +509,30 @@ message ApplicationDownlink {
 
   ConfirmedRetry confirmed_retry = 11;
 
-  // next: 12
+  // End device location metadata, set by the Application Server while handling the message.
+  map<string, Location> locations = 12;
+
+  // End device version identifiers, set by the Application Server while handling the message.
+  EndDeviceVersionIdentifiers version_ids = 13;
+
+  // Network identifiers, set by the Network Server that handles the message.
+  NetworkIdentifiers network_ids = 14;
+
+  // Attributes for devices, set by the Application Server while handling the message.
+  map<string, string> attributes = 15 [(validate.rules).map = {
+    max_pairs: 10,
+    keys: {
+      string: {
+        pattern: "^[a-z0-9](?:[-]?[a-z0-9]){2,}$",
+        max_len: 36
+      }
+    },
+    values: {
+      string: {max_len: 200}
+    }
+  }];
+
+  // next: 16
 }
 
 message ApplicationDownlinks {
@@ -452,6 +546,31 @@ message ApplicationDownlinkFailed {
   };
   ApplicationDownlink downlink = 1 [(validate.rules).message.required = true];
   ErrorDetails error = 2 [(validate.rules).message.required = true];
+
+  // End device location metadata, set by the Application Server while handling the message.
+  map<string, Location> locations = 3;
+
+  // End device version identifiers, set by the Application Server while handling the message.
+  EndDeviceVersionIdentifiers version_ids = 4;
+
+  // Network identifiers, set by the Network Server that handles the message.
+  NetworkIdentifiers network_ids = 5;
+
+  // Attributes for devices, set by the Application Server while handling the message.
+  map<string, string> attributes = 6 [(validate.rules).map = {
+    max_pairs: 10,
+    keys: {
+      string: {
+        pattern: "^[a-z0-9](?:[-]?[a-z0-9]){2,}$",
+        max_len: 36
+      }
+    },
+    values: {
+      string: {max_len: 200}
+    }
+  }];
+
+  // next: 7
 }
 
 message ApplicationInvalidatedDownlinks {
@@ -462,6 +581,31 @@ message ApplicationInvalidatedDownlinks {
   repeated ApplicationDownlink downlinks = 1;
   uint32 last_f_cnt_down = 2;
   bytes session_key_id = 3 [(validate.rules).bytes.max_len = 2048];
+
+  // End device location metadata, set by the Application Server while handling the message.
+  map<string, Location> locations = 4;
+
+  // End device version identifiers, set by the Application Server while handling the message.
+  EndDeviceVersionIdentifiers version_ids = 5;
+
+  // Network identifiers, set by the Network Server that handles the message.
+  NetworkIdentifiers network_ids = 6;
+
+  // Attributes for devices, set by the Application Server while handling the message.
+  map<string, string> attributes = 7 [(validate.rules).map = {
+    max_pairs: 10,
+    keys: {
+      string: {
+        pattern: "^[a-z0-9](?:[-]?[a-z0-9]){2,}$",
+        max_len: 36
+      }
+    },
+    values: {
+      string: {max_len: 200}
+    }
+  }];
+
+  // next: 8
 }
 
 message DownlinkQueueOperationErrorDetails {
@@ -509,6 +653,31 @@ message ApplicationServiceData {
   };
   string service = 1;
   google.protobuf.Struct data = 2;
+
+  // End device location metadata, set by the Application Server while handling the message.
+  map<string, Location> locations = 3;
+
+  // End device version identifiers, set by the Application Server while handling the message.
+  EndDeviceVersionIdentifiers version_ids = 4;
+
+  // Network identifiers, set by the Network Server that handles the message.
+  NetworkIdentifiers network_ids = 5;
+
+  // Attributes for devices, set by the Application Server while handling the message.
+  map<string, string> attributes = 6 [(validate.rules).map = {
+    max_pairs: 10,
+    keys: {
+      string: {
+        pattern: "^[a-z0-9](?:[-]?[a-z0-9]){2,}$",
+        max_len: 36
+      }
+    },
+    values: {
+      string: {max_len: 200}
+    }
+  }];
+
+  // next: 7
 }
 
 // Application uplink message.

@@ -471,6 +471,45 @@ func (dst *GatewayUplinkMessage) SetFields(src *GatewayUplinkMessage, paths ...s
 	return nil
 }
 
+func (dst *LastBatteryPercentage) SetFields(src *LastBatteryPercentage, paths ...string) error {
+	for name, subs := range _processPaths(paths) {
+		switch name {
+		case "f_cnt":
+			if len(subs) > 0 {
+				return fmt.Errorf("'f_cnt' has no subfields, but %s were specified", subs)
+			}
+			if src != nil {
+				dst.FCnt = src.FCnt
+			} else {
+				var zero uint32
+				dst.FCnt = zero
+			}
+		case "value":
+			if len(subs) > 0 {
+				return fmt.Errorf("'value' has no subfields, but %s were specified", subs)
+			}
+			if src != nil {
+				dst.Value = src.Value
+			} else {
+				dst.Value = nil
+			}
+		case "received_at":
+			if len(subs) > 0 {
+				return fmt.Errorf("'received_at' has no subfields, but %s were specified", subs)
+			}
+			if src != nil {
+				dst.ReceivedAt = src.ReceivedAt
+			} else {
+				dst.ReceivedAt = nil
+			}
+
+		default:
+			return fmt.Errorf("invalid field: '%s'", name)
+		}
+	}
+	return nil
+}
+
 func (dst *ApplicationUplink) SetFields(src *ApplicationUplink, paths ...string) error {
 	for name, subs := range _processPaths(paths) {
 		switch name {
@@ -714,6 +753,40 @@ func (dst *ApplicationUplink) SetFields(src *ApplicationUplink, paths ...string)
 					dst.NetworkIds = nil
 				}
 			}
+		case "last_battery_percentage":
+			if len(subs) > 0 {
+				var newDst, newSrc *LastBatteryPercentage
+				if (src == nil || src.LastBatteryPercentage == nil) && dst.LastBatteryPercentage == nil {
+					continue
+				}
+				if src != nil {
+					newSrc = src.LastBatteryPercentage
+				}
+				if dst.LastBatteryPercentage != nil {
+					newDst = dst.LastBatteryPercentage
+				} else {
+					newDst = &LastBatteryPercentage{}
+					dst.LastBatteryPercentage = newDst
+				}
+				if err := newDst.SetFields(newSrc, subs...); err != nil {
+					return err
+				}
+			} else {
+				if src != nil {
+					dst.LastBatteryPercentage = src.LastBatteryPercentage
+				} else {
+					dst.LastBatteryPercentage = nil
+				}
+			}
+		case "attributes":
+			if len(subs) > 0 {
+				return fmt.Errorf("'attributes' has no subfields, but %s were specified", subs)
+			}
+			if src != nil {
+				dst.Attributes = src.Attributes
+			} else {
+				dst.Attributes = nil
+			}
 
 		default:
 			return fmt.Errorf("invalid field: '%s'", name)
@@ -902,6 +975,15 @@ func (dst *ApplicationUplinkNormalized) SetFields(src *ApplicationUplinkNormaliz
 					dst.NetworkIds = nil
 				}
 			}
+		case "attributes":
+			if len(subs) > 0 {
+				return fmt.Errorf("'attributes' has no subfields, but %s were specified", subs)
+			}
+			if src != nil {
+				dst.Attributes = src.Attributes
+			} else {
+				dst.Attributes = nil
+			}
 
 		default:
 			return fmt.Errorf("invalid field: '%s'", name)
@@ -1029,6 +1111,74 @@ func (dst *ApplicationJoinAccept) SetFields(src *ApplicationJoinAccept, paths ..
 				dst.ReceivedAt = src.ReceivedAt
 			} else {
 				dst.ReceivedAt = nil
+			}
+		case "locations":
+			if len(subs) > 0 {
+				return fmt.Errorf("'locations' has no subfields, but %s were specified", subs)
+			}
+			if src != nil {
+				dst.Locations = src.Locations
+			} else {
+				dst.Locations = nil
+			}
+		case "version_ids":
+			if len(subs) > 0 {
+				var newDst, newSrc *EndDeviceVersionIdentifiers
+				if (src == nil || src.VersionIds == nil) && dst.VersionIds == nil {
+					continue
+				}
+				if src != nil {
+					newSrc = src.VersionIds
+				}
+				if dst.VersionIds != nil {
+					newDst = dst.VersionIds
+				} else {
+					newDst = &EndDeviceVersionIdentifiers{}
+					dst.VersionIds = newDst
+				}
+				if err := newDst.SetFields(newSrc, subs...); err != nil {
+					return err
+				}
+			} else {
+				if src != nil {
+					dst.VersionIds = src.VersionIds
+				} else {
+					dst.VersionIds = nil
+				}
+			}
+		case "network_ids":
+			if len(subs) > 0 {
+				var newDst, newSrc *NetworkIdentifiers
+				if (src == nil || src.NetworkIds == nil) && dst.NetworkIds == nil {
+					continue
+				}
+				if src != nil {
+					newSrc = src.NetworkIds
+				}
+				if dst.NetworkIds != nil {
+					newDst = dst.NetworkIds
+				} else {
+					newDst = &NetworkIdentifiers{}
+					dst.NetworkIds = newDst
+				}
+				if err := newDst.SetFields(newSrc, subs...); err != nil {
+					return err
+				}
+			} else {
+				if src != nil {
+					dst.NetworkIds = src.NetworkIds
+				} else {
+					dst.NetworkIds = nil
+				}
+			}
+		case "attributes":
+			if len(subs) > 0 {
+				return fmt.Errorf("'attributes' has no subfields, but %s were specified", subs)
+			}
+			if src != nil {
+				dst.Attributes = src.Attributes
+			} else {
+				dst.Attributes = nil
 			}
 
 		default:
@@ -1175,6 +1325,74 @@ func (dst *ApplicationDownlink) SetFields(src *ApplicationDownlink, paths ...str
 					dst.ConfirmedRetry = nil
 				}
 			}
+		case "locations":
+			if len(subs) > 0 {
+				return fmt.Errorf("'locations' has no subfields, but %s were specified", subs)
+			}
+			if src != nil {
+				dst.Locations = src.Locations
+			} else {
+				dst.Locations = nil
+			}
+		case "version_ids":
+			if len(subs) > 0 {
+				var newDst, newSrc *EndDeviceVersionIdentifiers
+				if (src == nil || src.VersionIds == nil) && dst.VersionIds == nil {
+					continue
+				}
+				if src != nil {
+					newSrc = src.VersionIds
+				}
+				if dst.VersionIds != nil {
+					newDst = dst.VersionIds
+				} else {
+					newDst = &EndDeviceVersionIdentifiers{}
+					dst.VersionIds = newDst
+				}
+				if err := newDst.SetFields(newSrc, subs...); err != nil {
+					return err
+				}
+			} else {
+				if src != nil {
+					dst.VersionIds = src.VersionIds
+				} else {
+					dst.VersionIds = nil
+				}
+			}
+		case "network_ids":
+			if len(subs) > 0 {
+				var newDst, newSrc *NetworkIdentifiers
+				if (src == nil || src.NetworkIds == nil) && dst.NetworkIds == nil {
+					continue
+				}
+				if src != nil {
+					newSrc = src.NetworkIds
+				}
+				if dst.NetworkIds != nil {
+					newDst = dst.NetworkIds
+				} else {
+					newDst = &NetworkIdentifiers{}
+					dst.NetworkIds = newDst
+				}
+				if err := newDst.SetFields(newSrc, subs...); err != nil {
+					return err
+				}
+			} else {
+				if src != nil {
+					dst.NetworkIds = src.NetworkIds
+				} else {
+					dst.NetworkIds = nil
+				}
+			}
+		case "attributes":
+			if len(subs) > 0 {
+				return fmt.Errorf("'attributes' has no subfields, but %s were specified", subs)
+			}
+			if src != nil {
+				dst.Attributes = src.Attributes
+			} else {
+				dst.Attributes = nil
+			}
 
 		default:
 			return fmt.Errorf("invalid field: '%s'", name)
@@ -1256,6 +1474,74 @@ func (dst *ApplicationDownlinkFailed) SetFields(src *ApplicationDownlinkFailed, 
 					dst.Error = nil
 				}
 			}
+		case "locations":
+			if len(subs) > 0 {
+				return fmt.Errorf("'locations' has no subfields, but %s were specified", subs)
+			}
+			if src != nil {
+				dst.Locations = src.Locations
+			} else {
+				dst.Locations = nil
+			}
+		case "version_ids":
+			if len(subs) > 0 {
+				var newDst, newSrc *EndDeviceVersionIdentifiers
+				if (src == nil || src.VersionIds == nil) && dst.VersionIds == nil {
+					continue
+				}
+				if src != nil {
+					newSrc = src.VersionIds
+				}
+				if dst.VersionIds != nil {
+					newDst = dst.VersionIds
+				} else {
+					newDst = &EndDeviceVersionIdentifiers{}
+					dst.VersionIds = newDst
+				}
+				if err := newDst.SetFields(newSrc, subs...); err != nil {
+					return err
+				}
+			} else {
+				if src != nil {
+					dst.VersionIds = src.VersionIds
+				} else {
+					dst.VersionIds = nil
+				}
+			}
+		case "network_ids":
+			if len(subs) > 0 {
+				var newDst, newSrc *NetworkIdentifiers
+				if (src == nil || src.NetworkIds == nil) && dst.NetworkIds == nil {
+					continue
+				}
+				if src != nil {
+					newSrc = src.NetworkIds
+				}
+				if dst.NetworkIds != nil {
+					newDst = dst.NetworkIds
+				} else {
+					newDst = &NetworkIdentifiers{}
+					dst.NetworkIds = newDst
+				}
+				if err := newDst.SetFields(newSrc, subs...); err != nil {
+					return err
+				}
+			} else {
+				if src != nil {
+					dst.NetworkIds = src.NetworkIds
+				} else {
+					dst.NetworkIds = nil
+				}
+			}
+		case "attributes":
+			if len(subs) > 0 {
+				return fmt.Errorf("'attributes' has no subfields, but %s were specified", subs)
+			}
+			if src != nil {
+				dst.Attributes = src.Attributes
+			} else {
+				dst.Attributes = nil
+			}
 
 		default:
 			return fmt.Errorf("invalid field: '%s'", name)
@@ -1294,6 +1580,74 @@ func (dst *ApplicationInvalidatedDownlinks) SetFields(src *ApplicationInvalidate
 				dst.SessionKeyId = src.SessionKeyId
 			} else {
 				dst.SessionKeyId = nil
+			}
+		case "locations":
+			if len(subs) > 0 {
+				return fmt.Errorf("'locations' has no subfields, but %s were specified", subs)
+			}
+			if src != nil {
+				dst.Locations = src.Locations
+			} else {
+				dst.Locations = nil
+			}
+		case "version_ids":
+			if len(subs) > 0 {
+				var newDst, newSrc *EndDeviceVersionIdentifiers
+				if (src == nil || src.VersionIds == nil) && dst.VersionIds == nil {
+					continue
+				}
+				if src != nil {
+					newSrc = src.VersionIds
+				}
+				if dst.VersionIds != nil {
+					newDst = dst.VersionIds
+				} else {
+					newDst = &EndDeviceVersionIdentifiers{}
+					dst.VersionIds = newDst
+				}
+				if err := newDst.SetFields(newSrc, subs...); err != nil {
+					return err
+				}
+			} else {
+				if src != nil {
+					dst.VersionIds = src.VersionIds
+				} else {
+					dst.VersionIds = nil
+				}
+			}
+		case "network_ids":
+			if len(subs) > 0 {
+				var newDst, newSrc *NetworkIdentifiers
+				if (src == nil || src.NetworkIds == nil) && dst.NetworkIds == nil {
+					continue
+				}
+				if src != nil {
+					newSrc = src.NetworkIds
+				}
+				if dst.NetworkIds != nil {
+					newDst = dst.NetworkIds
+				} else {
+					newDst = &NetworkIdentifiers{}
+					dst.NetworkIds = newDst
+				}
+				if err := newDst.SetFields(newSrc, subs...); err != nil {
+					return err
+				}
+			} else {
+				if src != nil {
+					dst.NetworkIds = src.NetworkIds
+				} else {
+					dst.NetworkIds = nil
+				}
+			}
+		case "attributes":
+			if len(subs) > 0 {
+				return fmt.Errorf("'attributes' has no subfields, but %s were specified", subs)
+			}
+			if src != nil {
+				dst.Attributes = src.Attributes
+			} else {
+				dst.Attributes = nil
 			}
 
 		default:
@@ -1391,6 +1745,74 @@ func (dst *ApplicationServiceData) SetFields(src *ApplicationServiceData, paths 
 				dst.Data = src.Data
 			} else {
 				dst.Data = nil
+			}
+		case "locations":
+			if len(subs) > 0 {
+				return fmt.Errorf("'locations' has no subfields, but %s were specified", subs)
+			}
+			if src != nil {
+				dst.Locations = src.Locations
+			} else {
+				dst.Locations = nil
+			}
+		case "version_ids":
+			if len(subs) > 0 {
+				var newDst, newSrc *EndDeviceVersionIdentifiers
+				if (src == nil || src.VersionIds == nil) && dst.VersionIds == nil {
+					continue
+				}
+				if src != nil {
+					newSrc = src.VersionIds
+				}
+				if dst.VersionIds != nil {
+					newDst = dst.VersionIds
+				} else {
+					newDst = &EndDeviceVersionIdentifiers{}
+					dst.VersionIds = newDst
+				}
+				if err := newDst.SetFields(newSrc, subs...); err != nil {
+					return err
+				}
+			} else {
+				if src != nil {
+					dst.VersionIds = src.VersionIds
+				} else {
+					dst.VersionIds = nil
+				}
+			}
+		case "network_ids":
+			if len(subs) > 0 {
+				var newDst, newSrc *NetworkIdentifiers
+				if (src == nil || src.NetworkIds == nil) && dst.NetworkIds == nil {
+					continue
+				}
+				if src != nil {
+					newSrc = src.NetworkIds
+				}
+				if dst.NetworkIds != nil {
+					newDst = dst.NetworkIds
+				} else {
+					newDst = &NetworkIdentifiers{}
+					dst.NetworkIds = newDst
+				}
+				if err := newDst.SetFields(newSrc, subs...); err != nil {
+					return err
+				}
+			} else {
+				if src != nil {
+					dst.NetworkIds = src.NetworkIds
+				} else {
+					dst.NetworkIds = nil
+				}
+			}
+		case "attributes":
+			if len(subs) > 0 {
+				return fmt.Errorf("'attributes' has no subfields, but %s were specified", subs)
+			}
+			if src != nil {
+				dst.Attributes = src.Attributes
+			} else {
+				dst.Attributes = nil
 			}
 
 		default:

@@ -27,7 +27,6 @@ import (
 	asioapredis "go.thethings.network/lorawan-stack/v3/pkg/applicationserver/io/packages/redis"
 	asiopsredis "go.thethings.network/lorawan-stack/v3/pkg/applicationserver/io/pubsub/redis"
 	asiowebredis "go.thethings.network/lorawan-stack/v3/pkg/applicationserver/io/web/redis"
-	asmetaredis "go.thethings.network/lorawan-stack/v3/pkg/applicationserver/metadata/redis"
 	asredis "go.thethings.network/lorawan-stack/v3/pkg/applicationserver/redis"
 	"go.thethings.network/lorawan-stack/v3/pkg/component"
 	"go.thethings.network/lorawan-stack/v3/pkg/console"
@@ -79,6 +78,16 @@ func NewNetworkServerDownlinkTaskRedis(conf *Config) *redis.Client {
 	return redis.New(conf.Redis.WithNamespace("ns", "tasks"))
 }
 
+// NewNetworkServerMACSettingsProfileRegistryRedis instantiates a new redis client
+// with the Network Server MAC Settings Profile Registry namespace.
+func NewNetworkServerMACSettingsProfileRegistryRedis(conf *Config) *redis.Client {
+	redis.SetPaginationDefaults(redis.PaginationDefaults{
+		DefaultLimit: conf.NS.Pagination.DefaultLimit,
+	})
+
+	return redis.New(conf.Redis.WithNamespace("ns", "mac-settings-profiles"))
+}
+
 // NewIdentityServerTelemetryTaskRedis instantiates a new redis client
 // with the Identity Server Telemetry Task namespace.
 func NewIdentityServerTelemetryTaskRedis(conf *Config) *redis.Client {
@@ -89,6 +98,36 @@ func NewIdentityServerTelemetryTaskRedis(conf *Config) *redis.Client {
 // with the Application Server Device Registry namespace.
 func NewApplicationServerDeviceRegistryRedis(conf *Config) *redis.Client {
 	return NewComponentDeviceRegistryRedis(conf, "as")
+}
+
+// NewApplicationServerPubSubRegistryRedis instantiates a new redis client
+// with the Application Server PubSub Registry namespace.
+func NewApplicationServerPubSubRegistryRedis(conf *Config) *redis.Client {
+	redis.SetPaginationDefaults(redis.PaginationDefaults{
+		DefaultLimit: conf.AS.Pagination.DefaultLimit,
+	})
+
+	return redis.New(config.Redis.WithNamespace("as", "io", "pubsub"))
+}
+
+// NewApplicationServerPackagesRegistryRedis instantiates a new redis client
+// with the Application Server Packages Registry namespace.
+func NewApplicationServerPackagesRegistryRedis(conf *Config) *redis.Client {
+	redis.SetPaginationDefaults(redis.PaginationDefaults{
+		DefaultLimit: conf.AS.Pagination.DefaultLimit,
+	})
+
+	return redis.New(config.Redis.WithNamespace("as", "io", "applicationpackages"))
+}
+
+// NewApplicationServerWebhookRegistryRedis instantiates a new redis client
+// with the Application Server Webhook Registry namespace.
+func NewApplicationServerWebhookRegistryRedis(conf *Config) *redis.Client {
+	redis.SetPaginationDefaults(redis.PaginationDefaults{
+		DefaultLimit: conf.AS.Pagination.DefaultLimit,
+	})
+
+	return redis.New(config.Redis.WithNamespace("as", "io", "webhooks"))
 }
 
 // NewJoinServerDeviceRegistryRedis instantiates a new redis client
@@ -342,6 +381,14 @@ var startCommand = &cobra.Command{
 			config.NS.ScheduledDownlinkMatcher = &nsredis.ScheduledDownlinkMatcher{
 				Redis: redis.New(config.Cache.Redis.WithNamespace("ns", "scheduled-downlinks")),
 			}
+			macSettingsProfiles := &nsredis.MACSettingsProfileRegistry{
+				Redis:   NewNetworkServerMACSettingsProfileRegistryRedis(config),
+				LockTTL: defaultLockTTL,
+			}
+			if err := macSettingsProfiles.Init(ctx); err != nil {
+				return shared.ErrInitializeNetworkServer.WithCause(err)
+			}
+			config.NS.MACSettingsProfileRegistry = macSettingsProfiles
 			ns, err := networkserver.New(c, &config.NS)
 			if err != nil {
 				return shared.ErrInitializeNetworkServer.WithCause(err)
@@ -371,7 +418,7 @@ var startCommand = &cobra.Command{
 				Redis: redis.New(config.Cache.Redis.WithNamespace("as", "traffic")),
 			}
 			pubsubRegistry := &asiopsredis.PubSubRegistry{
-				Redis:   redis.New(config.Redis.WithNamespace("as", "io", "pubsub")),
+				Redis:   NewApplicationServerPubSubRegistryRedis(config),
 				LockTTL: defaultLockTTL,
 			}
 			if err := pubsubRegistry.Init(ctx); err != nil {
@@ -380,7 +427,7 @@ var startCommand = &cobra.Command{
 			config.AS.PubSub.Registry = pubsubRegistry
 			applicationPackagesRegistry, err := asioapredis.NewApplicationPackagesRegistry(
 				ctx,
-				redis.New(config.Redis.WithNamespace("as", "io", "applicationpackages")),
+				NewApplicationServerPackagesRegistryRedis(config),
 				defaultLockTTL,
 			)
 			if err != nil {
@@ -389,7 +436,7 @@ var startCommand = &cobra.Command{
 			config.AS.Packages.Registry = applicationPackagesRegistry
 			if config.AS.Webhooks.Target != "" {
 				webhookRegistry := &asiowebredis.WebhookRegistry{
-					Redis:   redis.New(config.Redis.WithNamespace("as", "io", "webhooks")),
+					Redis:   NewApplicationServerWebhookRegistryRedis(config),
 					LockTTL: defaultLockTTL,
 				}
 				if err := webhookRegistry.Init(ctx); err != nil {
@@ -397,21 +444,11 @@ var startCommand = &cobra.Command{
 				}
 				config.AS.Webhooks.Registry = webhookRegistry
 			}
-			if cache := &config.AS.EndDeviceMetadataStorage.Location.Cache; cache.Enable {
-				switch config.Cache.Service {
-				case "redis":
-					cache.Cache = &asmetaredis.EndDeviceLocationCache{
-						Redis: redis.New(config.Cache.Redis.WithNamespace("as", "metadata", "locations")),
-					}
-				default:
-					cache.Enable = false
-				}
-			}
-			locationRegistry, err := config.AS.EndDeviceMetadataStorage.Location.NewRegistry(ctx, c)
+			endDeviceRegistry, err := config.AS.EndDeviceMetadataStorage.NewRegistry(ctx, c)
 			if err != nil {
 				return shared.ErrInitializeApplicationServer.WithCause(err)
 			}
-			config.AS.EndDeviceMetadataStorage.Location.Registry = locationRegistry
+			config.AS.EndDeviceMetadataStorage.Registry = endDeviceRegistry
 			as, err := applicationserver.New(c, &config.AS)
 			if err != nil {
 				return shared.ErrInitializeApplicationServer.WithCause(err)

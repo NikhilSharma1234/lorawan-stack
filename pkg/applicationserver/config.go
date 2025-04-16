@@ -49,9 +49,9 @@ type InteropConfig struct {
 
 // EndDeviceFetcherConfig represents configuration for the end device fetcher in Application Server.
 type EndDeviceFetcherConfig struct {
-	Timeout        time.Duration                        `name:"timeout" description:"Timeout of the end device retrival operation"`
-	Cache          EndDeviceFetcherCacheConfig          `name:"cache" description:"Cache configuration options for the end device fetcher"`
-	CircuitBreaker EndDeviceFetcherCircuitBreakerConfig `name:"circuit-breaker" description:"Circuit breaker options for the end device fetcher"`
+	Timeout        time.Duration                        `name:"timeout" description:"Timeout of the end device retrival operation"`               // nolint:lll
+	Cache          EndDeviceFetcherCacheConfig          `name:"cache" description:"Cache configuration options for the end device fetcher"`       // nolint:lll
+	CircuitBreaker EndDeviceFetcherCircuitBreakerConfig `name:"circuit-breaker" description:"Circuit breaker options for the end device fetcher"` // nolint:lll
 }
 
 // EndDeviceFetcherCacheConfig represents configuration for device information caching in Application Server.
@@ -65,33 +65,37 @@ type EndDeviceFetcherCacheConfig struct {
 type EndDeviceFetcherCircuitBreakerConfig struct {
 	Enable    bool          `name:"enable" description:"Enable circuit breaker behavior on burst errors"`
 	Timeout   time.Duration `name:"timeout" description:"Timeout after which the circuit breaker closes"`
-	Threshold int           `name:"threshold" description:"Number of failed fetching attempts after which the circuit breaker opens"`
+	Threshold int           `name:"threshold" description:"Number of failed fetching attempts after which the circuit breaker opens"` // nolint:lll
 }
 
 // EndDeviceMetadataStorageConfig represents the configuration of end device metadata operations.
 type EndDeviceMetadataStorageConfig struct {
-	Location EndDeviceLocationStorageConfig `name:"location"`
+	// DEPRECATED: use the EndDeviceRegistry for location storage.
+	Location EndDeviceLocationStorageConfig `name:"location" description:"DEPRECATED setting."`
+
+	Registry metadata.EndDeviceRegistry `name:"-"`
+	Timeout  time.Duration              `name:"timeout" description:"Timeout of the entity registry retrieval operation"` // nolint:lll
 }
 
 // EndDeviceLocationStorageConfig represents the configuration of end device locations storage.
+// DEPRECATED: use the metadata.EndDeviceRegistry for location storage.
 type EndDeviceLocationStorageConfig struct {
-	Registry metadata.EndDeviceLocationRegistry  `name:"-"`
-	Timeout  time.Duration                       `name:"timeout" description:"Timeout of the end device retrival operation"`
-	Cache    EndDeviceLocationStorageCacheConfig `name:"cache"`
+	Timeout time.Duration                       `name:"timeout" description:"Timeout of the end device retrieval operation. DEPRECATED: use the end device metadata storage directly instead."` // nolint:lll
+	Cache   EndDeviceLocationStorageCacheConfig `name:"cache" description:"DEPRECATED: use the end device metadata storage directly instead."`                                                  // nolint:lll
 }
 
 // EndDeviceLocationStorageCacheConfig represents the configuration of end device location registry caching.
+// DEPRECATED: use the metadata.EndDeviceRegistryCache and the locations field of end devices for caching.
 type EndDeviceLocationStorageCacheConfig struct {
-	Cache              metadata.EndDeviceLocationCache `name:"-"`
-	Enable             bool                            `name:"enable" description:"Enable caching of end device locations"`
-	MinRefreshInterval time.Duration                   `name:"min-refresh-interval" description:"Minimum time interval between two asynchronous refreshes"`
-	MaxRefreshInterval time.Duration                   `name:"max-refresh-interval" description:"Maximum time interval between two asynchronous refreshes"`
-	TTL                time.Duration                   `name:"eviction-ttl" description:"Time to live of cached locations"`
+	Enable             bool          `name:"enable" description:"Enable caching of end device locations. DEPRECATED: use the end device metadata storage directly instead."`                                 // nolint:lll
+	MinRefreshInterval time.Duration `name:"min-refresh-interval" description:"Minimum time interval between two asynchronous refreshes. DEPRECATED: use the end device metadata storage directly instead."` // nolint:lll
+	MaxRefreshInterval time.Duration `name:"max-refresh-interval" description:"Maximum time interval between two asynchronous refreshes. DEPRECATED: use the end device metadata storage directly instead."` // nolint:lll
+	TTL                time.Duration `name:"eviction-ttl" description:"Time to live of cached locations. DEPRECATED: use the end device metadata storage directly instead."`                                 // nolint:lll
 }
 
 // FormattersConfig represents the configuration for payload formatters.
 type FormattersConfig struct {
-	MaxParameterLength int `name:"max-parameter-length" description:"Maximum allowed size for length of formatter parameters (payload formatter scripts)"`
+	MaxParameterLength int `name:"max-parameter-length" description:"Maximum allowed size for length of formatter parameters (payload formatter scripts)"` // nolint:lll
 }
 
 // ConfirmationConfig represents the configuration for confirmed downlink.
@@ -105,24 +109,30 @@ type DownlinksConfig struct {
 	ConfirmationConfig ConfirmationConfig `name:"confirmation" description:"Configuration for confirmed downlink"`
 }
 
+// PaginationConfig represents the configuration for pagination.
+type PaginationConfig struct {
+	DefaultLimit int64 `name:"default-limit" description:"Default limit for pagination"`
+}
+
 // Config represents the ApplicationServer configuration.
 type Config struct {
-	LinkMode                 string                         `name:"link-mode" description:"Deprecated - mode to link applications to their Network Server (all, explicit)"`
+	LinkMode                 string                         `name:"link-mode" description:"Deprecated - mode to link applications to their Network Server (all, explicit)"` // nolint:lll
 	Devices                  DeviceRegistry                 `name:"-"`
 	Links                    LinkRegistry                   `name:"-"`
 	UplinkStorage            UplinkStorageConfig            `name:"uplink-storage" description:"Application uplinks storage configuration"`
 	Formatters               FormattersConfig               `name:"formatters" description:"Payload formatters configuration"`
 	Distribution             DistributionConfig             `name:"distribution" description:"Distribution configuration"`
-	EndDeviceFetcher         EndDeviceFetcherConfig         `name:"fetcher" description:"Deprecated - End Device fetcher configuration"`
-	EndDeviceMetadataStorage EndDeviceMetadataStorageConfig `name:"end-device-metadata-storage" description:"End device metadata storage configuration"`
+	EndDeviceFetcher         EndDeviceFetcherConfig         `name:"fetcher" description:"Deprecated - End Device fetcher configuration"`                 // nolint:lll
+	EndDeviceMetadataStorage EndDeviceMetadataStorageConfig `name:"end-device-metadata-storage" description:"End device metadata storage configuration"` // nolint:lll
 	MQTT                     config.MQTT                    `name:"mqtt" description:"MQTT configuration"`
 	Webhooks                 WebhooksConfig                 `name:"webhooks" description:"Webhooks configuration"`
 	PubSub                   PubSubConfig                   `name:"pubsub" description:"Pub/sub messaging configuration"`
 	Packages                 ApplicationPackagesConfig      `name:"packages" description:"Application packages configuration"`
 	Interop                  InteropConfig                  `name:"interop" description:"Interop client configuration"`
-	DeviceKEKLabel           string                         `name:"device-kek-label" description:"Label of KEK used to encrypt device keys at rest"`
-	DeviceLastSeen           LastSeenConfig                 `name:"device-last-seen" description:"End Device last seen batch update configuration"`
+	DeviceKEKLabel           string                         `name:"device-kek-label" description:"Label of KEK used to encrypt device keys at rest"` // nolint:lll
+	DeviceLastSeen           LastSeenConfig                 `name:"device-last-seen" description:"End Device last seen batch update configuration"`  // nolint:lll
 	Downlinks                DownlinksConfig                `name:"downlinks" description:"Downlink configuration"`
+	Pagination               PaginationConfig               `name:"pagination" description:"Pagination configuration"`
 }
 
 func (c Config) toProto() *ttnpb.AsConfiguration {
@@ -147,10 +157,10 @@ type UplinkStorageConfig struct {
 type WebhooksConfig struct {
 	Registry                   web.WebhookRegistry `name:"-"`
 	Target                     string              `name:"target" description:"Target of the integration (direct)"`
-	Timeout                    time.Duration       `name:"timeout" description:"Wait timeout of the target to process the request"`
+	Timeout                    time.Duration       `name:"timeout" description:"Wait timeout of the target to process the request"` // nolint:lll
 	QueueSize                  int                 `name:"queue-size" description:"Number of requests to queue"`
 	Workers                    int                 `name:"workers" description:"Number of workers to process requests"`
-	UnhealthyAttemptsThreshold int                 `name:"unhealthy-attempts-threshold" description:"Number of failed webhook attempts before the webhook is disabled"`
+	UnhealthyAttemptsThreshold int                 `name:"unhealthy-attempts-threshold" description:"Number of failed webhook attempts before the webhook is disabled"` // nolint:lll
 	UnhealthyRetryInterval     time.Duration       `name:"unhealthy-retry-interval" description:"Time interval after which disabled webhooks may execute again"`
 	Templates                  web.TemplatesConfig `name:"templates" description:"The store of the webhook templates"`
 	Downlinks                  web.DownlinksConfig `name:"downlink" description:"The downlink queue operations configuration"`
@@ -286,7 +296,10 @@ func (c PubSubConfig) NewPubSub(comp *component.Component, server io.Server) (*p
 
 // NewApplicationPackages returns a new applications packages frontend based on the configuration.
 // If the registry is nil, it returns nil.
-func (c ApplicationPackagesConfig) NewApplicationPackages(ctx context.Context, server io.Server) (packages.Server, error) {
+func (c ApplicationPackagesConfig) NewApplicationPackages(
+	ctx context.Context,
+	server io.Server,
+) (packages.Server, error) {
 	if c.Registry == nil {
 		return nil, nil
 	}
@@ -304,27 +317,19 @@ func (c ApplicationPackagesConfig) NewApplicationPackages(ctx context.Context, s
 	return packages.New(ctx, server, c.Registry, handlers, c.Workers, c.Timeout)
 }
 
-var (
-	errInvalidTimeout = errors.DefineInvalidArgument("invalid_timeout", "invalid timeout `{timeout}`")
-	errInvalidTTL     = errors.DefineInvalidArgument("invalid_ttl", "invalid TTL `{ttl}`")
-)
+var errInvalidTimeout = errors.DefineInvalidArgument("invalid_timeout", "invalid timeout `{timeout}`")
 
-// NewRegistry returns a new end device location registry based on the configuration.
-func (c EndDeviceLocationStorageConfig) NewRegistry(ctx context.Context, comp *component.Component) (metadata.EndDeviceLocationRegistry, error) {
+// NewRegistry returns a new end device attributes registry based on the configuration.
+func (c EndDeviceMetadataStorageConfig) NewRegistry(
+	_ context.Context,
+	comp *component.Component,
+) (metadata.EndDeviceRegistry, error) {
 	if c.Timeout <= 0 {
 		return nil, errInvalidTimeout.WithAttributes("timeout", c.Timeout)
 	}
-	registry := metadata.NewClusterEndDeviceLocationRegistry(comp, c.Timeout)
-	registry = metadata.NewMetricsEndDeviceLocationRegistry(registry)
-	if c.Cache.Enable {
-		for _, ttl := range []time.Duration{c.Cache.MinRefreshInterval, c.Cache.MaxRefreshInterval, c.Cache.TTL} {
-			if ttl <= 0 {
-				return nil, errInvalidTTL.WithAttributes("ttl", ttl)
-			}
-		}
-		cache := metadata.NewMetricsEndDeviceLocationCache(c.Cache.Cache)
-		registry = metadata.NewCachedEndDeviceLocationRegistry(ctx, comp, registry, cache, c.Cache.MinRefreshInterval, c.Cache.MaxRefreshInterval, c.Cache.TTL)
-	}
+	registry := metadata.NewClusterEndDeviceRegistry(comp, c.Timeout)
+	registry = metadata.NewMetricsEndDeviceRegistry(registry)
+
 	return registry, nil
 }
 

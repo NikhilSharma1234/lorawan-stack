@@ -76,10 +76,11 @@ describe('Application Webhook', () => {
     cy.findByRole('button', { name: 'Save changes' }).click()
 
     cy.findByTestId('error-notification').should('not.exist')
-    cy.findByTestId('toast-notification').findByText('Webhook updated').should('be.visible')
+    cy.findByTestId('toast-notification-success').findByText('Webhook updated').should('be.visible')
 
     cy.reload()
     cy.findByLabelText('Base URL').should('have.attr', 'value', webhook.url)
+    cy.get('input[name="uplink_message.enable"]').scrollIntoView()
     cy.findByLabelText('Uplink message')
       .should('be.checked')
       .parents('[data-test-id="form-field"]')
@@ -89,7 +90,7 @@ describe('Application Webhook', () => {
     cy.findByLabelText('Join accept').should('not.be.checked')
     cy.findByRole('button', { name: 'Save changes' }).click()
     cy.findByTestId('error-notification').should('not.exist')
-    cy.findByTestId('toast-notification').findByText(`Webhook updated`).should('be.visible')
+    cy.findByTestId('toast-notification-success').findByText(`Webhook updated`).should('be.visible')
 
     cy.reload()
     cy.findByLabelText('Base URL').should('have.attr', 'value', webhook.url)
@@ -102,7 +103,7 @@ describe('Application Webhook', () => {
     cy.findByLabelText('Uplink message').uncheck()
     cy.findByRole('button', { name: 'Save changes' }).click()
     cy.findByTestId('error-notification').should('not.exist')
-    cy.findByTestId('toast-notification').findByText(`Webhook updated`).should('be.visible')
+    cy.findByTestId('toast-notification-success').findByText(`Webhook updated`).should('be.visible')
 
     cy.reload()
     cy.findByLabelText('Uplink message').should('not.be.checked')
@@ -124,7 +125,7 @@ describe('Application Webhook', () => {
     cy.findByRole('button', { name: 'Save changes' }).click()
 
     cy.findByTestId('error-notification').should('not.exist')
-    cy.findByTestId('toast-notification')
+    cy.findByTestId('toast-notification-success')
       .should('be.visible')
       .findByText(`Webhook updated`)
       .should('be.visible')
@@ -161,7 +162,7 @@ describe('Application Webhook', () => {
     cy.findByRole('button', { name: 'Save changes' }).click()
 
     cy.findByTestId('error-notification').should('not.exist')
-    cy.findByTestId('toast-notification')
+    cy.findByTestId('toast-notification-success')
       .should('be.visible')
       .findByText(`Webhook updated`)
       .should('be.visible')
@@ -177,6 +178,26 @@ describe('Application Webhook', () => {
       .should('be.visible')
       .and('have.attr', 'value')
       .and('eq', '1234QUERTY!')
+  })
+
+  it('succeeds pausing and activating webhook', () => {
+    cy.findByRole('button', { name: /Pause/ }).click()
+
+    cy.findByTestId('modal-window')
+      .should('be.visible')
+      .within(() => {
+        cy.findByText('Pause webhook?', { selector: 'h1' }).should('be.visible')
+        cy.findByRole('button', { name: /Pause webhook/ }).click()
+      })
+    cy.findByTestId('toast-notification-success').findByText('Webhook paused').should('be.visible')
+
+    cy.findAllByRole('button', { name: /Activate/ }).should('have.length', 2)
+    cy.findByTestId('notification')
+      .should('exist')
+      .findByRole('button', { name: /Activate/ })
+      .click()
+
+    cy.findByTestId('toast-notification-success').findByText('Webhook active').should('be.visible')
   })
 
   it('succeeds deleting webhook', () => {

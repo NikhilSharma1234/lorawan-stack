@@ -16,7 +16,6 @@ package cups
 
 import (
 	"context"
-	"crypto/tls"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -29,6 +28,7 @@ import (
 	"go.thethings.network/lorawan-stack/v3/pkg/component"
 	componenttest "go.thethings.network/lorawan-stack/v3/pkg/component/test"
 	"go.thethings.network/lorawan-stack/v3/pkg/config"
+	"go.thethings.network/lorawan-stack/v3/pkg/config/tlsconfig"
 	"go.thethings.network/lorawan-stack/v3/pkg/errors"
 	"go.thethings.network/lorawan-stack/v3/pkg/log"
 	"go.thethings.network/lorawan-stack/v3/pkg/rpcmetadata"
@@ -41,9 +41,12 @@ import (
 )
 
 func TestGetTrust(t *testing.T) {
-	a := assertions.New(t)
+	a, ctx := test.New(t)
 
-	s := NewServer(componenttest.NewComponent(t, &component.Config{}))
+	s, err := NewServer(ctx, componenttest.NewComponent(t, &component.Config{}), ServerConfig{})
+	if !a.So(err, should.BeNil) {
+		t.FailNow()
+	}
 
 	for _, addr := range []string{
 		"thethingsnetwork.org:443",
@@ -568,20 +571,27 @@ func TestServer(t *testing.T) { //nolint:gocyclo
 				tt.StoreSetup(store)
 			}
 
-			s := NewServer(componenttest.NewComponent(t, &component.Config{
+			c := componenttest.NewComponent(t, &component.Config{
 				ServiceBase: config.ServiceBase{
 					KeyVault: kv,
+					TLS: tlsconfig.Config{
+						Client: tlsconfig.Client{
+							InsecureSkipVerify: true, //nolint:gosec
+						},
+					},
 				},
-			}), append([]Option{
-				WithTLSConfig(&tls.Config{
-					InsecureSkipVerify: true, //nolint:gosec
-				}),
+			})
+			opts := append([]Option{
 				WithAuth(mockAuthFunc),
 				WithRegistries(store, store),
-			}, tt.Options...)...)
-			req := httptest.NewRequest(http.MethodPost, "/update-info", strings.NewReader(updateInfoRequest))
+			}, tt.Options...)
 			ctx := test.Context()
 			ctx = log.NewContext(ctx, test.GetLogger(t))
+			s, err := NewServer(ctx, c, ServerConfig{}, opts...)
+			if !a.So(err, should.BeNil) {
+				t.FailNow()
+			}
+			req := httptest.NewRequest(http.MethodPost, "/update-info", strings.NewReader(updateInfoRequest))
 			ctx = rights.NewContextWithFetcher(ctx, mockRightsFetcher)
 			if tt.SetContext != nil {
 				ctx = tt.SetContext(ctx)
@@ -593,7 +603,7 @@ func TestServer(t *testing.T) { //nolint:gocyclo
 				tt.RequestSetup(req)
 			}
 			rec := httptest.NewRecorder()
-			err := s.updateInfo(rec, req)
+			err = s.updateInfo(rec, req)
 			if tt.AssertError != nil && !a.So(tt.AssertError(err), should.BeTrue) {
 				t.Fatalf("Unexpected error :%v", err)
 			}

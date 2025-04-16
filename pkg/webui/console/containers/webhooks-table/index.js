@@ -32,20 +32,20 @@ import { getWebhooksList } from '@console/store/actions/webhooks'
 import { selectWebhooksHealthStatusEnabled } from '@console/store/selectors/application-server'
 import { selectWebhooks, selectWebhooksTotalCount } from '@console/store/selectors/webhooks'
 
-import style from './webhooks-table.styl'
-
 const m = defineMessages({
   templateId: 'Template ID',
   healthy: 'Healthy',
   pending: 'Pending',
   requestsFailing: 'Requests failing',
+  paused: 'Paused',
+  active: 'Active',
 })
 
 const WebhooksTable = () => {
   const { appId } = useParams()
   const healthStatusEnabled = useSelector(selectWebhooksHealthStatusEnabled)
   const getWebhooksListCallback = useCallback(
-    () => getWebhooksList(appId, ['template_ids', 'health_status']),
+    () => getWebhooksList(appId, ['template_ids', 'health_status', 'paused']),
     [appId],
   )
 
@@ -74,21 +74,25 @@ const WebhooksTable = () => {
       name: 'template_ids.template_id',
       displayName: m.templateId,
       width: 12,
-      render: value => value || <Message className={style.none} content={sharedMessages.none} />,
+      render: value =>
+        value || <Message className="c-text-neutral-light" content={sharedMessages.none} />,
       sortable: true,
     },
   ]
 
-  if (healthStatusEnabled) {
-    headers.push({
-      name: 'health_status',
-      displayName: sharedMessages.status,
-      width: 8,
-      render: value => {
-        let indicator = 'unknown'
-        let label = sharedMessages.unknown
+  headers.push({
+    name: 'health_status',
+    displayName: sharedMessages.status,
+    width: 8,
+    render: (value, webhook) => {
+      let indicator = 'unknown'
+      let label = sharedMessages.unknown
 
-        if (value && value.healthy) {
+      if (healthStatusEnabled) {
+        if (webhook && webhook.paused) {
+          indicator = 'mediocre'
+          label = m.paused
+        } else if (value && value.healthy) {
           indicator = 'good'
           label = m.healthy
         } else if (value && value.unhealthy) {
@@ -98,11 +102,17 @@ const WebhooksTable = () => {
           indicator = 'mediocre'
           label = m.pending
         }
+      } else if (webhook && webhook.paused) {
+        indicator = 'mediocre'
+        label = m.paused
+      } else {
+        indicator = 'green'
+        label = m.active
+      }
 
-        return <Status status={indicator} label={label} pulse={false} />
-      },
-    })
-  }
+      return <Status status={indicator} label={label} pulse={false} />
+    },
+  })
 
   headers.push({
     name: 'created_at',

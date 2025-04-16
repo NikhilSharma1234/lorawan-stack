@@ -963,6 +963,8 @@ func (m *ApplicationPubSub) SetFromFlags(flags *pflag.FlagSet, prefix string) (p
 func AddSetFlagsForListApplicationPubSubsRequest(flags *pflag.FlagSet, prefix string, hidden bool) {
 	AddSetFlagsForApplicationIdentifiers(flags, flagsplugin.Prefix("application-ids", prefix), hidden)
 	flags.AddFlag(flagsplugin.NewStringSliceFlag(flagsplugin.Prefix("field-mask", prefix), "", flagsplugin.WithHidden(hidden)))
+	flags.AddFlag(flagsplugin.NewUint32Flag(flagsplugin.Prefix("limit", prefix), "", flagsplugin.WithHidden(hidden)))
+	flags.AddFlag(flagsplugin.NewUint32Flag(flagsplugin.Prefix("page", prefix), "", flagsplugin.WithHidden(hidden)))
 }
 
 // SetFromFlags sets the ListApplicationPubSubsRequest message from flags.
@@ -982,6 +984,18 @@ func (m *ListApplicationPubSubsRequest) SetFromFlags(flags *pflag.FlagSet, prefi
 	} else if changed {
 		m.FieldMask = golang.SetFieldMask(val)
 		paths = append(paths, flagsplugin.Prefix("field_mask", prefix))
+	}
+	if val, changed, err := flagsplugin.GetUint32(flags, flagsplugin.Prefix("limit", prefix)); err != nil {
+		return nil, err
+	} else if changed {
+		m.Limit = val
+		paths = append(paths, flagsplugin.Prefix("limit", prefix))
+	}
+	if val, changed, err := flagsplugin.GetUint32(flags, flagsplugin.Prefix("page", prefix)); err != nil {
+		return nil, err
+	} else if changed {
+		m.Page = val
+		paths = append(paths, flagsplugin.Prefix("page", prefix))
 	}
 	return paths, nil
 }

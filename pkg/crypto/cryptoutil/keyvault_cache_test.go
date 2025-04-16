@@ -81,14 +81,14 @@ func TestCacheKeyVault(t *testing.T) {
 	)
 	kv := cryptoutil.NewCacheKeyVault(
 		&mockKeyVault{
-			KeyFunc: func(ctx context.Context, label string) ([]byte, error) {
+			KeyFunc: func(_ context.Context, label string) ([]byte, error) {
 				keys = append(keys, label)
 				if label == "error" {
 					return nil, errors.New("error")
 				}
 				return []byte(label), nil
 			},
-			ServerCertificateFunc: func(ctx context.Context, label string) (tls.Certificate, error) {
+			ServerCertificateFunc: func(_ context.Context, label string) (tls.Certificate, error) {
 				serverCerts = append(serverCerts, label)
 				tmpl := &x509.Certificate{
 					IsCA: true,

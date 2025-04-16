@@ -43,6 +43,7 @@ const CodeEditor = ({
   onChange,
   onFocus,
   scrollToBottom,
+  darkTheme,
 }) => {
   const [focus, setFocus] = useState(false)
   const aceRef = useRef()
@@ -103,7 +104,7 @@ const CodeEditor = ({
     <div className={editorCls} data-test-id={`code-editor-${name}`}>
       <ReactAce
         // Rendered options.
-        theme="ttn"
+        theme={darkTheme ? 'ttn-dark' : 'ttn-light'}
         minLines={minLines}
         maxLines={maxLines}
         // Session options.
@@ -125,6 +126,7 @@ const CodeEditor = ({
         editorProps={{ $blockScrolling: Infinity }}
         commands={commands}
         ref={editorRef ? combineRefs([aceRef, editorRef]) : aceRef}
+        wrapEnabled
       />
     </div>
   )
@@ -134,6 +136,8 @@ CodeEditor.propTypes = {
   className: PropTypes.string,
   /** New commands to add to the editor, see official docs. */
   commands: PropTypes.arrayOf(PropTypes.shape({})),
+  /** A flag indicating whether the editor should use a dark theme. */
+  darkTheme: PropTypes.bool,
   /** See `https://github.com/ajaxorg/ace/wiki/Configuring-Ace`. */
   editorOptions: PropTypes.shape({}),
   editorRef: PropTypes.shape({ current: PropTypes.shape({}) }),
@@ -166,6 +170,7 @@ CodeEditor.propTypes = {
 CodeEditor.defaultProps = {
   className: undefined,
   commands: undefined,
+  darkTheme: false,
   editorOptions: undefined,
   height: '30rem',
   language: 'javascript',

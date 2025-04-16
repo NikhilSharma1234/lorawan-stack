@@ -15,10 +15,10 @@
 package ttjsv2
 
 import (
+	"context"
 	"crypto/tls"
 
 	"go.thethings.network/lorawan-stack/v3/pkg/config/tlsconfig"
-	"go.thethings.network/lorawan-stack/v3/pkg/crypto"
 	"go.thethings.network/lorawan-stack/v3/pkg/fetch"
 )
 
@@ -36,7 +36,9 @@ func (conf TLSConfig) IsZero() bool {
 }
 
 // TLSConfig returns the *tls.Config.
-func (conf TLSConfig) TLSConfig(fetcher fetch.Interface, ks crypto.KeyService) (*tls.Config, error) {
+func (conf TLSConfig) TLSConfig(
+	ctx context.Context, c Component, fetcher fetch.Interface,
+) (*tls.Config, error) {
 	res := &tls.Config{
 		MinVersion: tls.VersionTLS12,
 	}
@@ -47,13 +49,15 @@ func (conf TLSConfig) TLSConfig(fetcher fetch.Interface, ks crypto.KeyService) (
 	if err := clientConfig.ApplyTo(res); err != nil {
 		return nil, err
 	}
+	acmeConfig := c.GetTLSConfig(ctx).ACME
 	clientAuthConfig := &tlsconfig.ClientAuth{
 		Source:      conf.Source,
 		FileReader:  tlsconfig.FromFetcher(fetcher),
 		Certificate: conf.Certificate,
 		Key:         conf.Key,
+		ACME:        &acmeConfig,
 		KeyVault: tlsconfig.ClientKeyVault{
-			CertificateProvider: ks,
+			CertificateProvider: c.KeyService(),
 		},
 	}
 	if err := clientAuthConfig.ApplyTo(res); err != nil {

@@ -2091,6 +2091,10 @@
         "ns",
         "ns"
       ],
+      "attributes": [
+        "ns",
+        "read_only"
+      ],
       "class_b_c": {
         "_root": [
           "ns",
@@ -2125,6 +2129,40 @@
         "ns",
         "ns"
       ],
+      "locations": [
+        "ns",
+        "read_only"
+      ],
+      "network_ids": {
+        "_root": [
+          "ns",
+          "ns"
+        ],
+        "cluster_address": [
+          "ns",
+          "ns"
+        ],
+        "cluster_id": [
+          "ns",
+          "ns"
+        ],
+        "net_id": [
+          "ns",
+          "ns"
+        ],
+        "ns_id": [
+          "ns",
+          "ns"
+        ],
+        "tenant_address": [
+          "ns",
+          "ns"
+        ],
+        "tenant_id": [
+          "ns",
+          "ns"
+        ]
+      },
       "priority": [
         "ns",
         "ns"
@@ -2132,7 +2170,33 @@
       "session_key_id": [
         "ns",
         "ns"
-      ]
+      ],
+      "version_ids": {
+        "_root": [
+          "ns",
+          "read_only"
+        ],
+        "band_id": [
+          "ns",
+          "read_only"
+        ],
+        "brand_id": [
+          "ns",
+          "read_only"
+        ],
+        "firmware_version": [
+          "ns",
+          "read_only"
+        ],
+        "hardware_version": [
+          "ns",
+          "read_only"
+        ],
+        "model_id": [
+          "ns",
+          "read_only"
+        ]
+      }
     },
     "pending_relay_downlink": {
       "_root": [

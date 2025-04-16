@@ -46,9 +46,9 @@ var DefaultTLSConfig = tlsconfig.Config{
 	ServerAuth: tlsconfig.ServerAuth{
 		Certificate: "cert.pem",
 		Key:         "key.pem",
-		ACME: tlsconfig.ACME{
-			Endpoint: acme.LetsEncryptURL,
-		},
+	},
+	ACME: tlsconfig.ACME{
+		Endpoint: acme.LetsEncryptURL,
 	},
 }
 

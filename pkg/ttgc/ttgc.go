@@ -29,6 +29,7 @@ import (
 
 // Component is the component interface required for this package.
 type Component interface {
+	GetTLSConfig(context.Context) tlsconfig.Config
 	GetTLSClientConfig(context.Context, ...tlsconfig.Option) (*tls.Config, error)
 }
 
@@ -66,7 +67,11 @@ func NewClient(
 		tlsConfig.RootCAs.AppendCertsFromPEM(knownDeploymentPEM)
 	}
 
-	if err := config.TLS.ApplyTo(tlsConfig); err != nil {
+	acmeConfig := c.GetTLSConfig(ctx).ACME
+	clientAuthConfig := config.TLS
+	clientAuthConfig.ACME = &acmeConfig
+
+	if err := clientAuthConfig.ApplyTo(tlsConfig); err != nil {
 		return nil, err
 	}
 	opts := rpcclient.DefaultDialOptions(ctx)

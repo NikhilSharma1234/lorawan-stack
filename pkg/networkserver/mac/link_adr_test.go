@@ -434,6 +434,7 @@ func TestHandleLinkADRAns(t *testing.T) {
 		DupCount         uint
 		Events           events.Builders
 		Error            error
+		AdrEnabled       bool
 	}{
 		{
 			Name: "nil payload",
@@ -451,7 +452,8 @@ func TestHandleLinkADRAns(t *testing.T) {
 					LorawanVersion: ttnpb.MACVersion_MAC_V1_1,
 				},
 			},
-			Error: ErrNoPayload,
+			Error:      ErrNoPayload,
+			AdrEnabled: true,
 		},
 		{
 			Name: "no request",
@@ -481,7 +483,163 @@ func TestHandleLinkADRAns(t *testing.T) {
 					TxPowerIndexAck:  true,
 				})),
 			},
-			Error: ErrRequestNotFound.WithAttributes("cid", ttnpb.MACCommandIdentifier_CID_LINK_ADR),
+			Error:      ErrRequestNotFound.WithAttributes("cid", ttnpb.MACCommandIdentifier_CID_LINK_ADR),
+			AdrEnabled: true,
+		},
+		{
+			Name: "1.0.2/channel mask on/adr enabled/rejected",
+			Device: &ttnpb.EndDevice{
+				FrequencyPlanId:   test.EUFrequencyPlanID,
+				LorawanPhyVersion: ttnpb.PHYVersion_RP001_V1_0_2_REV_B,
+				MacState: &ttnpb.MACState{
+					LorawanVersion: ttnpb.MACVersion_MAC_V1_0_2,
+				},
+			},
+			Expected: &ttnpb.EndDevice{
+				FrequencyPlanId:   test.EUFrequencyPlanID,
+				LorawanPhyVersion: ttnpb.PHYVersion_RP001_V1_0_2_REV_B,
+				MacState: &ttnpb.MACState{
+					LorawanVersion: ttnpb.MACVersion_MAC_V1_0_2,
+				},
+			},
+			Payload: &ttnpb.MACCommand_LinkADRAns{
+				ChannelMaskAck:   true,
+				DataRateIndexAck: false,
+				TxPowerIndexAck:  false,
+			},
+			Events: events.Builders{
+				EvtReceiveLinkADRReject.With(events.WithData(&ttnpb.MACCommand_LinkADRAns{
+					ChannelMaskAck:   true,
+					DataRateIndexAck: false,
+					TxPowerIndexAck:  false,
+				})),
+			},
+			Error:      ErrRequestNotFound.WithAttributes("cid", ttnpb.MACCommandIdentifier_CID_LINK_ADR),
+			AdrEnabled: true,
+		},
+		{
+			Name: "1.0.4/channel mask on/adr disabled/accepted",
+			Device: &ttnpb.EndDevice{
+				FrequencyPlanId:   test.EUFrequencyPlanID,
+				LorawanPhyVersion: ttnpb.PHYVersion_RP002_V1_0_4,
+				MacState: &ttnpb.MACState{
+					LorawanVersion: ttnpb.MACVersion_MAC_V1_0_4,
+				},
+			},
+			Expected: &ttnpb.EndDevice{
+				FrequencyPlanId:   test.EUFrequencyPlanID,
+				LorawanPhyVersion: ttnpb.PHYVersion_RP002_V1_0_4,
+				MacState: &ttnpb.MACState{
+					LorawanVersion: ttnpb.MACVersion_MAC_V1_0_4,
+				},
+			},
+			Payload: &ttnpb.MACCommand_LinkADRAns{
+				ChannelMaskAck:   true,
+				DataRateIndexAck: false,
+				TxPowerIndexAck:  false,
+			},
+			Events: events.Builders{
+				EvtReceiveLinkADRAccept.With(events.WithData(&ttnpb.MACCommand_LinkADRAns{
+					ChannelMaskAck:   true,
+					DataRateIndexAck: false,
+					TxPowerIndexAck:  false,
+				})),
+			},
+			Error:      ErrRequestNotFound.WithAttributes("cid", ttnpb.MACCommandIdentifier_CID_LINK_ADR),
+			AdrEnabled: false,
+		},
+		{
+			Name: "1.0.4/channel mask off/adr disabled/rejected",
+			Device: &ttnpb.EndDevice{
+				FrequencyPlanId:   test.EUFrequencyPlanID,
+				LorawanPhyVersion: ttnpb.PHYVersion_RP002_V1_0_4,
+				MacState: &ttnpb.MACState{
+					LorawanVersion: ttnpb.MACVersion_MAC_V1_0_4,
+				},
+			},
+			Expected: &ttnpb.EndDevice{
+				FrequencyPlanId:   test.EUFrequencyPlanID,
+				LorawanPhyVersion: ttnpb.PHYVersion_RP002_V1_0_4,
+				MacState: &ttnpb.MACState{
+					LorawanVersion: ttnpb.MACVersion_MAC_V1_0_4,
+				},
+			},
+			Payload: &ttnpb.MACCommand_LinkADRAns{
+				ChannelMaskAck:   false,
+				DataRateIndexAck: false,
+				TxPowerIndexAck:  false,
+			},
+			Events: events.Builders{
+				EvtReceiveLinkADRReject.With(events.WithData(&ttnpb.MACCommand_LinkADRAns{
+					ChannelMaskAck:   false,
+					DataRateIndexAck: false,
+					TxPowerIndexAck:  false,
+				})),
+			},
+			Error:      ErrRequestNotFound.WithAttributes("cid", ttnpb.MACCommandIdentifier_CID_LINK_ADR),
+			AdrEnabled: false,
+		},
+		{
+			Name: "1.0.4/channel mask on/adr enabled/rejected",
+			Device: &ttnpb.EndDevice{
+				FrequencyPlanId:   test.EUFrequencyPlanID,
+				LorawanPhyVersion: ttnpb.PHYVersion_RP002_V1_0_4,
+				MacState: &ttnpb.MACState{
+					LorawanVersion: ttnpb.MACVersion_MAC_V1_0_4,
+				},
+			},
+			Expected: &ttnpb.EndDevice{
+				FrequencyPlanId:   test.EUFrequencyPlanID,
+				LorawanPhyVersion: ttnpb.PHYVersion_RP002_V1_0_4,
+				MacState: &ttnpb.MACState{
+					LorawanVersion: ttnpb.MACVersion_MAC_V1_0_4,
+				},
+			},
+			Payload: &ttnpb.MACCommand_LinkADRAns{
+				ChannelMaskAck:   true,
+				DataRateIndexAck: false,
+				TxPowerIndexAck:  false,
+			},
+			Events: events.Builders{
+				EvtReceiveLinkADRReject.With(events.WithData(&ttnpb.MACCommand_LinkADRAns{
+					ChannelMaskAck:   true,
+					DataRateIndexAck: false,
+					TxPowerIndexAck:  false,
+				})),
+			},
+			Error:      ErrRequestNotFound.WithAttributes("cid", ttnpb.MACCommandIdentifier_CID_LINK_ADR),
+			AdrEnabled: true,
+		},
+		{
+			Name: "1.0.4/channel mask off/adr enabled/rejected",
+			Device: &ttnpb.EndDevice{
+				FrequencyPlanId:   test.EUFrequencyPlanID,
+				LorawanPhyVersion: ttnpb.PHYVersion_RP002_V1_0_4,
+				MacState: &ttnpb.MACState{
+					LorawanVersion: ttnpb.MACVersion_MAC_V1_0_4,
+				},
+			},
+			Expected: &ttnpb.EndDevice{
+				FrequencyPlanId:   test.EUFrequencyPlanID,
+				LorawanPhyVersion: ttnpb.PHYVersion_RP002_V1_0_4,
+				MacState: &ttnpb.MACState{
+					LorawanVersion: ttnpb.MACVersion_MAC_V1_0_4,
+				},
+			},
+			Payload: &ttnpb.MACCommand_LinkADRAns{
+				ChannelMaskAck:   false,
+				DataRateIndexAck: false,
+				TxPowerIndexAck:  false,
+			},
+			Events: events.Builders{
+				EvtReceiveLinkADRReject.With(events.WithData(&ttnpb.MACCommand_LinkADRAns{
+					ChannelMaskAck:   false,
+					DataRateIndexAck: false,
+					TxPowerIndexAck:  false,
+				})),
+			},
+			Error:      ErrRequestNotFound.WithAttributes("cid", ttnpb.MACCommandIdentifier_CID_LINK_ADR),
+			AdrEnabled: true,
 		},
 		{
 			Name: "1 request/all ack",
@@ -547,6 +705,7 @@ func TestHandleLinkADRAns(t *testing.T) {
 					TxPowerIndexAck:  true,
 				})),
 			},
+			AdrEnabled: true,
 		},
 		{
 			Name: "1.1/2 requests/all ack",
@@ -636,6 +795,7 @@ func TestHandleLinkADRAns(t *testing.T) {
 					TxPowerIndexAck:  true,
 				})),
 			},
+			AdrEnabled: true,
 		},
 		{
 			Name:     "1.0.2/2 requests/all ack",
@@ -726,6 +886,7 @@ func TestHandleLinkADRAns(t *testing.T) {
 					TxPowerIndexAck:  true,
 				})),
 			},
+			AdrEnabled: true,
 		},
 		{
 			Name: "1.0/2 requests/all ack",
@@ -825,6 +986,7 @@ func TestHandleLinkADRAns(t *testing.T) {
 					TxPowerIndexAck:  true,
 				})),
 			},
+			AdrEnabled: true,
 		},
 		{
 			Name: "1.0.2/2 requests/US915 FSB2",
@@ -888,6 +1050,7 @@ func TestHandleLinkADRAns(t *testing.T) {
 					TxPowerIndexAck:  true,
 				})),
 			},
+			AdrEnabled: true,
 		},
 	} {
 		tc := tc
@@ -897,7 +1060,8 @@ func TestHandleLinkADRAns(t *testing.T) {
 			Func: func(ctx context.Context, t *testing.T, a *assertions.Assertion) {
 				dev := ttnpb.Clone(tc.Device)
 
-				evs, err := HandleLinkADRAns(ctx, dev, tc.Payload, tc.DupCount, fCntUp, frequencyplans.NewStore(test.FrequencyPlansFetcher))
+				fps := frequencyplans.NewStore(test.FrequencyPlansFetcher)
+				evs, err := HandleLinkADRAns(ctx, dev, tc.Payload, tc.DupCount, fCntUp, fps, tc.AdrEnabled)
 				if tc.Error != nil && !a.So(err, should.EqualErrorOrDefinition, tc.Error) ||
 					tc.Error == nil && !a.So(err, should.BeNil) {
 					t.FailNow()

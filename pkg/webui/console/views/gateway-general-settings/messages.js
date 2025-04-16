@@ -19,9 +19,6 @@ const messages = defineMessages({
   basicDescription: 'General settings, gateway updates and metadata',
   lorawanDescription: 'LoRaWAN network-layer settings',
   updateSuccess: 'Gateway updated',
-  deleteSuccess: 'Gateway deleted',
-  deleteFailure: 'Gateway delete error',
-  deleteGateway: 'Delete gateway',
   modalWarning:
     'Are you sure you want to delete "{gtwName}"? This action cannot be undone and it will not be possible to reuse the gateway ID.',
   disablePacketBrokerForwarding:
@@ -32,7 +29,6 @@ const messages = defineMessages({
     'Technical contact information for this gateway. Typically used to indicate who to contact with technical/security questions about the gateway.',
   deleteGatewayDefaultMessage:
     'This will <strong>PERMANENTLY DELETE THE ENTITY ITSELF AND ALL ASSOCIATED ENTITIES</strong>, including collaborator associations. It will also <strong>NOT BE POSSIBLE TO REUSE THE ENTITY ID</strong> until purged by an admin but the EUI can be reregistered later with a different ID.',
-  unclaimAndDeleteGateway: 'Unclaim and delete gateway',
 })
 
 export default messages

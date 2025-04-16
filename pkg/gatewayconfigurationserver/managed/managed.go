@@ -37,6 +37,7 @@ type Component interface {
 	GRPCServer() *rpcserver.Server
 	GetPeerConn(ctx context.Context, role ttnpb.ClusterRole, ids cluster.EntityIdentifiers) (*grpc.ClientConn, error)
 	AllowInsecureForCredentials() bool
+	GetTLSConfig(context.Context) tlsconfig.Config
 	GetTLSClientConfig(context.Context, ...tlsconfig.Option) (*tls.Config, error)
 }
 
@@ -52,23 +53,27 @@ type Server struct {
 
 // New returns a new Server.
 func New(ctx context.Context, c Component, conf ttgc.Config) (*Server, error) {
-	client, err := ttgc.NewClient(ctx, c, conf)
-	if err != nil {
-		return nil, err
-	}
-	srv := &Server{
-		Component: c,
-	}
-	srv.grpc.server = &managedGCSServer{
-		Component:   c,
-		client:      client,
-		gatewayEUIs: conf.GatewayEUIs,
-	}
-	srv.grpc.wifiProfiles = &managedGatewayWiFiProfileServer{
-		client: client,
-	}
-	srv.grpc.ethernetProfiles = &managedGatewayEthernetProfileServer{
-		client: client,
+	srv := &Server{Component: c}
+	srv.grpc.server = &noopManagedGCSServer{}
+	srv.grpc.wifiProfiles = &noopManagedGatewayWiFiProfileServer{}
+	srv.grpc.ethernetProfiles = &noopManagedGatewayEthernetProfileServer{}
+
+	if conf.Enabled {
+		client, err := ttgc.NewClient(ctx, c, conf)
+		if err != nil {
+			return nil, err
+		}
+		srv.grpc.server = &managedGCSServer{
+			Component:   c,
+			client:      client,
+			gatewayEUIs: conf.GatewayEUIs,
+		}
+		srv.grpc.wifiProfiles = &managedGatewayWiFiProfileServer{
+			client: client,
+		}
+		srv.grpc.ethernetProfiles = &managedGatewayEthernetProfileServer{
+			client: client,
+		}
 	}
 
 	c.GRPCServer().RegisterUnaryHook(

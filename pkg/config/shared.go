@@ -202,7 +202,7 @@ func (v KeyVault) KeyService(ctx context.Context, httpClientProvider httpclient.
 	case "static":
 		kv = cryptoutil.NewMemKeyVault(v.Static)
 	default:
-		kv = cryptoutil.EmptyKeyVault
+		kv = cryptoutil.NewMemKeyVault(make(map[string][]byte))
 	}
 	if v.Cache.Size > 0 {
 		errTTL := v.Cache.ErrorTTL

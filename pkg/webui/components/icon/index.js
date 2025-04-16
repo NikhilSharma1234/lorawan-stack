@@ -1,4 +1,4 @@
-// Copyright © 2019 The Things Network Foundation, The Things Industries B.V.
+// Copyright © 2024 The Things Network Foundation, The Things Industries B.V.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,8 @@
 
 import React, { forwardRef } from 'react'
 import classnames from 'classnames'
-import PropTypes from 'prop-types'
+
+import PropTypes from '@ttn-lw/lib/prop-types'
 
 import style from './icon.styl'
 
@@ -76,7 +77,7 @@ const hardcoded = {
 
 const Icon = forwardRef((props, ref) => {
   const {
-    icon,
+    icon: ActualIcon,
     className,
     nudgeUp,
     nudgeDown,
@@ -84,35 +85,34 @@ const Icon = forwardRef((props, ref) => {
     large,
     textPaddedLeft,
     textPaddedRight,
+    size,
     ...rest
   } = props
 
-  const classname = classnames(style.icon, className, {
+  const classname = classnames(className, style.icon, {
     [style.nudgeUp]: nudgeUp,
     [style.nudgeDown]: nudgeDown,
-    [style.large]: large,
-    [style.small]: small,
     [style.textPaddedLeft]: textPaddedLeft,
     [style.textPaddedRight]: textPaddedRight,
   })
 
-  return (
-    <span className={classname} ref={ref} {...rest}>
-      {hardcoded[icon] || icon}
-    </span>
-  )
+  const renderedSize = large ? 24 : small ? 16 : size
+
+  return <ActualIcon className={classname} ref={ref} size={renderedSize} {...rest} />
 })
 
 Icon.propTypes = {
   className: PropTypes.string,
-  /** Which icon to display, using google material icon set. */
-  icon: PropTypes.string.isRequired,
+  /** Which icon to display, using tabler icon set. */
+  icon: PropTypes.icon.isRequired,
   /** Renders a bigger icon. */
   large: PropTypes.bool,
   /** Nudges the icon down by one pixel using position: relative. */
   nudgeDown: PropTypes.bool,
   /** Nudges the icon up by one pixel using position: relative. */
   nudgeUp: PropTypes.bool,
+  /** The size of the icon. */
+  size: PropTypes.number,
   /** Renders a smaller icon. */
   small: PropTypes.bool,
   /** Whether icon should be padded for a text displayed left to it. */
@@ -126,9 +126,12 @@ Icon.defaultProps = {
   large: false,
   nudgeDown: false,
   nudgeUp: false,
+  size: 20,
   small: false,
   textPaddedLeft: false,
   textPaddedRight: false,
 }
 
 export default Icon
+export * from '@tabler/icons-react'
+export * from './common'

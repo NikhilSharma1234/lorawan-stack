@@ -244,7 +244,10 @@ message Gateway {
 
   bool disable_packet_broker_forwarding = 29;
 
-  // next: 32
+  reserved 33;
+  reserved "label_ids";
+
+  // next: 34
 }
 
 message Gateways {

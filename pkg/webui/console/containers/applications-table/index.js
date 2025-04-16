@@ -20,7 +20,7 @@ import { createSelector } from 'reselect'
 
 import videoFile from '@assets/videos/ProjectsOverview.mp4'
 
-import Icon from '@ttn-lw/components/icon'
+import Icon, { IconHelp } from '@ttn-lw/components/icon'
 import Button from '@ttn-lw/components/button'
 import ButtonGroup from '@ttn-lw/components/button/group'
 import DeleteModalButton from '@ttn-lw/components/delete-modal-button'
@@ -47,20 +47,21 @@ import {
   getApplicationsList,
 } from '@console/store/actions/applications'
 
-import { selectUserIsAdmin } from '@console/store/selectors/logout'
+import { selectUserIsAdmin } from '@console/store/selectors/user'
 import {
   selectApplicationsTotalCount,
   selectApplicationsWithDeviceCounts,
 } from '@console/store/selectors/applications'
 
 const m = defineMessages({
-  ownedTabTitle: 'Owned projects',
-  restoreSuccess: 'Project restored',
-  restoreFail: 'There was an error and project could not be restored',
-  purgeSuccess: 'Project purged',
-  purgeFail: 'There was an error and the project could not be purged',
+  restoreSuccess: 'Application restored',
+  restoreFail: 'There was an error and application could not be restored',
+  purgeSuccess: 'Application purged',
+  purgeFail: 'There was an error and the application could not be purged',
   otherClusterTooltip:
-    'This project is registered on a different cluster (`{host}`). To access this application, use the Console of the cluster that this application was registered on.',
+    'This application is registered on a different cluster (`{host}`). To access this application, use the Console of the cluster that this application was registered on.',
+  myApplications: 'My applications',
+  myApplicationsTooltip: 'Applications that you are a collaborator to',
 })
 
 const OWNED_TAB = 'owned'
@@ -68,8 +69,9 @@ const ALL_TAB = 'all'
 const DELETED_TAB = 'deleted'
 const tabs = [
   {
-    title: m.ownedTabTitle,
+    title: m.myApplications,
     name: OWNED_TAB,
+    description: m.myApplicationsTooltip,
   },
   {
     title: sharedMessages.allAdmin,
@@ -80,6 +82,7 @@ const tabs = [
 
 const ApplicationsTable = props => {
   const { isAdmin, restoreApplication, purgeApplication, ...rest } = props
+  // TODO: Add lastSeen column.
 
   const [tab, setTab] = React.useState(OWNED_TAB)
   const isDeletedTab = tab === DELETED_TAB
@@ -128,16 +131,22 @@ const ApplicationsTable = props => {
     const baseHeaders = [
       {
         name: 'ids.application_id',
-        displayName: sharedMessages.id,
-        width: 30,
+        displayName: sharedMessages.nameAndId,
+        getValue: row => ({
+          id: row.ids.application_id,
+          name: row.name,
+        }),
+        render: ({ name, id }) =>
+          Boolean(name) ? (
+            <>
+              <span className="mt-0 mb-cs-xxs p-0 fw-bold d-block">{name}</span>
+              <span className="c-text-neutral-light d-block">{id}</span>
+            </>
+          ) : (
+            <span className="mt-0 p-0 fw-bold d-block">{id}</span>
+          ),
         sortable: true,
         sortKey: 'application_id',
-      },
-      {
-        name: 'name',
-        displayName: sharedMessages.name,
-        width: 30,
-        sortable: true,
       },
     ]
 
@@ -145,7 +154,7 @@ const ApplicationsTable = props => {
       baseHeaders.push({
         name: 'actions',
         displayName: sharedMessages.actions,
-        width: 45,
+        width: '13rem',
         getValue: row => ({
           id: row.ids.application_id,
           name: row.name,
@@ -154,10 +163,10 @@ const ApplicationsTable = props => {
         }),
         render: details => (
           <ButtonGroup align="end">
-            <Button message={sharedMessages.restore} onClick={details.restore} />
+            <Button message={sharedMessages.restore} onClick={details.restore} secondary />
             <DeleteModalButton
               entityId={details.id}
-              entityName={name}
+              entityName={details.name}
               message={sharedMessages.purge}
               onApprove={details.purge}
               onlyPurge
@@ -170,7 +179,7 @@ const ApplicationsTable = props => {
         {
           name: 'status',
           displayName: '',
-          width: 17,
+          width: '10rem',
           render: status => {
             if (status.otherCluster) {
               const host = status.host
@@ -182,13 +191,17 @@ const ApplicationsTable = props => {
                   }
                   placement="top-end"
                 >
-                  <Status status="unknown" label={sharedMessages.otherCluster}>
+                  <Status
+                    status="unknown"
+                    label={sharedMessages.otherCluster}
+                    className="d-flex al-center"
+                  >
                     <Icon
-                      icon="help_outline"
+                      icon={IconHelp}
                       textPaddedLeft
                       small
                       nudgeUp
-                      className="tc-subtle-gray"
+                      className="c-text-neutral-light"
                     />
                   </Status>
                 </DocTooltip>
@@ -200,23 +213,20 @@ const ApplicationsTable = props => {
         },
         {
           name: '_devices',
-          width: 8,
-          displayName: sharedMessages.devices,
+          width: '7rem',
+          displayName: sharedMessages.devicesShort,
           align: 'center',
           render: deviceCount =>
             typeof deviceCount !== 'number' ? (
-              <Spinner micro center inline after={100} className="c-subtle-gray" />
+              <Spinner micro center inline after={100} className="c-icon" />
             ) : (
-              <strong>
-                <FormattedNumber value={deviceCount} />
-              </strong>
+              <FormattedNumber value={deviceCount} />
             ),
         },
         {
           name: 'created_at',
-          width: 15,
-          displayName: sharedMessages.createdAt,
-          align: 'right',
+          width: '8rem',
+          displayName: sharedMessages.created,
           sortable: true,
           render: date => <DateTime.Relative value={date} />,
         },
@@ -280,7 +290,7 @@ const ApplicationsTable = props => {
       entity="applications"
       defaultOrder="-created_at"
       headers={headers}
-      addMessage={sharedMessages.createApplication}
+      addMessage={sharedMessages.addApplication}
       tableTitle={<Message content={sharedMessages.applications} />}
       getItemsAction={getApplications}
       baseDataSelector={baseDataSelector}
@@ -290,6 +300,7 @@ const ApplicationsTable = props => {
       videoEnabled // Enable the Help Video button
       videoTitle="Projects Video Guide" // Custom title for the applications table
       videoFile={videoFile}
+      searchPlaceholderMessage={sharedMessages.searchApplications}
       {...rest}
     />
   )

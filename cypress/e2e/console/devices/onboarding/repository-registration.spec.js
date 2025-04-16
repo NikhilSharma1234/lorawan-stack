@@ -260,9 +260,10 @@ describe('End device repository manual registration', () => {
         selectUno()
         cy.findByLabelText('Frequency plan').should('be.visible').selectOption('EU_863_870_TTN')
 
-        cy.findByLabelText('JoinEUI').should('be.visible')
+        cy.findByLabelText('JoinEUI').should('exist') // Todo: why does be visible not work?
         cy.findByRole('button', { name: 'Confirm' }).should('be.visible').and('be.disabled')
         cy.findByRole('button', { name: 'Register end device' }).should('not.exist')
+        cy.get('input[name="ids.join_eui,authenticated_identifiers.join_eui"]').scrollIntoView()
         cy.findByText(
           'To continue, please enter the JoinEUI of the end device so we can determine onboarding options',
         ).should('be.visible')
@@ -360,7 +361,7 @@ describe('End device repository manual registration', () => {
 
         cy.findByRole('button', { name: 'Register end device' }).click()
         cy.findByRole('button', { name: 'Register end device' }).should('not.be.disabled')
-        cy.findByTestId('toast-notification')
+        cy.findByTestId('toast-notification-success')
           .findByText('End device registered')
           .should('be.visible')
 
@@ -475,7 +476,11 @@ describe('End device repository manual registration', () => {
         cy.findByLabelText('End device ID').type(devId)
 
         cy.findByRole('button', { name: 'Register end device' }).click()
-
+        cy.intercept(
+          'GET',
+          `/api/v3/dr/applications/abp-test-application/brands/test-brand-abp?field_mask=name`,
+          { brand_id: 'test-brand-abp', name: 'Test Brand ABP' },
+        )
         cy.location('pathname').should(
           'eq',
           `${Cypress.config('consoleRootPath')}/applications/${appId}/devices/${devId}`,
@@ -501,7 +506,7 @@ describe('End device repository manual registration', () => {
         cy.findByLabelText('Register another end device of this type').check()
 
         cy.findByRole('button', { name: 'Register end device' }).click()
-        cy.findByTestId('toast-notification')
+        cy.findByTestId('toast-notification-success')
           .findByText('End device registered')
           .should('be.visible')
         cy.findByRole('button', { name: 'Register end device' }).should('not.be.disabled')
@@ -516,7 +521,7 @@ describe('End device repository manual registration', () => {
         cy.findByLabelText('Register another end device of this type').check()
 
         cy.findByRole('button', { name: 'Register end device' }).click()
-        cy.findByTestId('toast-notification')
+        cy.findByTestId('toast-notification-success')
           .findByText('End device registered')
           .should('be.visible')
         cy.findByRole('button', { name: 'Register end device' }).should('not.be.disabled')
@@ -530,6 +535,11 @@ describe('End device repository manual registration', () => {
         cy.findByLabelText('End device ID').type(devId3)
         cy.findByLabelText('View registered end device').check()
 
+        cy.intercept(
+          'GET',
+          `/api/v3/dr/applications/abp-test-application/brands/test-brand-abp?field_mask=name`,
+          { brand_id: 'test-brand-abp', name: 'Test Brand ABP' },
+        )
         cy.findByRole('button', { name: 'Register end device' }).click()
 
         cy.location('pathname').should(

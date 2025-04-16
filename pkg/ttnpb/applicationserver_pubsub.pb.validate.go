@@ -864,6 +864,17 @@ func (m *ListApplicationPubSubsRequest) ValidateFields(paths ...string) error {
 				}
 			}
 
+		case "limit":
+
+			if m.GetLimit() > 1000 {
+				return ListApplicationPubSubsRequestValidationError{
+					field:  "limit",
+					reason: "value must be less than or equal to 1000",
+				}
+			}
+
+		case "page":
+			// no validation rules for Page
 		default:
 			return ListApplicationPubSubsRequestValidationError{
 				field:  name,

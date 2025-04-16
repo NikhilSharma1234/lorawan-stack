@@ -14,21 +14,23 @@
 
 .row
   display: table-row
-  color: $tc-subtle-gray
+  border-radius: $br.s
+  color: var(--c-text-neutral-light)
+  transition: background-color $ad.xs linear
 
-  &-head
-    border-dark('bottom')
+  &-head:not(.panel-style)
+    background: var(--c-bg-neutral-min)
 
-  &-body
-    border-normal('bottom')
+  &-body&:not(:last-child)
+    border-bottom: 1px solid var(--c-border-neutral-extralight)
 
   &-footer
     display: flex
 
 .clickable
   cursor: pointer
-  transition: background-color $ad.s linear
+  transition: background-color $ad.xs linear
   color: unset
 
   &:hover
-    background-color: $c-backdrop-lighter
+    background: var(--c-bg-neutral-light)

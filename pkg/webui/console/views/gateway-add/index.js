@@ -23,6 +23,8 @@ import videoFile from '@assets/videos/AddGateway.mp4'
 
 import Link from '@ttn-lw/components/link'
 import PageTitle from '@ttn-lw/components/page-title'
+import { useBreadcrumbs } from '@ttn-lw/components/breadcrumbs/context'
+import Breadcrumb from '@ttn-lw/components/breadcrumbs/breadcrumb'
 
 import Message from '@ttn-lw/lib/components/message'
 import RequireRequest from '@ttn-lw/lib/components/require-request'
@@ -62,6 +64,11 @@ const GatewayAdd = () => {
     [navigate],
   )
 
+  useBreadcrumbs(
+    'gtws.add',
+    <Breadcrumb path={`/gateways/add`} content={sharedMessages.registerGateway} />,
+  )
+
   return (
     <Require featureCheck={mayCreateGateways} otherwise={{ redirect: '/gateways' }}>
       <RequireRequest requestAction={getOrganizationsList()}>
@@ -89,12 +96,12 @@ const GatewayAdd = () => {
             className="mb-cs-s"
             title={sharedMessages.registerGateway}
           >
+
             <Message
               component="p"
               content={m.gtwOnboardingDescription}
               values={{ Link: GatewayGuideLink, break: <br /> }}
             />
-            <hr className="mb-ls-s" />
           </PageTitle>
           <Row>
             <Col md={10} lg={9}>

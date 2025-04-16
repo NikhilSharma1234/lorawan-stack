@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import React from 'react'
-import PropTypes from 'prop-types'
+import React, { useEffect, useState } from 'react'
 import {
   MapContainer,
   Marker,
@@ -27,31 +26,25 @@ import classnames from 'classnames'
 import Leaflet, { latLngBounds } from 'leaflet'
 import shadowImg from 'leaflet/dist/images/marker-shadow.png'
 
-import MarkerIcon from '@assets/auxiliary-icons/location_pin.svg'
+import DefaultMarkerIcon from '@assets/auxiliary-icons/default-map-pin.svg'
+import GatewayMarkerIcon from '@assets/auxiliary-icons/gateway-map-pin.svg'
+import DeviceMarkerIcon from '@assets/auxiliary-icons/device-map-pin.svg'
 import COLORS from '@ttn-lw/constants/colors'
+import { END_DEVICE, GATEWAY } from '@console/constants/entities'
+
+import PropTypes from '@ttn-lw/lib/prop-types'
 
 import style from './map.styl'
-
-// Reset default marker icon.
-
-delete Leaflet.Icon.Default.prototype._getIconUrl
-Leaflet.Icon.Default.mergeOptions({
-  iconRetinaUrl: MarkerIcon,
-  iconUrl: MarkerIcon,
-  iconSize: [26, 36],
-  shadowSize: [26, 36],
-  iconAnchor: [13, 36],
-  shadowAnchor: [8, 37],
-  popupAnchor: [0, -40],
-  // eslint-disable-next-line import/no-commonjs
-  shadowUrl: shadowImg,
-})
 
 const defaultMinZoom = 7
 
 const MarkerRenderer = ({ marker }) => {
   if (!marker) {
     return null
+  }
+
+  if (!marker.mapPinType) {
+    marker.mapPinType = 'DEFAULT'
   }
 
   const hasAccuracy = typeof marker.accuracy === 'number'
@@ -68,6 +61,31 @@ const MarkerRenderer = ({ marker }) => {
       {marker.children}
     </>
   )
+  const markerImage =
+    marker.mapPinType === GATEWAY
+      ? GatewayMarkerIcon
+      : marker.mapPinType === END_DEVICE
+        ? DeviceMarkerIcon
+        : DefaultMarkerIcon
+
+  const customIcon = Leaflet.icon({
+    iconRetinaUrl: markerImage,
+    iconUrl: markerImage,
+    ...(marker.mapPinType === 'DEFAULT'
+      ? {
+          iconSize: [26, 36],
+          shadowSize: [26, 36],
+          iconAnchor: [13, 36],
+          shadowAnchor: [8, 37],
+          shadowUrl: shadowImg,
+        }
+      : {
+          iconSize: [36, 36],
+          iconAnchor: [18, 18],
+          shadowUrl: null,
+        }),
+  })
+
   return hasAccuracy ? (
     <CircleMarker
       key={`marker-${marker.position.latitude}-${marker.position.longitude}`}
@@ -75,7 +93,7 @@ const MarkerRenderer = ({ marker }) => {
       radius={8}
       children={children}
       color="#ffffff"
-      fillColor={COLORS.C_ACTIVE_BLUE}
+      fillColor={COLORS.C_TEXT_BRAND_NORMAL}
       fillOpacity={1}
     />
   ) : (
@@ -83,20 +101,54 @@ const MarkerRenderer = ({ marker }) => {
       key={`marker-${marker.position.latitude}-${marker.position.longitude}`}
       position={[marker.position.latitude, marker.position.longitude]}
       children={children}
+      icon={customIcon}
     />
   )
 }
 
 const Controller = ({ onClick, centerOnMarkers, markers, bounds }) => {
   const map = useMap()
+  const [useManualZoom, setUseManualZoom] = useState(false)
+
+  useEffect(() => {
+    const handleWheel = e => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault()
+
+        const delta = e.deltaY > 0 ? 1 : -1 // Determine scroll direction
+        const zoomLevel = map.getZoom() - delta // Calculate the new zoom level
+
+        map.setZoom(zoomLevel)
+        setUseManualZoom(true) // Mark user interaction
+      }
+    }
+
+    const handleUserInteracted = () => {
+      setUseManualZoom(true) // Mark user interaction on zoom
+    }
+
+    // Ensure the map resizes correctly when the container changes size
+    map.invalidateSize()
+
+    map.getContainer().addEventListener('wheel', handleWheel)
+    map.on('zoomend', handleUserInteracted)
+    map.on('moveend', handleUserInteracted)
+
+    return () => {
+      map.getContainer().removeEventListener('wheel', handleWheel)
+      map.off('zoomend', handleUserInteracted)
+      map.off('moveend', handleUserInteracted)
+    }
+  }, [map])
+
+  useEffect(() => {
+    if (centerOnMarkers && markers.length > 1 && !useManualZoom) {
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 })
+    }
+  }, [map, centerOnMarkers, markers, bounds, useManualZoom])
 
   useMapEvent('click', onClick)
-  // Fix incomplete tile loading in some rare cases.
-  map.invalidateSize()
-  // Attach click handler.
-  if (centerOnMarkers && markers.length > 1) {
-    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 })
-  }
+
   return markers.map(marker => (
     <MarkerRenderer
       key={`${marker.position.latitude}-${marker.position.longitude}`}
@@ -114,6 +166,7 @@ const LocationMap = props => {
     markers,
     leafletConfig,
     centerOnMarkers,
+    panel,
     ...rest
   } = props
 
@@ -133,7 +186,10 @@ const LocationMap = props => {
 
   return (
     <div
-      className={classnames(style.container, className, { [style.widget]: widget })}
+      className={classnames(style.container, className, {
+        [style.widget]: widget,
+        [style.panel]: panel,
+      })}
       data-test-id="location-map"
     >
       {hasValidCoordinates && (
@@ -143,6 +199,12 @@ const LocationMap = props => {
           })}
           minZoom={defaultMinZoom}
           center={center}
+          maxBounds={[
+            [-90, -180],
+            [90, 180],
+          ]}
+          scrollWheelZoom={false}
+          maxBoundsViscosity={1.0}
           {...leafletConfig}
         >
           <TileLayer
@@ -171,6 +233,7 @@ LocationMap.defaultProps = {
   onClick: () => null,
   mapCenter: undefined,
   clickable: false,
+  panel: false,
 }
 
 MarkerRenderer.propTypes = {
@@ -179,6 +242,7 @@ MarkerRenderer.propTypes = {
       longitude: PropTypes.number,
       latitude: PropTypes.number,
     }),
+    mapPinType: PropTypes.oneOf(['DEFAULT', GATEWAY, END_DEVICE]),
     accuracy: PropTypes.number,
     children: PropTypes.node,
   }).isRequired,
@@ -199,6 +263,9 @@ LocationMap.propTypes = {
   // `markers` is an array of objects containing a specific properties.
   markers: PropTypes.arrayOf(MarkerRenderer.propTypes.marker),
   onClick: PropTypes.func,
+  // `panel` is a boolean used to add a class name to the
+  // map container div for styling.
+  panel: PropTypes.bool,
   // `widget` is a boolean used to add a class name to the map container div for styling.
   widget: PropTypes.bool,
 }

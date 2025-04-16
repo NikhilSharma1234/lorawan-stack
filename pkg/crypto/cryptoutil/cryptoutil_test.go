@@ -20,7 +20,7 @@ import (
 
 	"github.com/smarty/assertions"
 	"go.thethings.network/lorawan-stack/v3/pkg/crypto"
-	. "go.thethings.network/lorawan-stack/v3/pkg/crypto/cryptoutil"
+	"go.thethings.network/lorawan-stack/v3/pkg/crypto/cryptoutil"
 	"go.thethings.network/lorawan-stack/v3/pkg/errors"
 	"go.thethings.network/lorawan-stack/v3/pkg/ttnpb"
 	"go.thethings.network/lorawan-stack/v3/pkg/types"
@@ -38,7 +38,7 @@ func TestWrapAES128Key(t *testing.T) {
 	kekOther, _ := hex.DecodeString("000102030405060708090A0B0C0D0E0F1011121314151617")
 	cipherOther, _ := hex.DecodeString("031D33264E15D33268F24EC260743EDCE1C6C7DDEE725A936BA814915C6762D2")
 
-	kv := NewMemKeyVault(map[string][]byte{
+	kv := cryptoutil.NewMemKeyVault(map[string][]byte{
 		"key":   kekKey,
 		"other": kekOther,
 	})
@@ -71,7 +71,7 @@ func TestWrapAES128Key(t *testing.T) {
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 			a := assertions.New(t)
-			env, err := WrapAES128Key(test.Context(), tc.Key, tc.KEKLabel, ks)
+			env, err := cryptoutil.WrapAES128Key(test.Context(), tc.Key, tc.KEKLabel, ks)
 			a.So(err, should.BeNil)
 			a.So(env, should.Resemble, tc.Expected)
 		})
@@ -111,7 +111,7 @@ func TestWrapAES128Key(t *testing.T) {
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
 			a := assertions.New(t)
-			unwrapped, err := UnwrapAES128Key(test.Context(), tc.Envelope, ks)
+			unwrapped, err := cryptoutil.UnwrapAES128Key(test.Context(), tc.Envelope, ks)
 			if tc.ExpectedError != nil {
 				a.So(tc.ExpectedError(err), should.BeTrue)
 				return
@@ -129,7 +129,7 @@ func TestUnwrapSelectedSessionKeys(t *testing.T) {
 	kekKey := test.Must(hex.DecodeString("000102030405060708090A0B0C0D0E0F"))
 	cipherKey := test.Must(hex.DecodeString("1FA68B0A8112B447AEF34BD8FB5A7B829D3E862371D2CFE5"))
 
-	kv := NewMemKeyVault(map[string][]byte{
+	kv := cryptoutil.NewMemKeyVault(map[string][]byte{
 		"key": kekKey,
 	})
 	ks := crypto.NewKeyService(kv)
@@ -502,7 +502,7 @@ func TestUnwrapSelectedSessionKeys(t *testing.T) {
 			a := assertions.New(t)
 
 			sk := ttnpb.Clone(tc.SessionKeys)
-			ret, err := UnwrapSelectedSessionKeys(test.Context(), ks, sk, tc.Prefix, tc.Paths...)
+			ret, err := cryptoutil.UnwrapSelectedSessionKeys(test.Context(), ks, sk, tc.Prefix, tc.Paths...)
 			a.So(sk, should.Resemble, tc.SessionKeys)
 			a.So(ret, should.Resemble, tc.ExpectedSessionKeys)
 			a.So(tc.ErrorAssertion(t, err), should.BeTrue)

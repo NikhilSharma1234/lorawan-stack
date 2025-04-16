@@ -23,7 +23,6 @@ import (
 
 	"go.thethings.network/lorawan-stack/v3/pkg/config"
 	"go.thethings.network/lorawan-stack/v3/pkg/config/tlsconfig"
-	"go.thethings.network/lorawan-stack/v3/pkg/crypto"
 	"go.thethings.network/lorawan-stack/v3/pkg/fetch"
 	"go.thethings.network/lorawan-stack/v3/pkg/httpclient"
 	yaml "gopkg.in/yaml.v2"
@@ -40,7 +39,9 @@ func (conf tlsConfig) IsZero() bool {
 	return conf == (tlsConfig{})
 }
 
-func (conf tlsConfig) TLSConfig(fetcher fetch.Interface, ks crypto.KeyService) (*tls.Config, error) {
+func (conf tlsConfig) TLSConfig(
+	ctx context.Context, c ClientComponent, fetcher fetch.Interface,
+) (*tls.Config, error) {
 	res := &tls.Config{
 		MinVersion: tls.VersionTLS12,
 	}
@@ -57,13 +58,15 @@ func (conf tlsConfig) TLSConfig(fetcher fetch.Interface, ks crypto.KeyService) (
 	if source == "" && (conf.Certificate != "" || conf.Key != "") {
 		source = "file"
 	}
+	tlsConfig := c.GetTLSConfig(ctx)
 	clientAuthConfig := &tlsconfig.ClientAuth{
 		Source:      source,
 		FileReader:  tlsconfig.FromFetcher(fetcher),
 		Certificate: conf.Certificate,
 		Key:         conf.Key,
+		ACME:        &tlsConfig.ACME,
 		KeyVault: tlsconfig.ClientKeyVault{
-			CertificateProvider: ks,
+			CertificateProvider: c.KeyService(),
 		},
 	}
 	if err := clientAuthConfig.ApplyTo(res); err != nil {

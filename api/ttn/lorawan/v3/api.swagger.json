@@ -210,6 +210,10 @@
       "description": "Manage batches of end devices on The Things Stack Network Server."
     },
     {
+      "name": "NsMACSettingsProfileRegistry",
+      "description": "Manage MAC settings profiles on The Things Stack Network Server."
+    },
+    {
       "name": "NsRelayConfigurationService",
       "description": "Manage configuration of LoRaWAN® relay devices."
     },
@@ -244,6 +248,9 @@
     {
       "name": "EndDeviceQRCodeGenerator",
       "description": "Generate and parse end device QR codes."
+    },
+    {
+      "name": "GatewayQRCodeGenerator"
     },
     {
       "name": "EntityRegistrySearch",
@@ -1175,6 +1182,45 @@
         ],
         "tags": [
           "EndDeviceBatchRegistry"
+        ]
+      }
+    },
+    "/applications/{application_ids.application_id}/devices/filter": {
+      "post": {
+        "summary": "List end devices in the given application.\nSimilar to Get, this selects the fields given by the field mask.\nMore or less fields may be returned, depending on the rights of the caller.",
+        "operationId": "EndDeviceRegistry_List2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v3EndDevices"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "application_ids.application_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v3EndDeviceRegistryListBody"
+            }
+          }
+        ],
+        "tags": [
+          "EndDeviceRegistry"
         ]
       }
     },
@@ -3374,6 +3420,20 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -3659,6 +3719,20 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
           }
         ],
         "tags": [
@@ -4730,6 +4804,13 @@
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "gateways_only",
+            "description": "Optional field to include only gateway related results.",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
           }
         ],
         "tags": [
@@ -6803,6 +6884,39 @@
         ]
       }
     },
+    "/gateways/filter": {
+      "post": {
+        "summary": "List gateways where the given user or organization is a direct collaborator.\nIf no user or organization is given, this returns the gateways the caller\nhas access to.\nSimilar to Get, this selects the fields given by the field mask.\nMore or less fields may be returned, depending on the rights of the caller.",
+        "operationId": "GatewayRegistry_List4",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v3Gateways"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v3ListGatewaysRequest"
+            }
+          }
+        ],
+        "tags": [
+          "GatewayRegistry"
+        ]
+      }
+    },
     "/gateways/rights/batch": {
       "get": {
         "summary": "Assert that the caller has the requested rights on all the requested gateways.\nThe check is successful if there are no errors.",
@@ -6825,7 +6939,7 @@
         "parameters": [
           {
             "name": "required.rights",
-            "description": " - RIGHT_USER_INFO: The right to view user information.\n - RIGHT_USER_SETTINGS_BASIC: The right to edit basic user settings.\n - RIGHT_USER_SETTINGS_API_KEYS: The right to view and edit user API keys.\n - RIGHT_USER_DELETE: The right to delete user account.\n - RIGHT_USER_AUTHORIZED_CLIENTS: The right to view and edit authorized OAuth clients of the user.\n - RIGHT_USER_APPLICATIONS_LIST: The right to list applications the user is a collaborator of.\n - RIGHT_USER_APPLICATIONS_CREATE: The right to create an application under the user account.\n - RIGHT_USER_GATEWAYS_LIST: The right to list gateways the user is a collaborator of.\n - RIGHT_USER_GATEWAYS_CREATE: The right to create a gateway under the account of the user.\n - RIGHT_USER_CLIENTS_LIST: The right to list OAuth clients the user is a collaborator of.\n - RIGHT_USER_CLIENTS_CREATE: The right to create an OAuth client under the account of the user.\n - RIGHT_USER_ORGANIZATIONS_LIST: The right to list organizations the user is a member of.\n - RIGHT_USER_ORGANIZATIONS_CREATE: The right to create an organization under the user account.\n - RIGHT_USER_NOTIFICATIONS_READ: The right to read notifications sent to the user.\n - RIGHT_USER_ALL: The pseudo-right for all (current and future) user rights.\n - RIGHT_APPLICATION_INFO: The right to view application information.\n - RIGHT_APPLICATION_SETTINGS_BASIC: The right to edit basic application settings.\n - RIGHT_APPLICATION_SETTINGS_API_KEYS: The right to view and edit application API keys.\n - RIGHT_APPLICATION_SETTINGS_COLLABORATORS: The right to view and edit application collaborators.\n - RIGHT_APPLICATION_SETTINGS_PACKAGES: The right to view and edit application packages and associations.\n - RIGHT_APPLICATION_DELETE: The right to delete application.\n - RIGHT_APPLICATION_DEVICES_READ: The right to view devices in application.\n - RIGHT_APPLICATION_DEVICES_WRITE: The right to create devices in application.\n - RIGHT_APPLICATION_DEVICES_READ_KEYS: The right to view device keys in application.\nNote that keys may not be stored in a way that supports viewing them.\n - RIGHT_APPLICATION_DEVICES_WRITE_KEYS: The right to edit device keys in application.\n - RIGHT_APPLICATION_TRAFFIC_READ: The right to read application traffic (uplink and downlink).\n - RIGHT_APPLICATION_TRAFFIC_UP_WRITE: The right to write uplink application traffic.\n - RIGHT_APPLICATION_TRAFFIC_DOWN_WRITE: The right to write downlink application traffic.\n - RIGHT_APPLICATION_LINK: The right to link as Application to a Network Server for traffic exchange,\ni.e. read uplink and write downlink (API keys only).\nThis right is typically only given to an Application Server.\nThis right implies RIGHT_APPLICATION_INFO, RIGHT_APPLICATION_TRAFFIC_READ,\nand RIGHT_APPLICATION_TRAFFIC_DOWN_WRITE.\n - RIGHT_APPLICATION_ALL: The pseudo-right for all (current and future) application rights.\n - RIGHT_CLIENT_ALL: The pseudo-right for all (current and future) OAuth client rights.\n - RIGHT_CLIENT_INFO: The right to read client information.\n - RIGHT_CLIENT_SETTINGS_BASIC: The right to edit basic client settings.\n - RIGHT_CLIENT_SETTINGS_COLLABORATORS: The right to view and edit client collaborators.\n - RIGHT_CLIENT_DELETE: The right to delete a client.\n - RIGHT_GATEWAY_INFO: The right to view gateway information.\n - RIGHT_GATEWAY_SETTINGS_BASIC: The right to edit basic gateway settings.\n - RIGHT_GATEWAY_SETTINGS_API_KEYS: The right to view and edit gateway API keys.\n - RIGHT_GATEWAY_SETTINGS_COLLABORATORS: The right to view and edit gateway collaborators.\n - RIGHT_GATEWAY_DELETE: The right to delete gateway.\n - RIGHT_GATEWAY_TRAFFIC_READ: The right to read gateway traffic.\n - RIGHT_GATEWAY_TRAFFIC_DOWN_WRITE: The right to write downlink gateway traffic.\n - RIGHT_GATEWAY_LINK: The right to link as Gateway to a Gateway Server for traffic exchange,\ni.e. write uplink and read downlink (API keys only)\nThis right is typically only given to a gateway.\nThis right implies RIGHT_GATEWAY_INFO.\n - RIGHT_GATEWAY_STATUS_READ: The right to view gateway status.\n - RIGHT_GATEWAY_LOCATION_READ: The right to view view gateway location.\n - RIGHT_GATEWAY_WRITE_SECRETS: The right to store secrets associated with this gateway.\n - RIGHT_GATEWAY_READ_SECRETS: The right to retrieve secrets associated with this gateway.\n - RIGHT_GATEWAY_ALL: The pseudo-right for all (current and future) gateway rights.\n - RIGHT_ORGANIZATION_INFO: The right to view organization information.\n - RIGHT_ORGANIZATION_SETTINGS_BASIC: The right to edit basic organization settings.\n - RIGHT_ORGANIZATION_SETTINGS_API_KEYS: The right to view and edit organization API keys.\n - RIGHT_ORGANIZATION_SETTINGS_MEMBERS: The right to view and edit organization members.\n - RIGHT_ORGANIZATION_DELETE: The right to delete organization.\n - RIGHT_ORGANIZATION_APPLICATIONS_LIST: The right to list the applications the organization is a collaborator of.\n - RIGHT_ORGANIZATION_APPLICATIONS_CREATE: The right to create an application under the organization.\n - RIGHT_ORGANIZATION_GATEWAYS_LIST: The right to list the gateways the organization is a collaborator of.\n - RIGHT_ORGANIZATION_GATEWAYS_CREATE: The right to create a gateway under the organization.\n - RIGHT_ORGANIZATION_CLIENTS_LIST: The right to list the OAuth clients the organization is a collaborator of.\n - RIGHT_ORGANIZATION_CLIENTS_CREATE: The right to create an OAuth client under the organization.\n - RIGHT_ORGANIZATION_ADD_AS_COLLABORATOR: The right to add the organization as a collaborator on an existing entity.\n - RIGHT_ORGANIZATION_ALL: The pseudo-right for all (current and future) organization rights.\n - RIGHT_SEND_INVITES: The right to send invites to new users.\nNote that this is not prefixed with \"USER_\"; it is not a right on the user entity.\n - RIGHT_ALL: The pseudo-right for all (current and future) possible rights.",
+            "description": " - RIGHT_USER_INFO: The right to view user information.\n - RIGHT_USER_SETTINGS_BASIC: The right to edit basic user settings.\n - RIGHT_USER_LIST: The right to list users accounts.\n - RIGHT_USER_CREATE: The right to create an user account.\n - RIGHT_USER_SETTINGS_API_KEYS: The right to view and edit user API keys.\n - RIGHT_USER_DELETE: The right to delete user account.\n - RIGHT_USER_PURGE: The right to delete user account.\n - RIGHT_USER_AUTHORIZED_CLIENTS: The right to view and edit authorized OAuth clients of the user.\n - RIGHT_USER_APPLICATIONS_LIST: The right to list applications the user is a collaborator of.\n - RIGHT_USER_APPLICATIONS_CREATE: The right to create an application under the user account.\n - RIGHT_USER_GATEWAYS_LIST: The right to list gateways the user is a collaborator of.\n - RIGHT_USER_GATEWAYS_CREATE: The right to create a gateway under the account of the user.\n - RIGHT_USER_CLIENTS_LIST: The right to list OAuth clients the user is a collaborator of.\n - RIGHT_USER_CLIENTS_CREATE: The right to create an OAuth client under the account of the user.\n - RIGHT_USER_ORGANIZATIONS_LIST: The right to list organizations the user is a member of.\n - RIGHT_USER_ORGANIZATIONS_CREATE: The right to create an organization under the user account.\n - RIGHT_USER_NOTIFICATIONS_READ: The right to read notifications sent to the user.\n - RIGHT_USER_ALL: The pseudo-right for all (current and future) user rights.\n - RIGHT_APPLICATION_INFO: The right to view application information.\n - RIGHT_APPLICATION_SETTINGS_BASIC: The right to edit basic application settings.\n - RIGHT_APPLICATION_SETTINGS_API_KEYS: The right to view and edit application API keys.\n - RIGHT_APPLICATION_SETTINGS_COLLABORATORS: The right to view and edit application collaborators.\n - RIGHT_APPLICATION_SETTINGS_PACKAGES: The right to view and edit application packages and associations.\n - RIGHT_APPLICATION_DELETE: The right to delete application.\n - RIGHT_APPLICATION_PURGE: The right to purge application.\n - RIGHT_APPLICATION_DEVICES_READ: The right to view devices in application.\n - RIGHT_APPLICATION_DEVICES_WRITE: The right to create devices in application.\n - RIGHT_APPLICATION_DEVICES_READ_KEYS: The right to view device keys in application.\nNote that keys may not be stored in a way that supports viewing them.\n - RIGHT_APPLICATION_DEVICES_WRITE_KEYS: The right to edit device keys in application.\n - RIGHT_APPLICATION_TRAFFIC_READ: The right to read application traffic (uplink and downlink).\n - RIGHT_APPLICATION_TRAFFIC_UP_WRITE: The right to write uplink application traffic.\n - RIGHT_APPLICATION_TRAFFIC_DOWN_WRITE: The right to write downlink application traffic.\n - RIGHT_APPLICATION_LINK: The right to link as Application to a Network Server for traffic exchange,\ni.e. read uplink and write downlink (API keys only).\nThis right is typically only given to an Application Server.\nThis right implies RIGHT_APPLICATION_INFO, RIGHT_APPLICATION_TRAFFIC_READ,\nand RIGHT_APPLICATION_TRAFFIC_DOWN_WRITE.\n - RIGHT_APPLICATION_ALL: The pseudo-right for all (current and future) application rights.\n - RIGHT_CLIENT_ALL: The pseudo-right for all (current and future) OAuth client rights.\n - RIGHT_CLIENT_INFO: The right to read client information.\n - RIGHT_CLIENT_SETTINGS_BASIC: The right to edit basic client settings.\n - RIGHT_CLIENT_SETTINGS_COLLABORATORS: The right to view and edit client collaborators.\n - RIGHT_CLIENT_DELETE: The right to delete a client.\n - RIGHT_CLIENT_PURGE: The right to purge a client.\n - RIGHT_GATEWAY_INFO: The right to view gateway information.\n - RIGHT_GATEWAY_SETTINGS_BASIC: The right to edit basic gateway settings.\n - RIGHT_GATEWAY_SETTINGS_API_KEYS: The right to view and edit gateway API keys.\n - RIGHT_GATEWAY_SETTINGS_COLLABORATORS: The right to view and edit gateway collaborators.\n - RIGHT_GATEWAY_DELETE: The right to delete gateway.\n - RIGHT_GATEWAY_PURGE: The right to purge gateway.\n - RIGHT_GATEWAY_TRAFFIC_READ: The right to read gateway traffic.\n - RIGHT_GATEWAY_TRAFFIC_DOWN_WRITE: The right to write downlink gateway traffic.\n - RIGHT_GATEWAY_LINK: The right to link as Gateway to a Gateway Server for traffic exchange,\ni.e. write uplink and read downlink (API keys only)\nThis right is typically only given to a gateway.\nThis right implies RIGHT_GATEWAY_INFO.\n - RIGHT_GATEWAY_STATUS_READ: The right to view gateway status.\n - RIGHT_GATEWAY_LOCATION_READ: The right to view view gateway location.\n - RIGHT_GATEWAY_WRITE_SECRETS: The right to store secrets associated with this gateway.\n - RIGHT_GATEWAY_READ_SECRETS: The right to retrieve secrets associated with this gateway.\n - RIGHT_GATEWAY_ALL: The pseudo-right for all (current and future) gateway rights.\n - RIGHT_ORGANIZATION_INFO: The right to view organization information.\n - RIGHT_ORGANIZATION_SETTINGS_BASIC: The right to edit basic organization settings.\n - RIGHT_ORGANIZATION_SETTINGS_API_KEYS: The right to view and edit organization API keys.\n - RIGHT_ORGANIZATION_SETTINGS_MEMBERS: The right to view and edit organization members.\n - RIGHT_ORGANIZATION_DELETE: The right to delete organization.\n - RIGHT_ORGANIZATION_PURGE: The right to purge organization.\n - RIGHT_ORGANIZATION_APPLICATIONS_LIST: The right to list the applications the organization is a collaborator of.\n - RIGHT_ORGANIZATION_APPLICATIONS_CREATE: The right to create an application under the organization.\n - RIGHT_ORGANIZATION_GATEWAYS_LIST: The right to list the gateways the organization is a collaborator of.\n - RIGHT_ORGANIZATION_GATEWAYS_CREATE: The right to create a gateway under the organization.\n - RIGHT_ORGANIZATION_CLIENTS_LIST: The right to list the OAuth clients the organization is a collaborator of.\n - RIGHT_ORGANIZATION_CLIENTS_CREATE: The right to create an OAuth client under the organization.\n - RIGHT_ORGANIZATION_ADD_AS_COLLABORATOR: The right to add the organization as a collaborator on an existing entity.\n - RIGHT_ORGANIZATION_ALL: The pseudo-right for all (current and future) organization rights.\n - RIGHT_SEND_INVITES: The right to send invites to new users.\nNote that this is not prefixed with \"USER_\"; it is not a right on the user entity.\n - RIGHT_ALL: The pseudo-right for all (current and future) possible rights.",
             "in": "query",
             "required": false,
             "type": "array",
@@ -6835,8 +6949,11 @@
                 "right_invalid",
                 "RIGHT_USER_INFO",
                 "RIGHT_USER_SETTINGS_BASIC",
+                "RIGHT_USER_LIST",
+                "RIGHT_USER_CREATE",
                 "RIGHT_USER_SETTINGS_API_KEYS",
                 "RIGHT_USER_DELETE",
+                "RIGHT_USER_PURGE",
                 "RIGHT_USER_AUTHORIZED_CLIENTS",
                 "RIGHT_USER_APPLICATIONS_LIST",
                 "RIGHT_USER_APPLICATIONS_CREATE",
@@ -6854,6 +6971,7 @@
                 "RIGHT_APPLICATION_SETTINGS_COLLABORATORS",
                 "RIGHT_APPLICATION_SETTINGS_PACKAGES",
                 "RIGHT_APPLICATION_DELETE",
+                "RIGHT_APPLICATION_PURGE",
                 "RIGHT_APPLICATION_DEVICES_READ",
                 "RIGHT_APPLICATION_DEVICES_WRITE",
                 "RIGHT_APPLICATION_DEVICES_READ_KEYS",
@@ -6868,11 +6986,13 @@
                 "RIGHT_CLIENT_SETTINGS_BASIC",
                 "RIGHT_CLIENT_SETTINGS_COLLABORATORS",
                 "RIGHT_CLIENT_DELETE",
+                "RIGHT_CLIENT_PURGE",
                 "RIGHT_GATEWAY_INFO",
                 "RIGHT_GATEWAY_SETTINGS_BASIC",
                 "RIGHT_GATEWAY_SETTINGS_API_KEYS",
                 "RIGHT_GATEWAY_SETTINGS_COLLABORATORS",
                 "RIGHT_GATEWAY_DELETE",
+                "RIGHT_GATEWAY_PURGE",
                 "RIGHT_GATEWAY_TRAFFIC_READ",
                 "RIGHT_GATEWAY_TRAFFIC_DOWN_WRITE",
                 "RIGHT_GATEWAY_LINK",
@@ -6886,6 +7006,7 @@
                 "RIGHT_ORGANIZATION_SETTINGS_API_KEYS",
                 "RIGHT_ORGANIZATION_SETTINGS_MEMBERS",
                 "RIGHT_ORGANIZATION_DELETE",
+                "RIGHT_ORGANIZATION_PURGE",
                 "RIGHT_ORGANIZATION_APPLICATIONS_LIST",
                 "RIGHT_ORGANIZATION_APPLICATIONS_CREATE",
                 "RIGHT_ORGANIZATION_GATEWAYS_LIST",
@@ -10135,6 +10256,67 @@
         ]
       }
     },
+    "/ns/applications/{application_ids.application_id}/mac_settings_profiles": {
+      "get": {
+        "summary": "List lists the MAC settings profiles.",
+        "operationId": "NsMACSettingsProfileRegistry_List",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v3ListMACSettingsProfilesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "application_ids.application_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "field_mask",
+            "description": "The names of the fields that should be returned.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "order",
+            "description": "Order the results by this field path (must be present in the field mask).\nDefault ordering is by ID. Prepend with a minus (-) to reverse the order.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "limit",
+            "description": "Limit the number of results per page.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "page",
+            "description": "Page number for pagination. 0 is interpreted as 1.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "NsMACSettingsProfileRegistry"
+        ]
+      }
+    },
     "/ns/applications/{end_device.ids.application_ids.application_id}/devices": {
       "post": {
         "summary": "Set creates or updates the device.",
@@ -10841,6 +11023,170 @@
         ],
         "tags": [
           "NsRelayConfigurationService"
+        ]
+      }
+    },
+    "/ns/applications/{mac_settings_profile.ids.application_ids.application_id}/mac_settings_profiles": {
+      "post": {
+        "summary": "Create creates a new MAC settings profile.",
+        "operationId": "NsMACSettingsProfileRegistry_Create",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v3CreateMACSettingsProfileResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "mac_settings_profile.ids.application_ids.application_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v3NsMACSettingsProfileRegistryCreateBody"
+            }
+          }
+        ],
+        "tags": [
+          "NsMACSettingsProfileRegistry"
+        ]
+      }
+    },
+    "/ns/applications/{mac_settings_profile_ids.application_ids.application_id}/mac_settings_profiles/{mac_settings_profile_ids.profile_id}": {
+      "get": {
+        "summary": "Get returns the MAC settings profile that matches the given identifiers.",
+        "operationId": "NsMACSettingsProfileRegistry_Get",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v3GetMACSettingsProfileResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "mac_settings_profile_ids.application_ids.application_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "mac_settings_profile_ids.profile_id",
+            "description": "Profile ID.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "field_mask",
+            "description": "The names of the fields that should be returned.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "NsMACSettingsProfileRegistry"
+        ]
+      },
+      "delete": {
+        "summary": "Delete deletes the MAC settings profile that matches the given identifiers.",
+        "operationId": "NsMACSettingsProfileRegistry_Delete",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v3DeleteMACSettingsProfileResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "mac_settings_profile_ids.application_ids.application_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "mac_settings_profile_ids.profile_id",
+            "description": "Profile ID.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "NsMACSettingsProfileRegistry"
+        ]
+      },
+      "put": {
+        "summary": "Update updates the MAC settings profile that matches the given identifiers.",
+        "operationId": "NsMACSettingsProfileRegistry_Update",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v3UpdateMACSettingsProfileResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "mac_settings_profile_ids.application_ids.application_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "mac_settings_profile_ids.profile_id",
+            "description": "Profile ID.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v3NsMACSettingsProfileRegistryUpdateBody"
+            }
+          }
+        ],
+        "tags": [
+          "NsMACSettingsProfileRegistry"
         ]
       }
     },
@@ -13135,12 +13481,85 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/EndDeviceQRCodeGeneratorParseBody"
+              "$ref": "#/definitions/v3EndDeviceQRCodeGeneratorParseBody"
             }
           }
         ],
         "tags": [
           "EndDeviceQRCodeGenerator"
+        ]
+      }
+    },
+    "/qr-codes/gateways/parse": {
+      "post": {
+        "summary": "Parse QR Codes of known formats and return the information contained within.",
+        "operationId": "GatewayQRCodeGenerator_Parse",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v3ParseGatewayQRCodeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v3ParseGatewayQRCodeRequest"
+            }
+          }
+        ],
+        "tags": [
+          "GatewayQRCodeGenerator"
+        ]
+      }
+    },
+    "/qr-codes/gateways/{format_id}/parse": {
+      "post": {
+        "summary": "Parse QR Codes of known formats and return the information contained within.",
+        "operationId": "GatewayQRCodeGenerator_Parse2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v3ParseGatewayQRCodeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "format_id",
+            "description": "QR code format identifier.\nIf this field is not specified, the server will default to ttigpro1.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v3GatewayQRCodeGeneratorParseBody"
+            }
+          }
+        ],
+        "tags": [
+          "GatewayQRCodeGenerator"
         ]
       }
     },
@@ -17406,16 +17825,6 @@
         }
       }
     },
-    "EndDeviceQRCodeGeneratorParseBody": {
-      "type": "object",
-      "properties": {
-        "qr_code": {
-          "type": "string",
-          "format": "byte",
-          "description": "Raw QR code contents."
-        }
-      }
-    },
     "EventAuthentication": {
       "type": "object",
       "properties": {
@@ -18865,6 +19274,17 @@
       },
       "description": "SortBy defines the field to which the Console will sort the display of entities."
     },
+    "UserConsolePreferencesTutorials": {
+      "type": "object",
+      "properties": {
+        "seen": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v3Tutorial"
+          }
+        }
+      }
+    },
     "UserRegistrationAdminApproval": {
       "type": "object",
       "properties": {
@@ -19934,6 +20354,28 @@
         },
         "confirmed_retry": {
           "$ref": "#/definitions/ApplicationDownlinkConfirmedRetry"
+        },
+        "locations": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/lorawanv3Location"
+          },
+          "description": "End device location metadata, set by the Application Server while handling the message."
+        },
+        "version_ids": {
+          "$ref": "#/definitions/v3EndDeviceVersionIdentifiers",
+          "description": "End device version identifiers, set by the Application Server while handling the message."
+        },
+        "network_ids": {
+          "$ref": "#/definitions/v3NetworkIdentifiers",
+          "description": "Network identifiers, set by the Network Server that handles the message."
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Attributes for devices, set by the Application Server while handling the message."
         }
       }
     },
@@ -19945,6 +20387,28 @@
         },
         "error": {
           "$ref": "#/definitions/v3ErrorDetails"
+        },
+        "locations": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/lorawanv3Location"
+          },
+          "description": "End device location metadata, set by the Application Server while handling the message."
+        },
+        "version_ids": {
+          "$ref": "#/definitions/v3EndDeviceVersionIdentifiers",
+          "description": "End device version identifiers, set by the Application Server while handling the message."
+        },
+        "network_ids": {
+          "$ref": "#/definitions/v3NetworkIdentifiers",
+          "description": "Network identifiers, set by the Network Server that handles the message."
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Attributes for devices, set by the Application Server while handling the message."
         }
       }
     },
@@ -19985,6 +20449,28 @@
         "session_key_id": {
           "type": "string",
           "format": "byte"
+        },
+        "locations": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/lorawanv3Location"
+          },
+          "description": "End device location metadata, set by the Application Server while handling the message."
+        },
+        "version_ids": {
+          "$ref": "#/definitions/v3EndDeviceVersionIdentifiers",
+          "description": "End device version identifiers, set by the Application Server while handling the message."
+        },
+        "network_ids": {
+          "$ref": "#/definitions/v3NetworkIdentifiers",
+          "description": "Network identifiers, set by the Network Server that handles the message."
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Attributes for devices, set by the Application Server while handling the message."
         }
       }
     },
@@ -20016,6 +20502,28 @@
           "type": "string",
           "format": "date-time",
           "description": "Server time when the Network Server received the message."
+        },
+        "locations": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/lorawanv3Location"
+          },
+          "description": "End device location metadata, set by the Application Server while handling the message."
+        },
+        "version_ids": {
+          "$ref": "#/definitions/v3EndDeviceVersionIdentifiers",
+          "description": "End device version identifiers, set by the Application Server while handling the message."
+        },
+        "network_ids": {
+          "$ref": "#/definitions/v3NetworkIdentifiers",
+          "description": "Network identifiers, set by the Network Server that handles the message."
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Attributes for devices, set by the Application Server while handling the message."
         }
       }
     },
@@ -20515,6 +21023,28 @@
         },
         "data": {
           "type": "object"
+        },
+        "locations": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/lorawanv3Location"
+          },
+          "description": "End device location metadata, set by the Application Server while handling the message."
+        },
+        "version_ids": {
+          "$ref": "#/definitions/v3EndDeviceVersionIdentifiers",
+          "description": "End device version identifiers, set by the Application Server while handling the message."
+        },
+        "network_ids": {
+          "$ref": "#/definitions/v3NetworkIdentifiers",
+          "description": "Network identifiers, set by the Network Server that handles the message."
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Attributes for devices, set by the Application Server while handling the message."
         }
       }
     },
@@ -20676,6 +21206,17 @@
         "network_ids": {
           "$ref": "#/definitions/v3NetworkIdentifiers",
           "description": "Network identifiers, set by the Network Server that handles the message."
+        },
+        "last_battery_percentage": {
+          "$ref": "#/definitions/v3LastBatteryPercentage",
+          "description": "Last battery percentage of the end device.\nReceived via the DevStatus MAC command at last_dev_status_received_at or earlier.\nSet by the Network Server while handling the message."
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Attributes for devices, set by the Application Server while handling the message."
         }
       }
     },
@@ -20752,6 +21293,13 @@
         "network_ids": {
           "$ref": "#/definitions/v3NetworkIdentifiers",
           "description": "Network identifiers, set by the Network Server that handles the message."
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Attributes for devices, set by the Application Server while handling the message."
         }
       }
     },
@@ -20837,6 +21385,10 @@
         },
         "field_mask": {
           "type": "string"
+        },
+        "paused": {
+          "type": "boolean",
+          "description": "Set to temporarily pause forwarding uplink data to this end point and receiving downlinks from this end point."
         }
       }
     },
@@ -20976,6 +21528,10 @@
             },
             "field_mask": {
               "type": "string"
+            },
+            "paused": {
+              "type": "boolean",
+              "description": "Set to temporarily pause forwarding uplink data to this end point and receiving downlinks from this end point."
             }
           }
         },
@@ -22263,6 +22819,15 @@
         }
       }
     },
+    "v3CreateMACSettingsProfileResponse": {
+      "type": "object",
+      "properties": {
+        "mac_settings_profile": {
+          "$ref": "#/definitions/v3MACSettingsProfile",
+          "description": "The MAC settings profile."
+        }
+      }
+    },
     "v3CreateNotificationResponse": {
       "type": "object",
       "properties": {
@@ -22464,6 +23029,9 @@
         }
       }
     },
+    "v3DeleteMACSettingsProfileResponse": {
+      "type": "object"
+    },
     "v3DeleteRelayResponse": {
       "type": "object"
     },
@@ -22538,6 +23106,18 @@
       ],
       "default": "DOWNLINK_PATH_CONSTRAINT_NONE",
       "description": " - DOWNLINK_PATH_CONSTRAINT_NONE: Indicates that the gateway can be selected for downlink without constraints by the Network Server.\n - DOWNLINK_PATH_CONSTRAINT_PREFER_OTHER: Indicates that the gateway can be selected for downlink only if no other or better gateway can be selected.\n - DOWNLINK_PATH_CONSTRAINT_NEVER: Indicates that this gateway will never be selected for downlink, even if that results in no available downlink path."
+    },
+    "v3EmailNotificationPreferences": {
+      "type": "object",
+      "properties": {
+        "types": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v3NotificationType"
+          }
+        }
+      },
+      "description": "EmailNotificationPreferences is the message that defines the types of notifications for which the user wants to receive an email."
     },
     "v3EmailValidation": {
       "type": "object",
@@ -23039,6 +23619,16 @@
         }
       }
     },
+    "v3EndDeviceQRCodeGeneratorParseBody": {
+      "type": "object",
+      "properties": {
+        "qr_code": {
+          "type": "string",
+          "format": "byte",
+          "description": "Raw QR code contents."
+        }
+      }
+    },
     "v3EndDeviceRegistryCreateBody": {
       "type": "object",
       "properties": {
@@ -23309,6 +23899,39 @@
             }
           },
           "description": "Defines an End Device registration and its state on the network.\nThe persistence of the EndDevice is divided between the Network Server, Application Server and Join Server.\nSDKs are responsible for combining (if desired) the three."
+        }
+      }
+    },
+    "v3EndDeviceRegistryListBody": {
+      "type": "object",
+      "properties": {
+        "application_ids": {
+          "type": "object"
+        },
+        "field_mask": {
+          "type": "string",
+          "description": "The names of the end device fields that should be returned.\nSee the API reference for which fields can be returned by the different services."
+        },
+        "order": {
+          "type": "string",
+          "description": "Order the results by this field path (must be present in the field mask).\nDefault ordering is by ID. Prepend with a minus (-) to reverse the order."
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Limit the number of results per page."
+        },
+        "page": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Page number for pagination. 0 is interpreted as 1."
+        },
+        "filters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v3ListEndDevicesRequestFilter"
+          }
         }
       }
     },
@@ -24266,6 +24889,16 @@
       },
       "description": "GatewayDown contains downlink messages for the gateway."
     },
+    "v3GatewayQRCodeGeneratorParseBody": {
+      "type": "object",
+      "properties": {
+        "qr_code": {
+          "type": "string",
+          "format": "byte",
+          "description": "Raw QR code contents."
+        }
+      }
+    },
     "v3GatewayRadio": {
       "type": "object",
       "properties": {
@@ -24756,6 +25389,15 @@
       "properties": {
         "configuration": {
           "$ref": "#/definitions/v3IsConfiguration"
+        }
+      }
+    },
+    "v3GetMACSettingsProfileResponse": {
+      "type": "object",
+      "properties": {
+        "mac_settings_profile": {
+          "$ref": "#/definitions/v3MACSettingsProfile",
+          "description": "The MAC settings profile."
         }
       }
     },
@@ -25316,6 +25958,26 @@
         }
       }
     },
+    "v3LastBatteryPercentage": {
+      "type": "object",
+      "properties": {
+        "f_cnt": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Frame counter value of last uplink containing DevStatusAns."
+        },
+        "value": {
+          "type": "number",
+          "format": "float",
+          "description": "The battery percentage of the end device.\nThe value is defined in the [0, 100] interval."
+        },
+        "received_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Time when last DevStatus MAC command was received."
+        }
+      }
+    },
     "v3ListBandsResponse": {
       "type": "object",
       "properties": {
@@ -25373,6 +26035,44 @@
         }
       }
     },
+    "v3ListGatewaysRequest": {
+      "type": "object",
+      "properties": {
+        "collaborator": {
+          "$ref": "#/definitions/v3OrganizationOrUserIdentifiers",
+          "description": "By default we list all gateways the caller has rights on.\nSet the user or the organization (not both) to instead list the gateways\nwhere the user or organization is collaborator on."
+        },
+        "field_mask": {
+          "type": "string",
+          "description": "The names of the gateway fields that should be returned."
+        },
+        "order": {
+          "type": "string",
+          "description": "Order the results by this field path (must be present in the field mask).\nDefault ordering is by ID. Prepend with a minus (-) to reverse the order."
+        },
+        "limit": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Limit the number of results per page."
+        },
+        "page": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Page number for pagination. 0 is interpreted as 1."
+        },
+        "deleted": {
+          "type": "boolean",
+          "description": "Only return recently deleted gateways."
+        },
+        "filters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v3ListGatewaysRequestFilter"
+          }
+        }
+      }
+    },
     "v3ListGatewaysRequestFilter": {
       "type": "object",
       "properties": {
@@ -25382,6 +26082,19 @@
         }
       },
       "description": "Filter gateways by fields."
+    },
+    "v3ListMACSettingsProfilesResponse": {
+      "type": "object",
+      "properties": {
+        "mac_settings_profiles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v3MACSettingsProfile"
+          },
+          "description": "The MAC settings profiles."
+        }
+      }
     },
     "v3ListNotificationsResponse": {
       "type": "object",
@@ -25915,6 +26628,32 @@
         "desired_relay": {
           "$ref": "#/definitions/v3RelaySettings",
           "description": "The relay settings the Network Server should configure device to use via MAC commands.\nIf unset, the default value from Network Server configuration or regional parameters specification will be used."
+        }
+      }
+    },
+    "v3MACSettingsProfile": {
+      "type": "object",
+      "properties": {
+        "ids": {
+          "$ref": "#/definitions/v3MACSettingsProfileIdentifiers",
+          "description": "Profile identifiers."
+        },
+        "mac_settings": {
+          "$ref": "#/definitions/v3MACSettings",
+          "description": "MAC settings."
+        }
+      }
+    },
+    "v3MACSettingsProfileIdentifiers": {
+      "type": "object",
+      "properties": {
+        "application_ids": {
+          "$ref": "#/definitions/v3ApplicationIdentifiers",
+          "description": "Application IDs."
+        },
+        "profile_id": {
+          "type": "string",
+          "description": "Profile ID."
         }
       }
     },
@@ -26843,7 +27582,7 @@
         },
         "notification_type": {
           "type": "string",
-          "description": "The type of this notification."
+          "description": "The type of this notification.\nTODO: Replace with type NotificationType in v4 https://github.com/TheThingsNetwork/lorawan-stack/issues/7384."
         },
         "data": {
           "$ref": "#/definitions/protobufAny",
@@ -26894,6 +27633,24 @@
         "NOTIFICATION_STATUS_ARCHIVED"
       ],
       "default": "NOTIFICATION_STATUS_UNSEEN"
+    },
+    "v3NotificationType": {
+      "type": "string",
+      "enum": [
+        "UNKNOWN",
+        "API_KEY_CREATED",
+        "API_KEY_CHANGED",
+        "CLIENT_REQUESTED",
+        "COLLABORATOR_CHANGED",
+        "ENTITY_STATE_CHANGED",
+        "INVITATION",
+        "LOGIN_TOKEN",
+        "PASSWORD_CHANGED",
+        "TEMPORARY_PASSWORD",
+        "USER_REQUESTED",
+        "VALIDATE"
+      ],
+      "default": "UNKNOWN"
     },
     "v3NsEndDeviceRegistrySetBody": {
       "type": "object",
@@ -27169,6 +27926,63 @@
         "field_mask": {
           "type": "string",
           "description": "The names of the end device fields that should be updated.\nSee the API reference for which fields can be set on the different services."
+        }
+      }
+    },
+    "v3NsMACSettingsProfileRegistryCreateBody": {
+      "type": "object",
+      "properties": {
+        "mac_settings_profile": {
+          "type": "object",
+          "properties": {
+            "ids": {
+              "type": "object",
+              "properties": {
+                "application_ids": {
+                  "type": "object",
+                  "description": "Application IDs.",
+                  "title": "Application IDs."
+                },
+                "profile_id": {
+                  "type": "string",
+                  "description": "Profile ID."
+                }
+              },
+              "description": "Profile identifiers.",
+              "title": "Profile identifiers."
+            },
+            "mac_settings": {
+              "$ref": "#/definitions/v3MACSettings",
+              "description": "MAC settings."
+            }
+          },
+          "description": "The MAC settings profile to create.",
+          "title": "The MAC settings profile to create."
+        }
+      }
+    },
+    "v3NsMACSettingsProfileRegistryUpdateBody": {
+      "type": "object",
+      "properties": {
+        "mac_settings_profile_ids": {
+          "type": "object",
+          "properties": {
+            "application_ids": {
+              "type": "object",
+              "description": "Application IDs.",
+              "title": "Application IDs."
+            }
+          },
+          "description": "The identifiers of the MAC settings profile.",
+          "title": "The identifiers of the MAC settings profile."
+        },
+        "mac_settings_profile": {
+          "$ref": "#/definitions/v3MACSettingsProfile",
+          "description": "The MAC settings profile to update."
+        },
+        "field_mask": {
+          "type": "string",
+          "description": "The names of the fields that should be updated."
         }
       }
     },
@@ -27938,6 +28752,37 @@
         }
       }
     },
+    "v3ParseGatewayQRCodeRequest": {
+      "type": "object",
+      "properties": {
+        "format_id": {
+          "type": "string",
+          "description": "QR code format identifier.\nIf this field is not specified, the server will default to ttigpro1."
+        },
+        "qr_code": {
+          "type": "string",
+          "format": "byte",
+          "description": "Raw QR code contents."
+        }
+      }
+    },
+    "v3ParseGatewayQRCodeResponse": {
+      "type": "object",
+      "properties": {
+        "format_id": {
+          "type": "string",
+          "description": "Identifier of the format used to parse the QR code data."
+        },
+        "gateway_eui": {
+          "type": "string",
+          "format": "string",
+          "example": "70B3D57ED000ABCD"
+        },
+        "owner_token": {
+          "type": "string"
+        }
+      }
+    },
     "v3PayloadFormatter": {
       "type": "string",
       "enum": [
@@ -28300,8 +29145,11 @@
         "right_invalid",
         "RIGHT_USER_INFO",
         "RIGHT_USER_SETTINGS_BASIC",
+        "RIGHT_USER_LIST",
+        "RIGHT_USER_CREATE",
         "RIGHT_USER_SETTINGS_API_KEYS",
         "RIGHT_USER_DELETE",
+        "RIGHT_USER_PURGE",
         "RIGHT_USER_AUTHORIZED_CLIENTS",
         "RIGHT_USER_APPLICATIONS_LIST",
         "RIGHT_USER_APPLICATIONS_CREATE",
@@ -28319,6 +29167,7 @@
         "RIGHT_APPLICATION_SETTINGS_COLLABORATORS",
         "RIGHT_APPLICATION_SETTINGS_PACKAGES",
         "RIGHT_APPLICATION_DELETE",
+        "RIGHT_APPLICATION_PURGE",
         "RIGHT_APPLICATION_DEVICES_READ",
         "RIGHT_APPLICATION_DEVICES_WRITE",
         "RIGHT_APPLICATION_DEVICES_READ_KEYS",
@@ -28333,11 +29182,13 @@
         "RIGHT_CLIENT_SETTINGS_BASIC",
         "RIGHT_CLIENT_SETTINGS_COLLABORATORS",
         "RIGHT_CLIENT_DELETE",
+        "RIGHT_CLIENT_PURGE",
         "RIGHT_GATEWAY_INFO",
         "RIGHT_GATEWAY_SETTINGS_BASIC",
         "RIGHT_GATEWAY_SETTINGS_API_KEYS",
         "RIGHT_GATEWAY_SETTINGS_COLLABORATORS",
         "RIGHT_GATEWAY_DELETE",
+        "RIGHT_GATEWAY_PURGE",
         "RIGHT_GATEWAY_TRAFFIC_READ",
         "RIGHT_GATEWAY_TRAFFIC_DOWN_WRITE",
         "RIGHT_GATEWAY_LINK",
@@ -28351,6 +29202,7 @@
         "RIGHT_ORGANIZATION_SETTINGS_API_KEYS",
         "RIGHT_ORGANIZATION_SETTINGS_MEMBERS",
         "RIGHT_ORGANIZATION_DELETE",
+        "RIGHT_ORGANIZATION_PURGE",
         "RIGHT_ORGANIZATION_APPLICATIONS_LIST",
         "RIGHT_ORGANIZATION_APPLICATIONS_CREATE",
         "RIGHT_ORGANIZATION_GATEWAYS_LIST",
@@ -28363,7 +29215,7 @@
         "RIGHT_ALL"
       ],
       "default": "right_invalid",
-      "description": "Right is the enum that defines all the different rights to do something in the network.\n\n - RIGHT_USER_INFO: The right to view user information.\n - RIGHT_USER_SETTINGS_BASIC: The right to edit basic user settings.\n - RIGHT_USER_SETTINGS_API_KEYS: The right to view and edit user API keys.\n - RIGHT_USER_DELETE: The right to delete user account.\n - RIGHT_USER_AUTHORIZED_CLIENTS: The right to view and edit authorized OAuth clients of the user.\n - RIGHT_USER_APPLICATIONS_LIST: The right to list applications the user is a collaborator of.\n - RIGHT_USER_APPLICATIONS_CREATE: The right to create an application under the user account.\n - RIGHT_USER_GATEWAYS_LIST: The right to list gateways the user is a collaborator of.\n - RIGHT_USER_GATEWAYS_CREATE: The right to create a gateway under the account of the user.\n - RIGHT_USER_CLIENTS_LIST: The right to list OAuth clients the user is a collaborator of.\n - RIGHT_USER_CLIENTS_CREATE: The right to create an OAuth client under the account of the user.\n - RIGHT_USER_ORGANIZATIONS_LIST: The right to list organizations the user is a member of.\n - RIGHT_USER_ORGANIZATIONS_CREATE: The right to create an organization under the user account.\n - RIGHT_USER_NOTIFICATIONS_READ: The right to read notifications sent to the user.\n - RIGHT_USER_ALL: The pseudo-right for all (current and future) user rights.\n - RIGHT_APPLICATION_INFO: The right to view application information.\n - RIGHT_APPLICATION_SETTINGS_BASIC: The right to edit basic application settings.\n - RIGHT_APPLICATION_SETTINGS_API_KEYS: The right to view and edit application API keys.\n - RIGHT_APPLICATION_SETTINGS_COLLABORATORS: The right to view and edit application collaborators.\n - RIGHT_APPLICATION_SETTINGS_PACKAGES: The right to view and edit application packages and associations.\n - RIGHT_APPLICATION_DELETE: The right to delete application.\n - RIGHT_APPLICATION_DEVICES_READ: The right to view devices in application.\n - RIGHT_APPLICATION_DEVICES_WRITE: The right to create devices in application.\n - RIGHT_APPLICATION_DEVICES_READ_KEYS: The right to view device keys in application.\nNote that keys may not be stored in a way that supports viewing them.\n - RIGHT_APPLICATION_DEVICES_WRITE_KEYS: The right to edit device keys in application.\n - RIGHT_APPLICATION_TRAFFIC_READ: The right to read application traffic (uplink and downlink).\n - RIGHT_APPLICATION_TRAFFIC_UP_WRITE: The right to write uplink application traffic.\n - RIGHT_APPLICATION_TRAFFIC_DOWN_WRITE: The right to write downlink application traffic.\n - RIGHT_APPLICATION_LINK: The right to link as Application to a Network Server for traffic exchange,\ni.e. read uplink and write downlink (API keys only).\nThis right is typically only given to an Application Server.\nThis right implies RIGHT_APPLICATION_INFO, RIGHT_APPLICATION_TRAFFIC_READ,\nand RIGHT_APPLICATION_TRAFFIC_DOWN_WRITE.\n - RIGHT_APPLICATION_ALL: The pseudo-right for all (current and future) application rights.\n - RIGHT_CLIENT_ALL: The pseudo-right for all (current and future) OAuth client rights.\n - RIGHT_CLIENT_INFO: The right to read client information.\n - RIGHT_CLIENT_SETTINGS_BASIC: The right to edit basic client settings.\n - RIGHT_CLIENT_SETTINGS_COLLABORATORS: The right to view and edit client collaborators.\n - RIGHT_CLIENT_DELETE: The right to delete a client.\n - RIGHT_GATEWAY_INFO: The right to view gateway information.\n - RIGHT_GATEWAY_SETTINGS_BASIC: The right to edit basic gateway settings.\n - RIGHT_GATEWAY_SETTINGS_API_KEYS: The right to view and edit gateway API keys.\n - RIGHT_GATEWAY_SETTINGS_COLLABORATORS: The right to view and edit gateway collaborators.\n - RIGHT_GATEWAY_DELETE: The right to delete gateway.\n - RIGHT_GATEWAY_TRAFFIC_READ: The right to read gateway traffic.\n - RIGHT_GATEWAY_TRAFFIC_DOWN_WRITE: The right to write downlink gateway traffic.\n - RIGHT_GATEWAY_LINK: The right to link as Gateway to a Gateway Server for traffic exchange,\ni.e. write uplink and read downlink (API keys only)\nThis right is typically only given to a gateway.\nThis right implies RIGHT_GATEWAY_INFO.\n - RIGHT_GATEWAY_STATUS_READ: The right to view gateway status.\n - RIGHT_GATEWAY_LOCATION_READ: The right to view view gateway location.\n - RIGHT_GATEWAY_WRITE_SECRETS: The right to store secrets associated with this gateway.\n - RIGHT_GATEWAY_READ_SECRETS: The right to retrieve secrets associated with this gateway.\n - RIGHT_GATEWAY_ALL: The pseudo-right for all (current and future) gateway rights.\n - RIGHT_ORGANIZATION_INFO: The right to view organization information.\n - RIGHT_ORGANIZATION_SETTINGS_BASIC: The right to edit basic organization settings.\n - RIGHT_ORGANIZATION_SETTINGS_API_KEYS: The right to view and edit organization API keys.\n - RIGHT_ORGANIZATION_SETTINGS_MEMBERS: The right to view and edit organization members.\n - RIGHT_ORGANIZATION_DELETE: The right to delete organization.\n - RIGHT_ORGANIZATION_APPLICATIONS_LIST: The right to list the applications the organization is a collaborator of.\n - RIGHT_ORGANIZATION_APPLICATIONS_CREATE: The right to create an application under the organization.\n - RIGHT_ORGANIZATION_GATEWAYS_LIST: The right to list the gateways the organization is a collaborator of.\n - RIGHT_ORGANIZATION_GATEWAYS_CREATE: The right to create a gateway under the organization.\n - RIGHT_ORGANIZATION_CLIENTS_LIST: The right to list the OAuth clients the organization is a collaborator of.\n - RIGHT_ORGANIZATION_CLIENTS_CREATE: The right to create an OAuth client under the organization.\n - RIGHT_ORGANIZATION_ADD_AS_COLLABORATOR: The right to add the organization as a collaborator on an existing entity.\n - RIGHT_ORGANIZATION_ALL: The pseudo-right for all (current and future) organization rights.\n - RIGHT_SEND_INVITES: The right to send invites to new users.\nNote that this is not prefixed with \"USER_\"; it is not a right on the user entity.\n - RIGHT_ALL: The pseudo-right for all (current and future) possible rights."
+      "description": "Right is the enum that defines all the different rights to do something in the network.\n\n - RIGHT_USER_INFO: The right to view user information.\n - RIGHT_USER_SETTINGS_BASIC: The right to edit basic user settings.\n - RIGHT_USER_LIST: The right to list users accounts.\n - RIGHT_USER_CREATE: The right to create an user account.\n - RIGHT_USER_SETTINGS_API_KEYS: The right to view and edit user API keys.\n - RIGHT_USER_DELETE: The right to delete user account.\n - RIGHT_USER_PURGE: The right to delete user account.\n - RIGHT_USER_AUTHORIZED_CLIENTS: The right to view and edit authorized OAuth clients of the user.\n - RIGHT_USER_APPLICATIONS_LIST: The right to list applications the user is a collaborator of.\n - RIGHT_USER_APPLICATIONS_CREATE: The right to create an application under the user account.\n - RIGHT_USER_GATEWAYS_LIST: The right to list gateways the user is a collaborator of.\n - RIGHT_USER_GATEWAYS_CREATE: The right to create a gateway under the account of the user.\n - RIGHT_USER_CLIENTS_LIST: The right to list OAuth clients the user is a collaborator of.\n - RIGHT_USER_CLIENTS_CREATE: The right to create an OAuth client under the account of the user.\n - RIGHT_USER_ORGANIZATIONS_LIST: The right to list organizations the user is a member of.\n - RIGHT_USER_ORGANIZATIONS_CREATE: The right to create an organization under the user account.\n - RIGHT_USER_NOTIFICATIONS_READ: The right to read notifications sent to the user.\n - RIGHT_USER_ALL: The pseudo-right for all (current and future) user rights.\n - RIGHT_APPLICATION_INFO: The right to view application information.\n - RIGHT_APPLICATION_SETTINGS_BASIC: The right to edit basic application settings.\n - RIGHT_APPLICATION_SETTINGS_API_KEYS: The right to view and edit application API keys.\n - RIGHT_APPLICATION_SETTINGS_COLLABORATORS: The right to view and edit application collaborators.\n - RIGHT_APPLICATION_SETTINGS_PACKAGES: The right to view and edit application packages and associations.\n - RIGHT_APPLICATION_DELETE: The right to delete application.\n - RIGHT_APPLICATION_PURGE: The right to purge application.\n - RIGHT_APPLICATION_DEVICES_READ: The right to view devices in application.\n - RIGHT_APPLICATION_DEVICES_WRITE: The right to create devices in application.\n - RIGHT_APPLICATION_DEVICES_READ_KEYS: The right to view device keys in application.\nNote that keys may not be stored in a way that supports viewing them.\n - RIGHT_APPLICATION_DEVICES_WRITE_KEYS: The right to edit device keys in application.\n - RIGHT_APPLICATION_TRAFFIC_READ: The right to read application traffic (uplink and downlink).\n - RIGHT_APPLICATION_TRAFFIC_UP_WRITE: The right to write uplink application traffic.\n - RIGHT_APPLICATION_TRAFFIC_DOWN_WRITE: The right to write downlink application traffic.\n - RIGHT_APPLICATION_LINK: The right to link as Application to a Network Server for traffic exchange,\ni.e. read uplink and write downlink (API keys only).\nThis right is typically only given to an Application Server.\nThis right implies RIGHT_APPLICATION_INFO, RIGHT_APPLICATION_TRAFFIC_READ,\nand RIGHT_APPLICATION_TRAFFIC_DOWN_WRITE.\n - RIGHT_APPLICATION_ALL: The pseudo-right for all (current and future) application rights.\n - RIGHT_CLIENT_ALL: The pseudo-right for all (current and future) OAuth client rights.\n - RIGHT_CLIENT_INFO: The right to read client information.\n - RIGHT_CLIENT_SETTINGS_BASIC: The right to edit basic client settings.\n - RIGHT_CLIENT_SETTINGS_COLLABORATORS: The right to view and edit client collaborators.\n - RIGHT_CLIENT_DELETE: The right to delete a client.\n - RIGHT_CLIENT_PURGE: The right to purge a client.\n - RIGHT_GATEWAY_INFO: The right to view gateway information.\n - RIGHT_GATEWAY_SETTINGS_BASIC: The right to edit basic gateway settings.\n - RIGHT_GATEWAY_SETTINGS_API_KEYS: The right to view and edit gateway API keys.\n - RIGHT_GATEWAY_SETTINGS_COLLABORATORS: The right to view and edit gateway collaborators.\n - RIGHT_GATEWAY_DELETE: The right to delete gateway.\n - RIGHT_GATEWAY_PURGE: The right to purge gateway.\n - RIGHT_GATEWAY_TRAFFIC_READ: The right to read gateway traffic.\n - RIGHT_GATEWAY_TRAFFIC_DOWN_WRITE: The right to write downlink gateway traffic.\n - RIGHT_GATEWAY_LINK: The right to link as Gateway to a Gateway Server for traffic exchange,\ni.e. write uplink and read downlink (API keys only)\nThis right is typically only given to a gateway.\nThis right implies RIGHT_GATEWAY_INFO.\n - RIGHT_GATEWAY_STATUS_READ: The right to view gateway status.\n - RIGHT_GATEWAY_LOCATION_READ: The right to view view gateway location.\n - RIGHT_GATEWAY_WRITE_SECRETS: The right to store secrets associated with this gateway.\n - RIGHT_GATEWAY_READ_SECRETS: The right to retrieve secrets associated with this gateway.\n - RIGHT_GATEWAY_ALL: The pseudo-right for all (current and future) gateway rights.\n - RIGHT_ORGANIZATION_INFO: The right to view organization information.\n - RIGHT_ORGANIZATION_SETTINGS_BASIC: The right to edit basic organization settings.\n - RIGHT_ORGANIZATION_SETTINGS_API_KEYS: The right to view and edit organization API keys.\n - RIGHT_ORGANIZATION_SETTINGS_MEMBERS: The right to view and edit organization members.\n - RIGHT_ORGANIZATION_DELETE: The right to delete organization.\n - RIGHT_ORGANIZATION_PURGE: The right to purge organization.\n - RIGHT_ORGANIZATION_APPLICATIONS_LIST: The right to list the applications the organization is a collaborator of.\n - RIGHT_ORGANIZATION_APPLICATIONS_CREATE: The right to create an application under the organization.\n - RIGHT_ORGANIZATION_GATEWAYS_LIST: The right to list the gateways the organization is a collaborator of.\n - RIGHT_ORGANIZATION_GATEWAYS_CREATE: The right to create a gateway under the organization.\n - RIGHT_ORGANIZATION_CLIENTS_LIST: The right to list the OAuth clients the organization is a collaborator of.\n - RIGHT_ORGANIZATION_CLIENTS_CREATE: The right to create an OAuth client under the organization.\n - RIGHT_ORGANIZATION_ADD_AS_COLLABORATOR: The right to add the organization as a collaborator on an existing entity.\n - RIGHT_ORGANIZATION_ALL: The pseudo-right for all (current and future) organization rights.\n - RIGHT_SEND_INVITES: The right to send invites to new users.\nNote that this is not prefixed with \"USER_\"; it is not a right on the user entity.\n - RIGHT_ALL: The pseudo-right for all (current and future) possible rights."
     },
     "v3Rights": {
       "type": "object",
@@ -28761,6 +29613,15 @@
         }
       }
     },
+    "v3Tutorial": {
+      "type": "string",
+      "enum": [
+        "TUTORIAL_UNKNOWN",
+        "TUTORIAL_LIVE_DATA_SPLIT_VIEW"
+      ],
+      "default": "TUTORIAL_UNKNOWN",
+      "description": "Tutorial is a set of possible tutorials in the Console."
+    },
     "v3TxAcknowledgment": {
       "type": "object",
       "properties": {
@@ -28848,6 +29709,15 @@
         "HIGHEST"
       ],
       "default": "LOWEST"
+    },
+    "v3UpdateMACSettingsProfileResponse": {
+      "type": "object",
+      "properties": {
+        "mac_settings_profile": {
+          "$ref": "#/definitions/v3MACSettingsProfile",
+          "description": "The MAC settings profile."
+        }
+      }
     },
     "v3UpdatePacketBrokerGatewayResponse": {
       "type": "object",
@@ -28972,6 +29842,16 @@
         "console_preferences": {
           "$ref": "#/definitions/v3UserConsolePreferences",
           "description": "Console preferences contains the user's preferences regarding the behavior of the Console."
+        },
+        "email_notification_preferences": {
+          "$ref": "#/definitions/v3EmailNotificationPreferences"
+        },
+        "universal_rights": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v3Right"
+          },
+          "description": "Universal rights are capable of restricting the user's interactions with the API, be it an admin or not."
         }
       },
       "description": "User is the message that defines a user on the network."
@@ -29108,6 +29988,9 @@
         },
         "sort_by": {
           "$ref": "#/definitions/UserConsolePreferencesSortBy"
+        },
+        "tutorials": {
+          "$ref": "#/definitions/UserConsolePreferencesTutorials"
         }
       },
       "description": "UserConsolePreferences is the message that defines the user preferences for the Console."
@@ -29231,6 +30114,16 @@
             "console_preferences": {
               "$ref": "#/definitions/v3UserConsolePreferences",
               "description": "Console preferences contains the user's preferences regarding the behavior of the Console."
+            },
+            "email_notification_preferences": {
+              "$ref": "#/definitions/v3EmailNotificationPreferences"
+            },
+            "universal_rights": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/v3Right"
+              },
+              "description": "Universal rights are capable of restricting the user's interactions with the API, be it an admin or not."
             }
           },
           "description": "User is the message that defines a user on the network."

@@ -814,6 +814,33 @@ func TestDecodeUplink(t *testing.T) {
 		err := host.DecodeUplink(ctx, ids, nil, message, script)
 		a.So(err, should.BeNil)
 	}
+
+	// Check recvTime.
+	{
+		script := `
+		function decodeUplink(input) {
+			if (input.recvTime === undefined) {
+				throw new Error('recvTime is undefined');
+			}
+
+			if (input.recvTime === null) {
+				throw new Error('recvTime is null');
+			}
+
+			if (!(input.recvTime instanceof Date)) {
+				throw new Error('recvTime is not a date object, got ' + typeof input.recvTime);
+			}
+
+			return {
+				data: {
+					recvTime: input.recvTime
+				}
+			}
+		}
+		`
+		err := host.DecodeUplink(ctx, ids, nil, message, script)
+		a.So(err, should.BeNil)
+	}
 }
 
 func TestDecodeDownlink(t *testing.T) {

@@ -114,7 +114,7 @@ class Devices {
       }
     }
 
-    if (paths.includes('mac_settings')) {
+    if (paths.some(path => path.includes('mac_settings'))) {
       const { mac_settings = {} } = device
 
       if (
@@ -137,7 +137,7 @@ class Devices {
         }
 
         if (typeof mac_settings.adr.static.nb_trans === 'undefined') {
-          mac_settings.adr.static.nb_trans = 0
+          mac_settings.adr.static.nb_trans = 1
         }
 
         if (typeof mac_settings.adr.static.tx_power_index === 'undefined') {
