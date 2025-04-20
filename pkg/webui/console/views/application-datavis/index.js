@@ -17,9 +17,6 @@ import { Formik, Form } from 'formik'
 import { useDispatch, useSelector } from 'react-redux'
 import { useParams } from 'react-router-dom'
 import { LineChart } from '@mui/x-charts/LineChart'
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
-import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { axisClasses } from '@mui/x-charts'
 import {
   Select,
@@ -29,12 +26,16 @@ import {
   FormControl,
   Checkbox,
   ListItemText,
-  ButtonGroup,
   IconButton,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Button as MUIButton,
 } from '@mui/material'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
-import PauseIcon from '@mui/icons-material/Pause'
-import StopIcon from '@mui/icons-material/Stop'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
+
+import videoFile from '@assets/videos/DataVisualization.mp4'
 
 import Modal from '@ttn-lw/components/modal'
 import Breadcrumb from '@ttn-lw/components/breadcrumbs/breadcrumb'
@@ -62,7 +63,6 @@ const ApplicationDataVisualization = () => {
   const [selectedDevices, setSelectedDevices] = useState({})
   const [availableDevices, setAvailableDevices] = useState({})
   const [aggregationOptions, setAggregationOptions] = useState([])
-  const [toggleView, setToggleView] = useState('dateTimePicker')
   const [selectedAggregation, setSelectedAggregation] = useState('')
   const [loading, setLoading] = useState(true)
   const [startTime, setStartTime] = useState(null)
@@ -73,6 +73,7 @@ const ApplicationDataVisualization = () => {
   const [firstTime, setFirstTime] = useState(true)
   const [AITextBox, setAITextBox] = useState('')
   const formikRef = useRef()
+  const [openVideo, setOpenVideo] = useState(false)
 
   // ['dev_eui-readingType', '123-temperature']
   const [selectedReadings, setSelectedReadings] = useState([])
@@ -320,8 +321,8 @@ const ApplicationDataVisualization = () => {
     const aggregatorQueryParam = params.get('aggregator')
     if (aggregatorQueryParam && aggregatorQueryParam !== 'None') {
       setSelectedAggregation(aggregatorQueryParam)
+      setReadyToRunFetchData(true)
     }
-    setReadyToRunFetchData(true)
   }, [selectedTime])
 
   useEffect(() => {
@@ -331,7 +332,7 @@ const ApplicationDataVisualization = () => {
     }
   }, [startTime, endTime, fetchData, readyToRunFetchData])
 
-  const fetchData = () => {
+  const fetchData = useCallback(() => {
     setFetchDataLoading(true)
     setFirstTime(true)
     setAILoading(true)
@@ -411,12 +412,13 @@ const ApplicationDataVisualization = () => {
         setCsvURL(json.CSV_URL)
         fetchAIResponse(json.CSV_URL, messages)
         setGraphData({ dataset: datasetArray, series })
+        setFetchDataLoading(false)
       })
       .catch(error => {
         console.error('Error fetching data:', error)
         setFetchDataLoading(false)
       })
-  }
+  })
 
   const fetchAIResponse = async (url, messagesNewest) => {
     const server = process.env.FLASK_AI_ENDPOINT
@@ -435,15 +437,12 @@ const ApplicationDataVisualization = () => {
         console.log(messages)
         setMessages([...messagesNewest, { role: 'assistant', content: json.data }])
         setAILoading(false)
-        setFetchDataLoading(false)
         if (firstTime) {
-          handleStart()
           setFirstTime(false)
         }
       })
       .catch(error => {
         console.error('Error fetching data:', error)
-        setFetchDataLoading(false)
       })
   }
 
@@ -478,46 +477,6 @@ const ApplicationDataVisualization = () => {
     <Breadcrumb path={`/applications/${appId}/datavis`} content={sharedMessages.dataVis} />,
   )
 
-  const handleStart = () => {
-    if (isRunning) return
-    setIsRunning(true)
-    startTimeTimer.current = Date.now() - timer
-    timeInterval.current = setInterval(() => {
-      setTimer(Date.now() - startTimeTimer.current)
-    }, 10)
-  }
-
-  const handlePause = () => {
-    if (!isRunning) return
-    setIsRunning(false)
-    clearInterval(timeInterval.current)
-  }
-
-  const handleReset = () => {
-    clearInterval(timeInterval.current)
-    timeInterval.current = null
-    setIsRunning(false)
-    setTimer(0)
-  }
-
-  const increment = () => {
-    setClicks(clicks + 1)
-  }
-
-  const formatTime = timer => {
-    const minutes = Math.floor(timer / 60000)
-      .toString()
-      .padStart(2, '0') // Convert to two-digit string
-    const seconds = Math.floor((timer / 1000) % 60)
-      .toString()
-      .padStart(2, '0') // Convert to two-digit string
-    const milliseconds = (timer % 10000).toString().padStart(2, '0') // Convert to two-digit string (hundredths)
-
-    return { minutes, seconds, milliseconds }
-  }
-
-  const { minutes, seconds, milliseconds } = formatTime(timer)
-
   const handleKeyDown = React.useCallback(
     evt => {
       if (evt.key === 'Enter' && AITextBox !== '') {
@@ -534,7 +493,37 @@ const ApplicationDataVisualization = () => {
   const startTimeTimer = useRef(null)
 
   return (
-    <div style={{ margin: '0px 30px' }} onMouseDown={() => increment()}>
+    <div style={{ margin: '0px 30px' }}>
+      <div style={{ display: 'flex', position: 'absolute', right: '1px', margin: '4px 4px' }}>
+        <MUIButton
+          variant="contained"
+          onClick={() => setOpenVideo(true)}
+          startIcon={<HelpOutlineIcon />}
+          style={{ maxHeight: '36px' }}
+        >
+          <p>Help Video</p>
+        </MUIButton>
+      </div>
+
+      <Dialog
+        open={openVideo}
+        onClose={() => setOpenVideo(false)}
+        maxWidth="md"
+        style={{ zIndex: '2001' }}
+        PaperProps={{
+          style: {
+            borderRadius: '6px',
+          },
+        }}
+      >
+        <DialogTitle style={{ alignSelf: 'center' }}>Data Visualization Video Guide</DialogTitle>
+        <DialogContent>
+          <video controls style={{ width: '100%' }}>
+            <source src={videoFile} type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+        </DialogContent>
+      </Dialog>
       <Formik
         initialValues={{
           selectedDevices: Object.keys(selectedDevices),
@@ -593,31 +582,6 @@ const ApplicationDataVisualization = () => {
                 {errors.selectedDevices && touched.selectedDevices && (
                   <div style={{ color: 'red' }}>{errors.selectedDevices}</div>
                 )}
-              </div>
-              <div>
-                <ButtonGroup variant="contained" aria-label="Basic button group">
-                  <IconButton disabled={isRunning} onClick={() => handleStart()}>
-                    <PlayArrowIcon />
-                  </IconButton>
-                  <IconButton disabled={!isRunning} onClick={() => handlePause()}>
-                    <PauseIcon />
-                  </IconButton>
-                  <IconButton disabled={isRunning} onClick={() => handleReset()}>
-                    <StopIcon />
-                  </IconButton>
-                </ButtonGroup>
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                  }}
-                >
-                  <h3>
-                    {minutes} {seconds} {milliseconds}
-                  </h3>
-                  <h2>{clicks}</h2>
-                </div>
               </div>
             </div>
 
@@ -853,28 +817,6 @@ const ApplicationDataVisualization = () => {
               <IconButton onClick={sendNewMessage} disabled={AILoading}>
                 <PlayArrowIcon />
               </IconButton>
-            </div>
-            <div>
-              <ButtonGroup variant="contained" aria-label="Basic button group">
-                <IconButton disabled={!isRunning} onClick={() => handlePause()}>
-                  <PauseIcon />
-                </IconButton>
-                <IconButton disabled={isRunning} onClick={() => handleReset()}>
-                  <StopIcon />
-                </IconButton>
-              </ButtonGroup>
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                }}
-              >
-                <h3>
-                  {minutes} {seconds} {milliseconds}
-                </h3>
-                <h2>{clicks}</h2>
-              </div>
             </div>
           </div>
         </Modal>

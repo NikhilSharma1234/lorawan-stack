@@ -31,7 +31,8 @@ import nib from 'nib'
 
 import pjson from '../package.json'
 
-const Dotenv = require('dotenv-webpack');
+const Dotenv = require('dotenv-webpack')
+
 const { version } = pjson
 const revision =
   child_process.execSync('git rev-parse --short HEAD').toString().trim() || 'unknown revision'
@@ -278,6 +279,10 @@ export default {
           },
         ],
         include: modules,
+      },
+      {
+        test: /\.mp4$/,
+        type: 'asset/resource',
       },
     ],
   },

@@ -18,7 +18,14 @@ import { useSelector, useDispatch } from 'react-redux'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
-import { ButtonGroup, Select, IconButton } from '@mui/material'
+import {
+  Select,
+  IconButton,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Button as MUIButton,
+} from '@mui/material'
 import OutlinedInput from '@mui/material/OutlinedInput'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
@@ -30,9 +37,10 @@ import { DataGrid } from '@mui/x-data-grid'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
-import PauseIcon from '@mui/icons-material/Pause'
-import StopIcon from '@mui/icons-material/Stop'
-import dayjs, { Dayjs } from 'dayjs'
+import dayjs from 'dayjs'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
+
+import videoFile from '@assets/videos/DataExport.mp4'
 
 import Modal from '@ttn-lw/components/modal'
 import { useBreadcrumbs } from '@ttn-lw/components/breadcrumbs/context'
@@ -69,7 +77,6 @@ const ApplicationDataExport = () => {
   const [endTime, setEndTime] = useState(null)
   const [data, setData] = useState(null)
   const [, set] = useState(false)
-  const [clicks, setClicks] = useState(0)
   const [loading, setLoading] = useState(true)
   const [fetchDataLoading, setFetchDataLoading] = useState(false)
   const [firstTime, setFirstTime] = useState(true)
@@ -79,6 +86,7 @@ const ApplicationDataExport = () => {
   const [csvURL, setCsvURL] = useState(null)
   const [messages, setMessages] = useState([])
   const [AITextBox, setAITextBox] = useState('')
+  const [openVideo, setOpenVideo] = useState(false)
   const formikRef = useRef()
   const [readyToRunFetchData, setReadyToRunFetchData] = useState(false)
   const ITEM_HEIGHT = 48
@@ -96,18 +104,6 @@ const ApplicationDataExport = () => {
   const validationSchema = yup.object().shape({
     selectedDevices: yup.array().min(1).required(),
   })
-
-  const [timer, setTimer] = useState(0)
-  const [isRunning, setIsRunning] = useState(false)
-
-  // Const validationSchemaExport = yup.object().shape({
-  //   selectedColumns: yup.array().min(1, 'Select at least one export column').required(),
-  //   exportOption: yup.array()
-  //     .when('selectedColumns', {
-  //       is: selectedColumns => selectedColumns.length > 0,
-  //       then: schema => schema.min(1, 'Select at least one export format').required(),
-  //     }),
-  // })
 
   useEffect(() => {
     sendUserEvent(
@@ -363,6 +359,7 @@ const ApplicationDataExport = () => {
         setSelectedColumns(filteredAvailableColumns) // Initially selecting all columns
         setData(mergedData) // Use the merged data
         setCsvURL(json.CSV_URL)
+        setFetchDataLoading(false)
         fetchAIResponse(json.CSV_URL, messages)
       })
       .catch(error => {
@@ -388,15 +385,12 @@ const ApplicationDataExport = () => {
         console.log(messages)
         setMessages([...messagesNewest, { role: 'assistant', content: json.data }])
         setAILoading(false)
-        setFetchDataLoading(false)
         if (firstTime) {
-          handleStart()
           setFirstTime(false)
         }
       })
       .catch(error => {
         console.error('Error fetching data:', error)
-        setFetchDataLoading(false)
       })
   }
 
@@ -536,10 +530,6 @@ const ApplicationDataExport = () => {
     return csv
   }
 
-  const increment = () => {
-    setClicks(clicks + 1)
-  }
-
   // Function to initiate CSV download
   const downloadCSV = newData => {
     const csvData = convertJSONToCSV(newData)
@@ -565,40 +555,6 @@ const ApplicationDataExport = () => {
     document.body.removeChild(link)
   }
 
-  const handleStart = () => {
-    if (isRunning) return
-    setIsRunning(true)
-    startTimeTimer.current = Date.now() - timer
-    timeInterval.current = setInterval(() => {
-      setTimer(Date.now() - startTimeTimer.current)
-    }, 10)
-  }
-
-  const handlePause = () => {
-    if (!isRunning) return
-    setIsRunning(false)
-    clearInterval(timeInterval.current)
-  }
-
-  const handleReset = () => {
-    clearInterval(timeInterval.current)
-    timeInterval.current = null
-    setIsRunning(false)
-    setTimer(0)
-  }
-
-  const formatTime = timer => {
-    const minutes = Math.floor(timer / 60000)
-      .toString()
-      .padStart(2, '0') // Convert to two-digit string
-    const seconds = Math.floor((timer / 1000) % 60)
-      .toString()
-      .padStart(2, '0') // Convert to two-digit string
-    const milliseconds = (timer % 10000).toString().padStart(2, '0') // Convert to two-digit string (hundredths)
-
-    return { minutes, seconds, milliseconds }
-  }
-
   useEffect(() => {
     if (messages.length > 2) {
       const element = document.getElementById('lastMessage')
@@ -618,11 +574,6 @@ const ApplicationDataExport = () => {
     [AITextBox, sendNewMessage],
   )
 
-  const { minutes, seconds, milliseconds } = formatTime(timer)
-
-  const timeInterval = useRef(null)
-  const startTimeTimer = useRef(null)
-
   useRootClass(style.stageFlex, 'stage')
 
   useBreadcrumbs(
@@ -633,8 +584,38 @@ const ApplicationDataExport = () => {
   const paginationModel = { page: 0, pageSize: 10 }
 
   return (
-    <div style={{ margin: '0px 30px' }} onMouseDown={() => increment()}>
-      <div>
+    <div style={{ margin: '0px 30px' }}>
+      <div style={{ display: 'flex' }}>
+        <div style={{ display: 'flex', position: 'absolute', right: '1px', margin: '4px 4px' }}>
+          <MUIButton
+            variant="contained"
+            onClick={() => setOpenVideo(true)}
+            startIcon={<HelpOutlineIcon />}
+            style={{ maxHeight: '36px' }}
+          >
+            <p>Help Video</p>
+          </MUIButton>
+        </div>
+
+        <Dialog
+          open={openVideo}
+          onClose={() => setOpenVideo(false)}
+          maxWidth="md"
+          style={{ zIndex: '2001' }}
+          PaperProps={{
+            style: {
+              borderRadius: '6px',
+            },
+          }}
+        >
+          <DialogTitle style={{ alignSelf: 'center' }}>Export Data Video Guide</DialogTitle>
+          <DialogContent>
+            <video controls style={{ width: '100%' }}>
+              <source src={videoFile} type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          </DialogContent>
+        </Dialog>
         <div style={{ margin: '0px 16px 0px 0px', display: 'flex', flexDirection: 'column' }}>
           <div
             style={{
@@ -671,24 +652,6 @@ const ApplicationDataExport = () => {
                   </div>
                 </div>
               </LocalizationProvider>
-            </div>
-            <div>
-              <ButtonGroup variant="contained" aria-label="Basic button group">
-                <IconButton disabled={!isRunning} onClick={() => handlePause()}>
-                  <PauseIcon />
-                </IconButton>
-                <IconButton disabled={isRunning} onClick={() => handleReset()}>
-                  <StopIcon />
-                </IconButton>
-              </ButtonGroup>
-              <div
-                style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}
-              >
-                <h3>
-                  {minutes} {seconds} {milliseconds}
-                </h3>
-                <h2>{clicks}</h2>
-              </div>
             </div>
           </div>
 
@@ -790,8 +753,61 @@ const ApplicationDataExport = () => {
             )}
           </Formik>
         </div>
+        {data ? (
+          <div style={{ margin: '0px 32px', display: 'flex', flexDirection: 'column' }}>
+            <h3>Export Data</h3>
+            <FormControl sx={{ width: 300 }}>
+              <InputLabel id="demo-multiple-checkbox-label">Selected Columns</InputLabel>
+              <Select
+                labelId="demo-multiple-checkbox-label"
+                id="demo-multiple-checkbox"
+                multiple
+                value={selectedColumns}
+                onChange={handleSelectedColumnChange}
+                input={<OutlinedInput label="Selected Columns" />}
+                renderValue={() => {
+                  const toRender = []
+                  for (const column of selectedColumns) {
+                    toRender.push(column)
+                  }
+                  return toRender.join(', ')
+                }}
+                MenuProps={MenuProps}
+              >
+                {availableColumns.map(key => (
+                  <MenuItem key={key} value={key}>
+                    <Checkbox checked={selectedColumns.includes(key)} />
+                    <ListItemText primary={key} />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <h3>Format</h3>
+            <ToggleButtonGroup
+              value={exportOption}
+              exclusive
+              onChange={(event, value) => setExportOption(value)}
+              aria-label="Format Selection"
+              size="large"
+            >
+              <ToggleButton value="CSV">CSV</ToggleButton>
+              <ToggleButton value="JSON">JSON</ToggleButton>
+            </ToggleButtonGroup>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                margin: '20px 0px',
+              }}
+            >
+              <SubmitButton isSubmitting={false} isValidating={false} onClick={handleExportData}>
+                Export Data
+              </SubmitButton>
+            </div>
+          </div>
+        ) : null}
       </div>
-      {data && !fetchDataLoading ? (
+      {data ? (
         <Paper sx={{ height: 625, width: '100%' }}>
           <DataGrid
             getRowId={row => row.item_number}
@@ -897,24 +913,6 @@ const ApplicationDataExport = () => {
               <IconButton onClick={sendNewMessage} disabled={AILoading}>
                 <PlayArrowIcon />
               </IconButton>
-            </div>
-            <div>
-              <ButtonGroup variant="contained" aria-label="Basic button group">
-                <IconButton disabled={!isRunning} onClick={() => handlePause()}>
-                  <PauseIcon />
-                </IconButton>
-                <IconButton disabled={isRunning} onClick={() => handleReset()}>
-                  <StopIcon />
-                </IconButton>
-              </ButtonGroup>
-              <div
-                style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}
-              >
-                <h3>
-                  {minutes} {seconds} {milliseconds}
-                </h3>
-                <h2>{clicks}</h2>
-              </div>
             </div>
           </div>
         </Modal>
