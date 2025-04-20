@@ -379,12 +379,29 @@ const ApplicationDataVisualization = () => {
       })
   }
 
-  const sendNewMessage = async () => {
+  const sendNewMessage = useCallback(async () => {
     setAILoading(true)
-    setAITextBox('')
     setMessages([...messages, { role: 'user', content: AITextBox }])
+    sendUserEvent(
+      userId,
+      'SendAIMessage',
+      `Message sent to AI model on the data visualization page.`,
+      JSON.stringify({
+        AITextBox,
+      }),
+      'datavis',
+      appId,
+    )
     fetchAIResponse(csvURL, [...messages, { role: 'user', content: AITextBox }])
-  }
+    setAITextBox('')
+  })
+
+  useEffect(() => {
+    if (messages.length > 2) {
+      const element = document.getElementById('lastMessage')
+      element.scrollIntoView()
+    }
+  }, [messages])
 
   useRootClass(style.stageFlex, 'stage')
 
@@ -432,6 +449,18 @@ const ApplicationDataVisualization = () => {
   }
 
   const { minutes, seconds, milliseconds } = formatTime(timer)
+
+  const handleKeyDown = React.useCallback(
+    evt => {
+      if (evt.key === 'Enter' && AITextBox !== '') {
+        evt.stopPropagation()
+        sendNewMessage()
+
+        return
+      }
+    },
+    [AITextBox, sendNewMessage],
+  )
 
   const timeInterval = useRef(null)
   const startTimeTimer = useRef(null)
@@ -672,6 +701,8 @@ const ApplicationDataVisualization = () => {
           onComplete={() => {
             setAIModal(false)
           }}
+          approveButtonProps={{ disabled: true }}
+          onKeyDown={handleKeyDown}
         >
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {/* Chat Messages - Scrollable */}
@@ -706,6 +737,7 @@ const ApplicationDataVisualization = () => {
                       alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
                       backgroundColor: msg.role === 'user' ? '#d4f8c6' : '#e5e5e5',
                     }}
+                    id={messages.length - 1 === index ? 'lastMessage' : null}
                   >
                     {textWithoutImage && <p style={{ margin: 0 }}>{textWithoutImage}</p>}
                     {imageUrl && (
@@ -754,6 +786,28 @@ const ApplicationDataVisualization = () => {
               <IconButton onClick={sendNewMessage} disabled={AILoading}>
                 <PlayArrowIcon />
               </IconButton>
+            </div>
+            <div>
+              <ButtonGroup variant="contained" aria-label="Basic button group">
+                <IconButton disabled={!isRunning} onClick={() => handlePause()}>
+                  <PauseIcon />
+                </IconButton>
+                <IconButton disabled={isRunning} onClick={() => handleReset()}>
+                  <StopIcon />
+                </IconButton>
+              </ButtonGroup>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <h3>
+                  {minutes} {seconds} {milliseconds}
+                </h3>
+                <h2>{clicks}</h2>
+              </div>
             </div>
           </div>
         </Modal>
