@@ -356,8 +356,13 @@ const validationSchema = Yup.object()
               return Yup.object().shape({
                 static: Yup.object().shape({
                   data_rate_index: Yup.number().nullable(),
-                  tx_power_index: Yup.number().nullable(),
-                  nb_trans: Yup.number().nullable(),
+                  tx_power_index: Yup.number()
+                    .nullable()
+                    .max(15, Yup.passValues(sharedMessages.validateNumberLte)),
+                  nb_trans: Yup.number()
+                    .nullable()
+                    .min(1, Yup.passValues(sharedMessages.validateNumberGte))
+                    .max(15, Yup.passValues(sharedMessages.validateNumberLte)),
                 }),
               })
             } else if (value && 'disabled' in value) {

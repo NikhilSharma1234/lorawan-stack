@@ -21,7 +21,8 @@ import (
 	"testing"
 
 	"github.com/smarty/assertions"
-	. "go.thethings.network/lorawan-stack/v3/pkg/crypto/cryptoutil"
+	"go.thethings.network/lorawan-stack/v3/pkg/crypto"
+	"go.thethings.network/lorawan-stack/v3/pkg/crypto/cryptoutil"
 	"go.thethings.network/lorawan-stack/v3/pkg/util/test"
 	"go.thethings.network/lorawan-stack/v3/pkg/util/test/assertions/should"
 )
@@ -39,6 +40,10 @@ type mockKeyService struct {
 	calls struct {
 		count int
 	}
+}
+
+func (*mockKeyService) KeyVault() crypto.KeyVault {
+	return nil
 }
 
 func (*mockKeyService) Wrap(context.Context, []byte, string) ([]byte, error) {
@@ -77,7 +82,7 @@ func TestCacheUsed(t *testing.T) {
 	m := &mockKeyService{}
 
 	ctx := test.Context()
-	ck := NewCacheKeyService(m, test.Delay, 1)
+	ck := cryptoutil.NewCacheKeyService(m, test.Delay<<4, 1)
 
 	// Cache is empty, expect a miss
 	m.results.key = []byte{0x01, 0x02, 0x03}

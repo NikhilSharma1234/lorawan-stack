@@ -24,7 +24,6 @@ import NetworkInterfaceAddressesFormFields from '@console/containers/gateway-man
 
 const m = defineMessages({
   ethernetConnection: 'Ethernet connection',
-  enableEthernetConnection: 'Enable ethernet connection',
   useStaticIp: 'Use a static IP address',
 })
 
@@ -34,7 +33,6 @@ const EthernetSettingsFormFields = () => {
   return (
     <>
       <Message component="h3" content={m.ethernetConnection} />
-
       <Form.Field
         name={`ethernet_profile._use_static_ip`}
         component={Checkbox}

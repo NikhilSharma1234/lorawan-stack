@@ -760,7 +760,7 @@ describe('End device manual create', () => {
 
         cy.findByRole('button', { name: 'Register end device' }).click()
 
-        cy.findByTestId('toast-notification')
+        cy.findByTestId('toast-notification-success')
           .findByText('End device registered')
           .should('be.visible')
         cy.findByRole('button', { name: 'Register end device' }).should('not.be.disabled')
@@ -768,11 +768,11 @@ describe('End device manual create', () => {
         // Device 2
         cy.findByLabelText('Device address').type(device2.dev_addr)
         cy.findByLabelText('End device ID').type(device2.id)
-        cy.findByLabelText('Register another end device of this type').check()
+        cy.findByLabelText('Register another end device of this type').check({ force: true })
 
         cy.findByRole('button', { name: 'Register end device' }).click()
 
-        cy.findByTestId('toast-notification')
+        cy.findByTestId('toast-notification-success')
           .findByText('End device registered')
           .should('be.visible')
         cy.findByRole('button', { name: 'Register end device' }).should('not.be.disabled')

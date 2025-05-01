@@ -17,11 +17,9 @@ package networkserver
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"strings"
 
 	"go.thethings.network/lorawan-stack/v3/pkg/auth/rights"
-	"go.thethings.network/lorawan-stack/v3/pkg/band"
 	"go.thethings.network/lorawan-stack/v3/pkg/crypto"
 	"go.thethings.network/lorawan-stack/v3/pkg/crypto/cryptoutil"
 	"go.thethings.network/lorawan-stack/v3/pkg/errors"
@@ -34,7 +32,6 @@ import (
 	"go.thethings.network/lorawan-stack/v3/pkg/specification/macspec"
 	"go.thethings.network/lorawan-stack/v3/pkg/ttnpb"
 	"go.thethings.network/lorawan-stack/v3/pkg/types"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -288,279 +285,6 @@ func newInvalidFieldValueError(field string) *errors.Error {
 	return errInvalidFieldValue.WithAttributes("field", field)
 }
 
-type setDeviceState struct {
-	Device *ttnpb.EndDevice
-
-	paths     []string
-	extraSets []string
-	extraGets []string
-
-	pathsCache     map[string]bool
-	extraSetsCache map[string]bool
-	extraGetsCache map[string]bool
-
-	zeroPaths map[string]bool
-	onGet     []func(*ttnpb.EndDevice) error
-}
-
-// hasAnyField caches the result of ttnpb.HasAnyField in the provided cache map
-// in order to avoid redundant lookups.
-//
-// NOTE: If the search paths are not bottom level fields, hasAnyField may have unexpected
-// results, as ttnpb.HasAnyField does not consider higher search paths as being part of
-// the requested paths - i.e ttnpb.HasAnyField([]string{"a.b"}, "a") == false.
-func hasAnyField(fs []string, cache map[string]bool, paths ...string) bool {
-	for _, p := range paths {
-		for i := len(p); i > 0; i = strings.LastIndex(p[:i], ".") {
-			p := p[:i]
-			v, ok := cache[p]
-			if !ok {
-				continue
-			}
-			if !v {
-				continue
-			}
-			return true
-		}
-		v := ttnpb.HasAnyField(fs, p)
-		cache[p] = v
-		if v {
-			return v
-		}
-	}
-	return false
-}
-
-func (st *setDeviceState) hasPathField(paths ...string) bool {
-	return hasAnyField(st.paths, st.pathsCache, paths...)
-}
-
-func (st *setDeviceState) HasSetField(paths ...string) bool {
-	return st.hasPathField(paths...) || hasAnyField(st.extraSets, st.extraSetsCache, paths...)
-}
-
-func (st *setDeviceState) HasGetField(paths ...string) bool {
-	return st.hasPathField(paths...) || hasAnyField(st.extraGets, st.extraGetsCache, paths...)
-}
-
-func addFields(hasField func(...string) bool, selected []string, cache map[string]bool, paths ...string) []string {
-	for _, p := range paths {
-		if hasField(p) {
-			continue
-		}
-		cache[p] = true
-		selected = append(selected, p)
-	}
-	return selected
-}
-
-func (st *setDeviceState) AddSetFields(paths ...string) {
-	st.extraSets = addFields(st.HasSetField, st.extraSets, st.extraSetsCache, paths...)
-}
-
-func (st *setDeviceState) AddGetFields(paths ...string) {
-	st.extraGets = addFields(st.HasGetField, st.extraGets, st.extraGetsCache, paths...)
-}
-
-func (st *setDeviceState) SetFields() []string {
-	return append(st.paths, st.extraSets...)
-}
-
-func (st *setDeviceState) GetFields() []string {
-	return append(st.paths, st.extraGets...)
-}
-
-// WithFields calls f when path is available.
-func (st *setDeviceState) WithField(f func(*ttnpb.EndDevice) error, path string) error {
-	if st.HasSetField(path) {
-		return f(st.Device)
-	}
-	st.AddGetFields(path)
-	st.onGet = append(st.onGet, func(stored *ttnpb.EndDevice) error {
-		return f(stored)
-	})
-	return nil
-}
-
-// WithFields calls f when all paths in paths are available.
-func (st *setDeviceState) WithFields(f func(map[string]*ttnpb.EndDevice) error, paths ...string) error {
-	storedPaths := make([]string, 0, len(paths))
-	m := make(map[string]*ttnpb.EndDevice, len(paths))
-	for _, p := range paths {
-		if st.HasSetField(p) {
-			m[p] = st.Device
-		} else {
-			storedPaths = append(storedPaths, p)
-		}
-	}
-	if len(storedPaths) == 0 {
-		return f(m)
-	}
-	st.AddGetFields(storedPaths...)
-	st.onGet = append(st.onGet, func(stored *ttnpb.EndDevice) error {
-		if stored == nil {
-			return f(m)
-		}
-		for _, p := range storedPaths {
-			m[p] = stored
-		}
-		return f(m)
-	})
-	return nil
-}
-
-// ValidateField ensures that isValid(dev), where dev is the device containing path evaluates to true.
-func (st *setDeviceState) ValidateField(isValid func(*ttnpb.EndDevice) bool, path string) error {
-	return st.WithField(func(dev *ttnpb.EndDevice) error {
-		if !isValid(dev) {
-			return newInvalidFieldValueError(path)
-		}
-		return nil
-	}, path)
-}
-
-var errFieldNotZero = errors.DefineInvalidArgument("field_not_zero", "field `{name}` is not zero")
-
-// ValidateFieldIsZero ensures that path is zero.
-func (st *setDeviceState) ValidateFieldIsZero(path string) error {
-	if st.HasSetField(path) {
-		if !st.Device.FieldIsZero(path) {
-			return newInvalidFieldValueError(path).WithCause(errFieldNotZero.WithAttributes("name", path))
-		}
-		return nil
-	}
-	v, ok := st.zeroPaths[path]
-	if !ok {
-		st.zeroPaths[path] = true
-		st.AddGetFields(path)
-		return nil
-	}
-	if !v {
-		panic(fmt.Sprintf("path `%s` requested to be both zero and not zero", path))
-	}
-	return nil
-}
-
-var errFieldIsZero = errors.DefineInvalidArgument("field_is_zero", "field `{name}` is zero")
-
-// ValidateFieldIsNotZero ensures that path is not zero.
-func (st *setDeviceState) ValidateFieldIsNotZero(path string) error {
-	if st.HasSetField(path) {
-		if st.Device.FieldIsZero(path) {
-			return newInvalidFieldValueError(path).WithCause(errFieldIsZero.WithAttributes("name", path))
-		}
-		return nil
-	}
-	v, ok := st.zeroPaths[path]
-	if !ok {
-		st.zeroPaths[path] = false
-		st.AddGetFields(path)
-		return nil
-	}
-	if v {
-		panic(fmt.Sprintf("path `%s` requested to be both zero and not zero", path))
-	}
-	return nil
-}
-
-// ValidateFieldsAreZero ensures that each p in paths is zero.
-func (st *setDeviceState) ValidateFieldsAreZero(paths ...string) error {
-	for _, p := range paths {
-		if err := st.ValidateFieldIsZero(p); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// ValidateFieldsAreNotZero ensures none of p in paths is zero.
-func (st *setDeviceState) ValidateFieldsAreNotZero(paths ...string) error {
-	for _, p := range paths {
-		if err := st.ValidateFieldIsNotZero(p); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// ValidateFields calls isValid with a map path -> *ttnpb.EndDevice, where the value stored under the key
-// is either a pointer to stored device or to device being set in request, depending on the request fieldmask.
-// isValid is only executed once all fields are present. That means that if request sets all fields in paths
-// isValid is executed immediately, otherwise it is called later (after device fetch) by SetFunc.
-func (st *setDeviceState) ValidateFields(isValid func(map[string]*ttnpb.EndDevice) (bool, string), paths ...string) error {
-	return st.WithFields(func(m map[string]*ttnpb.EndDevice) error {
-		ok, p := isValid(m)
-		if !ok {
-			return newInvalidFieldValueError(p)
-		}
-		return nil
-	}, paths...)
-}
-
-// ValidateSetField validates the field iff path is being set in request.
-func (st *setDeviceState) ValidateSetField(isValid func() bool, path string) error {
-	if !st.HasSetField(path) {
-		return nil
-	}
-	if !isValid() {
-		return newInvalidFieldValueError(path)
-	}
-	return nil
-}
-
-// ValidateSetField is like ValidateSetField, but allows the validator callback to return an error
-// and propagates it to the caller as the cause.
-func (st *setDeviceState) ValidateSetFieldWithCause(isValid func() error, path string) error {
-	if !st.HasSetField(path) {
-		return nil
-	}
-	if err := isValid(); err != nil {
-		return newInvalidFieldValueError(path).WithCause(err)
-	}
-	return nil
-}
-
-// ValidateSetFields validates the fields iff at least one of p in paths is being set in request.
-func (st *setDeviceState) ValidateSetFields(isValid func(map[string]*ttnpb.EndDevice) (bool, string), paths ...string) error {
-	if !st.HasSetField(paths...) {
-		return nil
-	}
-	return st.ValidateFields(isValid, paths...)
-}
-
-// SetFunc is the function meant to be passed to SetByID.
-func (st *setDeviceState) SetFunc(f func(context.Context, *ttnpb.EndDevice) error) func(context.Context, *ttnpb.EndDevice) (*ttnpb.EndDevice, []string, error) {
-	return func(ctx context.Context, stored *ttnpb.EndDevice) (*ttnpb.EndDevice, []string, error) {
-		for p, shouldBeZero := range st.zeroPaths {
-			if stored.FieldIsZero(p) != shouldBeZero {
-				return nil, nil, newInvalidFieldValueError(p)
-			}
-		}
-		for _, g := range st.onGet {
-			if err := g(stored); err != nil {
-				return nil, nil, err
-			}
-		}
-		if err := f(ctx, stored); err != nil {
-			return nil, nil, err
-		}
-		return st.Device, st.SetFields(), nil
-	}
-}
-
-func newSetDeviceState(dev *ttnpb.EndDevice, paths ...string) *setDeviceState {
-	return &setDeviceState{
-		Device: dev,
-		paths:  paths,
-
-		pathsCache:     make(map[string]bool),
-		extraSetsCache: make(map[string]bool),
-		extraGetsCache: make(map[string]bool),
-
-		zeroPaths: make(map[string]bool),
-	}
-}
-
 func setKeyIsZero(m map[string]*ttnpb.EndDevice, get func(*ttnpb.EndDevice) *ttnpb.KeyEnvelope, path string) bool {
 	if dev, ok := m[path+".key"]; ok {
 		if ke := get(dev); !types.MustAES128Key(ke.GetKey()).OrZero().IsZero() {
@@ -590,673 +314,8 @@ func setKeyEqual(m map[string]*ttnpb.EndDevice, getA, getB func(*ttnpb.EndDevice
 	return true
 }
 
-// ifThenFuncFieldRight represents the RHS of a functional implication.
-type ifThenFuncFieldRight struct {
-	Func   func(m map[string]*ttnpb.EndDevice) (bool, string)
-	Fields []string
-}
-
-var (
-	ifZeroThenZeroFields = map[string][]string{
-		"supports_join": {
-			"pending_mac_state.current_parameters.adr_ack_delay_exponent.value",
-			"pending_mac_state.current_parameters.adr_ack_limit_exponent.value",
-			"pending_mac_state.current_parameters.adr_data_rate_index",
-			"pending_mac_state.current_parameters.adr_nb_trans",
-			"pending_mac_state.current_parameters.adr_tx_power_index",
-			"pending_mac_state.current_parameters.beacon_frequency",
-			"pending_mac_state.current_parameters.channels",
-			"pending_mac_state.current_parameters.downlink_dwell_time.value",
-			"pending_mac_state.current_parameters.max_duty_cycle",
-			"pending_mac_state.current_parameters.max_eirp",
-			"pending_mac_state.current_parameters.ping_slot_data_rate_index_value.value",
-			"pending_mac_state.current_parameters.ping_slot_frequency",
-			"pending_mac_state.current_parameters.rejoin_count_periodicity",
-			"pending_mac_state.current_parameters.rejoin_time_periodicity",
-			"pending_mac_state.current_parameters.relay.mode.served.backoff",
-			"pending_mac_state.current_parameters.relay.mode.served.mode.always",
-			"pending_mac_state.current_parameters.relay.mode.served.mode.dynamic.smart_enable_level",
-			"pending_mac_state.current_parameters.relay.mode.served.mode.end_device_controlled",
-			"pending_mac_state.current_parameters.relay.mode.served.second_channel.ack_offset",
-			"pending_mac_state.current_parameters.relay.mode.served.second_channel.data_rate_index",
-			"pending_mac_state.current_parameters.relay.mode.served.second_channel.frequency",
-			"pending_mac_state.current_parameters.relay.mode.served.serving_device_id",
-			"pending_mac_state.current_parameters.relay.mode.serving.cad_periodicity",
-			"pending_mac_state.current_parameters.relay.mode.serving.default_channel_index",
-			"pending_mac_state.current_parameters.relay.mode.serving.limits.join_requests.bucket_size",
-			"pending_mac_state.current_parameters.relay.mode.serving.limits.join_requests.reload_rate",
-			"pending_mac_state.current_parameters.relay.mode.serving.limits.notifications.bucket_size",
-			"pending_mac_state.current_parameters.relay.mode.serving.limits.notifications.reload_rate",
-			"pending_mac_state.current_parameters.relay.mode.serving.limits.overall.bucket_size",
-			"pending_mac_state.current_parameters.relay.mode.serving.limits.overall.reload_rate",
-			"pending_mac_state.current_parameters.relay.mode.serving.limits.reset_behavior",
-			"pending_mac_state.current_parameters.relay.mode.serving.limits.uplink_messages.bucket_size",
-			"pending_mac_state.current_parameters.relay.mode.serving.limits.uplink_messages.reload_rate",
-			"pending_mac_state.current_parameters.relay.mode.serving.second_channel.ack_offset",
-			"pending_mac_state.current_parameters.relay.mode.serving.second_channel.data_rate_index",
-			"pending_mac_state.current_parameters.relay.mode.serving.second_channel.frequency",
-			"pending_mac_state.current_parameters.relay.mode.serving.uplink_forwarding_rules",
-			"pending_mac_state.current_parameters.rx1_data_rate_offset",
-			"pending_mac_state.current_parameters.rx1_delay",
-			"pending_mac_state.current_parameters.rx2_data_rate_index",
-			"pending_mac_state.current_parameters.rx2_frequency",
-			"pending_mac_state.current_parameters.uplink_dwell_time.value",
-			"pending_mac_state.desired_parameters.adr_ack_delay_exponent.value",
-			"pending_mac_state.desired_parameters.adr_ack_limit_exponent.value",
-			"pending_mac_state.desired_parameters.adr_data_rate_index",
-			"pending_mac_state.desired_parameters.adr_nb_trans",
-			"pending_mac_state.desired_parameters.adr_tx_power_index",
-			"pending_mac_state.desired_parameters.beacon_frequency",
-			"pending_mac_state.desired_parameters.channels",
-			"pending_mac_state.desired_parameters.downlink_dwell_time.value",
-			"pending_mac_state.desired_parameters.max_duty_cycle",
-			"pending_mac_state.desired_parameters.max_eirp",
-			"pending_mac_state.desired_parameters.ping_slot_data_rate_index_value.value",
-			"pending_mac_state.desired_parameters.ping_slot_frequency",
-			"pending_mac_state.desired_parameters.rejoin_count_periodicity",
-			"pending_mac_state.desired_parameters.rejoin_time_periodicity",
-			"pending_mac_state.desired_parameters.relay.mode.served.backoff",
-			"pending_mac_state.desired_parameters.relay.mode.served.mode.always",
-			"pending_mac_state.desired_parameters.relay.mode.served.mode.dynamic.smart_enable_level",
-			"pending_mac_state.desired_parameters.relay.mode.served.mode.end_device_controlled",
-			"pending_mac_state.desired_parameters.relay.mode.served.second_channel.ack_offset",
-			"pending_mac_state.desired_parameters.relay.mode.served.second_channel.data_rate_index",
-			"pending_mac_state.desired_parameters.relay.mode.served.second_channel.frequency",
-			"pending_mac_state.desired_parameters.relay.mode.served.serving_device_id",
-			"pending_mac_state.desired_parameters.relay.mode.serving.cad_periodicity",
-			"pending_mac_state.desired_parameters.relay.mode.serving.default_channel_index",
-			"pending_mac_state.desired_parameters.relay.mode.serving.limits.join_requests.bucket_size",
-			"pending_mac_state.desired_parameters.relay.mode.serving.limits.join_requests.reload_rate",
-			"pending_mac_state.desired_parameters.relay.mode.serving.limits.notifications.bucket_size",
-			"pending_mac_state.desired_parameters.relay.mode.serving.limits.notifications.reload_rate",
-			"pending_mac_state.desired_parameters.relay.mode.serving.limits.overall.bucket_size",
-			"pending_mac_state.desired_parameters.relay.mode.serving.limits.overall.reload_rate",
-			"pending_mac_state.desired_parameters.relay.mode.serving.limits.reset_behavior",
-			"pending_mac_state.desired_parameters.relay.mode.serving.limits.uplink_messages.bucket_size",
-			"pending_mac_state.desired_parameters.relay.mode.serving.limits.uplink_messages.reload_rate",
-			"pending_mac_state.desired_parameters.relay.mode.serving.second_channel.ack_offset",
-			"pending_mac_state.desired_parameters.relay.mode.serving.second_channel.data_rate_index",
-			"pending_mac_state.desired_parameters.relay.mode.serving.second_channel.frequency",
-			"pending_mac_state.desired_parameters.relay.mode.serving.uplink_forwarding_rules",
-			"pending_mac_state.desired_parameters.rx1_data_rate_offset",
-			"pending_mac_state.desired_parameters.rx1_delay",
-			"pending_mac_state.desired_parameters.rx2_data_rate_index",
-			"pending_mac_state.desired_parameters.rx2_frequency",
-			"pending_mac_state.desired_parameters.uplink_dwell_time.value",
-			"pending_mac_state.device_class",
-			"pending_mac_state.last_adr_change_f_cnt_up",
-			"pending_mac_state.last_confirmed_downlink_at",
-			"pending_mac_state.last_dev_status_f_cnt_up",
-			"pending_mac_state.last_downlink_at",
-			"pending_mac_state.last_network_initiated_downlink_at",
-			"pending_mac_state.lorawan_version",
-			"pending_mac_state.pending_join_request.cf_list.ch_masks",
-			"pending_mac_state.pending_join_request.cf_list.freq",
-			"pending_mac_state.pending_join_request.cf_list.type",
-			"pending_mac_state.pending_join_request.downlink_settings.opt_neg",
-			"pending_mac_state.pending_join_request.downlink_settings.rx1_dr_offset",
-			"pending_mac_state.pending_join_request.downlink_settings.rx2_dr",
-			"pending_mac_state.pending_join_request.rx_delay",
-			"pending_mac_state.ping_slot_periodicity.value",
-			"pending_mac_state.queued_join_accept.correlation_ids",
-			"pending_mac_state.queued_join_accept.keys.app_s_key.encrypted_key",
-			"pending_mac_state.queued_join_accept.keys.app_s_key.kek_label",
-			"pending_mac_state.queued_join_accept.keys.app_s_key.key",
-			"pending_mac_state.queued_join_accept.keys.f_nwk_s_int_key.key",
-			"pending_mac_state.queued_join_accept.keys.nwk_s_enc_key.key",
-			"pending_mac_state.queued_join_accept.keys.s_nwk_s_int_key.key",
-			"pending_mac_state.queued_join_accept.keys.session_key_id",
-			"pending_mac_state.queued_join_accept.payload",
-			"pending_mac_state.queued_join_accept.request.cf_list.ch_masks",
-			"pending_mac_state.queued_join_accept.request.cf_list.freq",
-			"pending_mac_state.queued_join_accept.request.cf_list.type",
-			"pending_mac_state.queued_join_accept.request.dev_addr",
-			"pending_mac_state.queued_join_accept.request.downlink_settings.opt_neg",
-			"pending_mac_state.queued_join_accept.request.downlink_settings.rx1_dr_offset",
-			"pending_mac_state.queued_join_accept.request.downlink_settings.rx2_dr",
-			"pending_mac_state.queued_join_accept.request.net_id",
-			"pending_mac_state.queued_join_accept.request.rx_delay",
-			"pending_mac_state.recent_downlinks",
-			"pending_mac_state.recent_mac_command_identifiers",
-			"pending_mac_state.recent_uplinks",
-			"pending_mac_state.rejected_adr_data_rate_indexes",
-			"pending_mac_state.rejected_adr_tx_power_indexes",
-			"pending_mac_state.rejected_data_rate_ranges",
-			"pending_mac_state.rejected_frequencies",
-			"pending_mac_state.rx_windows_available",
-			"pending_session.dev_addr",
-			"pending_session.keys.f_nwk_s_int_key.key",
-			"pending_session.keys.nwk_s_enc_key.key",
-			"pending_session.keys.s_nwk_s_int_key.key",
-			"pending_session.keys.session_key_id",
-			"session.keys.session_key_id",
-		},
-	}
-
-	ifZeroThenNotZeroFields = map[string][]string{
-		"supports_join": {
-			"session.dev_addr",
-			"session.keys.f_nwk_s_int_key.key",
-			// NOTE: LoRaWAN-version specific fields are validated within Set directly.
-		},
-	}
-
-	ifNotZeroThenZeroFields = map[string][]string{
-		"multicast": {
-			"mac_settings.desired_relay.mode.served.backoff",
-			"mac_settings.desired_relay.mode.served.mode.always",
-			"mac_settings.desired_relay.mode.served.mode.dynamic.smart_enable_level",
-			"mac_settings.desired_relay.mode.served.mode.end_device_controlled",
-			"mac_settings.desired_relay.mode.served.second_channel.ack_offset",
-			"mac_settings.desired_relay.mode.served.second_channel.data_rate_index",
-			"mac_settings.desired_relay.mode.served.second_channel.frequency",
-			"mac_settings.desired_relay.mode.served.serving_device_id",
-			"mac_settings.desired_relay.mode.serving.cad_periodicity",
-			"mac_settings.desired_relay.mode.serving.default_channel_index",
-			"mac_settings.desired_relay.mode.serving.limits.join_requests.bucket_size",
-			"mac_settings.desired_relay.mode.serving.limits.join_requests.reload_rate",
-			"mac_settings.desired_relay.mode.serving.limits.notifications.bucket_size",
-			"mac_settings.desired_relay.mode.serving.limits.notifications.reload_rate",
-			"mac_settings.desired_relay.mode.serving.limits.overall.bucket_size",
-			"mac_settings.desired_relay.mode.serving.limits.overall.reload_rate",
-			"mac_settings.desired_relay.mode.serving.limits.reset_behavior",
-			"mac_settings.desired_relay.mode.serving.limits.uplink_messages.bucket_size",
-			"mac_settings.desired_relay.mode.serving.limits.uplink_messages.reload_rate",
-			"mac_settings.desired_relay.mode.serving.second_channel.ack_offset",
-			"mac_settings.desired_relay.mode.serving.second_channel.data_rate_index",
-			"mac_settings.desired_relay.mode.serving.second_channel.frequency",
-			"mac_settings.desired_relay.mode.serving.uplink_forwarding_rules",
-			"mac_settings.relay.mode.served.backoff",
-			"mac_settings.relay.mode.served.mode.always",
-			"mac_settings.relay.mode.served.mode.dynamic.smart_enable_level",
-			"mac_settings.relay.mode.served.mode.end_device_controlled",
-			"mac_settings.relay.mode.served.second_channel.ack_offset",
-			"mac_settings.relay.mode.served.second_channel.data_rate_index",
-			"mac_settings.relay.mode.served.second_channel.frequency",
-			"mac_settings.relay.mode.served.serving_device_id",
-			"mac_settings.relay.mode.serving.cad_periodicity",
-			"mac_settings.relay.mode.serving.default_channel_index",
-			"mac_settings.relay.mode.serving.limits.join_requests.bucket_size",
-			"mac_settings.relay.mode.serving.limits.join_requests.reload_rate",
-			"mac_settings.relay.mode.serving.limits.notifications.bucket_size",
-			"mac_settings.relay.mode.serving.limits.notifications.reload_rate",
-			"mac_settings.relay.mode.serving.limits.overall.bucket_size",
-			"mac_settings.relay.mode.serving.limits.overall.reload_rate",
-			"mac_settings.relay.mode.serving.limits.reset_behavior",
-			"mac_settings.relay.mode.serving.limits.uplink_messages.bucket_size",
-			"mac_settings.relay.mode.serving.limits.uplink_messages.reload_rate",
-			"mac_settings.relay.mode.serving.second_channel.ack_offset",
-			"mac_settings.relay.mode.serving.second_channel.data_rate_index",
-			"mac_settings.relay.mode.serving.second_channel.frequency",
-			"mac_settings.relay.mode.serving.uplink_forwarding_rules",
-			"mac_settings.schedule_downlinks.value",
-			"mac_state.current_parameters.relay.mode.served.backoff",
-			"mac_state.current_parameters.relay.mode.served.mode.always",
-			"mac_state.current_parameters.relay.mode.served.mode.dynamic.smart_enable_level",
-			"mac_state.current_parameters.relay.mode.served.mode.end_device_controlled",
-			"mac_state.current_parameters.relay.mode.served.second_channel.ack_offset",
-			"mac_state.current_parameters.relay.mode.served.second_channel.data_rate_index",
-			"mac_state.current_parameters.relay.mode.served.second_channel.frequency",
-			"mac_state.current_parameters.relay.mode.served.serving_device_id",
-			"mac_state.current_parameters.relay.mode.serving.cad_periodicity",
-			"mac_state.current_parameters.relay.mode.serving.default_channel_index",
-			"mac_state.current_parameters.relay.mode.serving.limits.join_requests.bucket_size",
-			"mac_state.current_parameters.relay.mode.serving.limits.join_requests.reload_rate",
-			"mac_state.current_parameters.relay.mode.serving.limits.notifications.bucket_size",
-			"mac_state.current_parameters.relay.mode.serving.limits.notifications.reload_rate",
-			"mac_state.current_parameters.relay.mode.serving.limits.overall.bucket_size",
-			"mac_state.current_parameters.relay.mode.serving.limits.overall.reload_rate",
-			"mac_state.current_parameters.relay.mode.serving.limits.reset_behavior",
-			"mac_state.current_parameters.relay.mode.serving.limits.uplink_messages.bucket_size",
-			"mac_state.current_parameters.relay.mode.serving.limits.uplink_messages.reload_rate",
-			"mac_state.current_parameters.relay.mode.serving.second_channel.ack_offset",
-			"mac_state.current_parameters.relay.mode.serving.second_channel.data_rate_index",
-			"mac_state.current_parameters.relay.mode.serving.second_channel.frequency",
-			"mac_state.current_parameters.relay.mode.serving.uplink_forwarding_rules",
-			"mac_state.desired_parameters.relay.mode.served.backoff",
-			"mac_state.desired_parameters.relay.mode.served.mode.always",
-			"mac_state.desired_parameters.relay.mode.served.mode.dynamic.smart_enable_level",
-			"mac_state.desired_parameters.relay.mode.served.mode.end_device_controlled",
-			"mac_state.desired_parameters.relay.mode.served.second_channel.ack_offset",
-			"mac_state.desired_parameters.relay.mode.served.second_channel.data_rate_index",
-			"mac_state.desired_parameters.relay.mode.served.second_channel.frequency",
-			"mac_state.desired_parameters.relay.mode.served.serving_device_id",
-			"mac_state.desired_parameters.relay.mode.serving.cad_periodicity",
-			"mac_state.desired_parameters.relay.mode.serving.default_channel_index",
-			"mac_state.desired_parameters.relay.mode.serving.limits.join_requests.bucket_size",
-			"mac_state.desired_parameters.relay.mode.serving.limits.join_requests.reload_rate",
-			"mac_state.desired_parameters.relay.mode.serving.limits.notifications.bucket_size",
-			"mac_state.desired_parameters.relay.mode.serving.limits.notifications.reload_rate",
-			"mac_state.desired_parameters.relay.mode.serving.limits.overall.bucket_size",
-			"mac_state.desired_parameters.relay.mode.serving.limits.overall.reload_rate",
-			"mac_state.desired_parameters.relay.mode.serving.limits.reset_behavior",
-			"mac_state.desired_parameters.relay.mode.serving.limits.uplink_messages.bucket_size",
-			"mac_state.desired_parameters.relay.mode.serving.limits.uplink_messages.reload_rate",
-			"mac_state.desired_parameters.relay.mode.serving.second_channel.ack_offset",
-			"mac_state.desired_parameters.relay.mode.serving.second_channel.data_rate_index",
-			"mac_state.desired_parameters.relay.mode.serving.second_channel.frequency",
-			"mac_state.desired_parameters.relay.mode.serving.uplink_forwarding_rules",
-			"mac_state.last_adr_change_f_cnt_up",
-			"mac_state.last_confirmed_downlink_at",
-			"mac_state.last_dev_status_f_cnt_up",
-			"mac_state.pending_application_downlink",
-			"mac_state.pending_requests",
-			"mac_state.queued_responses",
-			"mac_state.recent_mac_command_identifiers",
-			"mac_state.recent_uplinks",
-			"mac_state.rejected_adr_data_rate_indexes",
-			"mac_state.rejected_adr_tx_power_indexes",
-			"mac_state.rejected_data_rate_ranges",
-			"mac_state.rejected_frequencies",
-			"mac_state.rx_windows_available",
-			"session.last_conf_f_cnt_down",
-			"session.last_f_cnt_up",
-			"supports_join",
-		},
-	}
-
-	ifNotZeroThenNotZeroFields = map[string][]string{
-		"supports_join": {
-			"ids.dev_eui",
-			"ids.join_eui",
-		},
-	}
-
-	ifZeroThenFuncFields = map[string][]ifThenFuncFieldRight{
-		"supports_join": {
-			{
-				Func: func(m map[string]*ttnpb.EndDevice) (bool, string) {
-					if dev, ok := m["ids.dev_eui"]; ok && !types.MustEUI64(dev.Ids.DevEui).OrZero().IsZero() {
-						return true, ""
-					}
-					if m["lorawan_version"].GetLorawanVersion() == ttnpb.MACVersion_MAC_UNKNOWN {
-						return false, "lorawan_version"
-					}
-					if macspec.RequireDevEUIForABP(m["lorawan_version"].LorawanVersion) && !m["multicast"].GetMulticast() {
-						return false, "ids.dev_eui"
-					}
-					return true, ""
-				},
-				Fields: []string{
-					"ids.dev_eui",
-					"lorawan_version",
-					"multicast",
-				},
-			},
-
-			{
-				Func: func(m map[string]*ttnpb.EndDevice) (bool, string) {
-					if !m["supports_class_b"].GetSupportsClassB() ||
-						m["mac_settings.ping_slot_periodicity.value"].GetMacSettings().GetPingSlotPeriodicity() != nil {
-						return true, ""
-					}
-					return false, "mac_settings.ping_slot_periodicity.value"
-				},
-				Fields: []string{
-					"mac_settings.ping_slot_periodicity.value",
-					"supports_class_b",
-				},
-			},
-		},
-	}
-
-	ifNotZeroThenFuncFields = map[string][]ifThenFuncFieldRight{
-		"multicast": append(func() (rs []ifThenFuncFieldRight) {
-			for s, eq := range map[string]func(*ttnpb.MACParameters, *ttnpb.MACParameters) bool{
-				"adr_ack_delay_exponent.value": func(a, b *ttnpb.MACParameters) bool {
-					return proto.Equal(a.AdrAckDelayExponent, b.AdrAckDelayExponent)
-				},
-				"adr_ack_limit_exponent.value": func(a, b *ttnpb.MACParameters) bool {
-					return proto.Equal(a.AdrAckLimitExponent, b.AdrAckLimitExponent)
-				},
-				"adr_data_rate_index": func(a, b *ttnpb.MACParameters) bool {
-					return a.AdrDataRateIndex == b.AdrDataRateIndex
-				},
-				"adr_nb_trans": func(a, b *ttnpb.MACParameters) bool {
-					return a.AdrNbTrans == b.AdrNbTrans
-				},
-				"adr_tx_power_index": func(a, b *ttnpb.MACParameters) bool {
-					return a.AdrTxPowerIndex == b.AdrTxPowerIndex
-				},
-				"beacon_frequency": func(a, b *ttnpb.MACParameters) bool {
-					return a.BeaconFrequency == b.BeaconFrequency
-				},
-				"channels": func(a, b *ttnpb.MACParameters) bool {
-					if len(a.Channels) != len(b.Channels) {
-						return false
-					}
-					for i, ch := range a.Channels {
-						if !proto.Equal(ch, b.Channels[i]) {
-							return false
-						}
-					}
-					return true
-				},
-				"downlink_dwell_time.value": func(a, b *ttnpb.MACParameters) bool {
-					return proto.Equal(a.DownlinkDwellTime, b.DownlinkDwellTime)
-				},
-				"max_duty_cycle": func(a, b *ttnpb.MACParameters) bool {
-					return a.MaxDutyCycle == b.MaxDutyCycle
-				},
-				"max_eirp": func(a, b *ttnpb.MACParameters) bool {
-					return a.MaxEirp == b.MaxEirp
-				},
-				"ping_slot_data_rate_index_value.value": func(a, b *ttnpb.MACParameters) bool {
-					return proto.Equal(a.PingSlotDataRateIndexValue, b.PingSlotDataRateIndexValue)
-				},
-				"ping_slot_frequency": func(a, b *ttnpb.MACParameters) bool {
-					return a.PingSlotFrequency == b.PingSlotFrequency
-				},
-				"rejoin_count_periodicity": func(a, b *ttnpb.MACParameters) bool {
-					return a.RejoinCountPeriodicity == b.RejoinCountPeriodicity
-				},
-				"rejoin_time_periodicity": func(a, b *ttnpb.MACParameters) bool {
-					return a.RejoinTimePeriodicity == b.RejoinTimePeriodicity
-				},
-				"rx1_data_rate_offset": func(a, b *ttnpb.MACParameters) bool {
-					return a.Rx1DataRateOffset == b.Rx1DataRateOffset
-				},
-				"rx1_delay": func(a, b *ttnpb.MACParameters) bool {
-					return a.Rx1Delay == b.Rx1Delay
-				},
-				"rx2_data_rate_index": func(a, b *ttnpb.MACParameters) bool {
-					return a.Rx2DataRateIndex == b.Rx2DataRateIndex
-				},
-				"rx2_frequency": func(a, b *ttnpb.MACParameters) bool {
-					return a.Rx2Frequency == b.Rx2Frequency
-				},
-				"uplink_dwell_time.value": func(a, b *ttnpb.MACParameters) bool {
-					return proto.Equal(a.UplinkDwellTime, b.UplinkDwellTime)
-				},
-			} {
-				curPath := "mac_state.current_parameters." + s
-				desPath := "mac_state.desired_parameters." + s
-				eq := eq
-				rs = append(rs, ifThenFuncFieldRight{
-					Func: func(m map[string]*ttnpb.EndDevice) (bool, string) {
-						curDev := m[curPath]
-						desDev := m[desPath]
-						if curDev == nil || desDev == nil {
-							if curDev != desDev {
-								return false, desPath
-							}
-							return true, ""
-						}
-						if !eq(curDev.MacState.CurrentParameters, desDev.MacState.DesiredParameters) {
-							return false, desPath
-						}
-						return true, ""
-					},
-					Fields: []string{
-						curPath,
-						desPath,
-					},
-				})
-			}
-			return rs
-		}(),
-
-			ifThenFuncFieldRight{
-				Func: func(m map[string]*ttnpb.EndDevice) (bool, string) {
-					if !m["supports_class_b"].GetSupportsClassB() && !m["supports_class_c"].GetSupportsClassC() {
-						return false, "supports_class_b"
-					}
-					return true, ""
-				},
-				Fields: []string{
-					"supports_class_b",
-					"supports_class_c",
-				},
-			},
-
-			ifThenFuncFieldRight{
-				Func: func(m map[string]*ttnpb.EndDevice) (bool, string) {
-					if !m["supports_class_b"].GetSupportsClassB() ||
-						m["mac_settings.ping_slot_periodicity.value"].GetMacSettings().GetPingSlotPeriodicity() != nil {
-						return true, ""
-					}
-					return false, "mac_settings.ping_slot_periodicity.value"
-				},
-				Fields: []string{
-					"mac_settings.ping_slot_periodicity.value",
-					"supports_class_b",
-				},
-			},
-		),
-	}
-
-	// downlinkInfluencingSetFields contains fields that can influence downlink scheduling, e.g. trigger one or make a scheduled slot obsolete.
-	downlinkInfluencingSetFields = [...]string{
-		"last_dev_status_received_at",
-		"mac_settings.schedule_downlinks.value",
-		"mac_state.current_parameters.adr_ack_delay_exponent.value",
-		"mac_state.current_parameters.adr_ack_limit_exponent.value",
-		"mac_state.current_parameters.adr_data_rate_index",
-		"mac_state.current_parameters.adr_nb_trans",
-		"mac_state.current_parameters.adr_tx_power_index",
-		"mac_state.current_parameters.beacon_frequency",
-		"mac_state.current_parameters.channels",
-		"mac_state.current_parameters.downlink_dwell_time.value",
-		"mac_state.current_parameters.max_duty_cycle",
-		"mac_state.current_parameters.max_eirp",
-		"mac_state.current_parameters.ping_slot_data_rate_index_value.value",
-		"mac_state.current_parameters.ping_slot_frequency",
-		"mac_state.current_parameters.rejoin_count_periodicity",
-		"mac_state.current_parameters.rejoin_time_periodicity",
-		"mac_state.current_parameters.relay.mode.served.backoff",
-		"mac_state.current_parameters.relay.mode.served.mode.always",
-		"mac_state.current_parameters.relay.mode.served.mode.dynamic.smart_enable_level",
-		"mac_state.current_parameters.relay.mode.served.mode.end_device_controlled",
-		"mac_state.current_parameters.relay.mode.served.second_channel.ack_offset",
-		"mac_state.current_parameters.relay.mode.served.second_channel.data_rate_index",
-		"mac_state.current_parameters.relay.mode.served.second_channel.frequency",
-		"mac_state.current_parameters.relay.mode.serving.cad_periodicity",
-		"mac_state.current_parameters.relay.mode.serving.default_channel_index",
-		"mac_state.current_parameters.relay.mode.serving.limits.join_requests.bucket_size",
-		"mac_state.current_parameters.relay.mode.serving.limits.join_requests.reload_rate",
-		"mac_state.current_parameters.relay.mode.serving.limits.notifications.bucket_size",
-		"mac_state.current_parameters.relay.mode.serving.limits.notifications.reload_rate",
-		"mac_state.current_parameters.relay.mode.serving.limits.overall.bucket_size",
-		"mac_state.current_parameters.relay.mode.serving.limits.overall.reload_rate",
-		"mac_state.current_parameters.relay.mode.serving.limits.reset_behavior",
-		"mac_state.current_parameters.relay.mode.serving.limits.uplink_messages.bucket_size",
-		"mac_state.current_parameters.relay.mode.serving.limits.uplink_messages.reload_rate",
-		"mac_state.current_parameters.relay.mode.serving.second_channel.ack_offset",
-		"mac_state.current_parameters.relay.mode.serving.second_channel.data_rate_index",
-		"mac_state.current_parameters.relay.mode.serving.second_channel.frequency",
-		"mac_state.current_parameters.relay.mode.serving.uplink_forwarding_rules",
-		"mac_state.current_parameters.rx1_data_rate_offset",
-		"mac_state.current_parameters.rx1_delay",
-		"mac_state.current_parameters.rx2_data_rate_index",
-		"mac_state.current_parameters.rx2_frequency",
-		"mac_state.current_parameters.uplink_dwell_time.value",
-		"mac_state.desired_parameters.adr_ack_delay_exponent.value",
-		"mac_state.desired_parameters.adr_ack_limit_exponent.value",
-		"mac_state.desired_parameters.adr_data_rate_index",
-		"mac_state.desired_parameters.adr_nb_trans",
-		"mac_state.desired_parameters.adr_tx_power_index",
-		"mac_state.desired_parameters.beacon_frequency",
-		"mac_state.desired_parameters.channels",
-		"mac_state.desired_parameters.downlink_dwell_time.value",
-		"mac_state.desired_parameters.max_duty_cycle",
-		"mac_state.desired_parameters.max_eirp",
-		"mac_state.desired_parameters.ping_slot_data_rate_index_value.value",
-		"mac_state.desired_parameters.ping_slot_frequency",
-		"mac_state.desired_parameters.rejoin_count_periodicity",
-		"mac_state.desired_parameters.rejoin_time_periodicity",
-		"mac_state.desired_parameters.relay.mode.served.backoff",
-		"mac_state.desired_parameters.relay.mode.served.mode.always",
-		"mac_state.desired_parameters.relay.mode.served.mode.dynamic.smart_enable_level",
-		"mac_state.desired_parameters.relay.mode.served.mode.end_device_controlled",
-		"mac_state.desired_parameters.relay.mode.served.second_channel.ack_offset",
-		"mac_state.desired_parameters.relay.mode.served.second_channel.data_rate_index",
-		"mac_state.desired_parameters.relay.mode.served.second_channel.frequency",
-		"mac_state.desired_parameters.relay.mode.serving.cad_periodicity",
-		"mac_state.desired_parameters.relay.mode.serving.default_channel_index",
-		"mac_state.desired_parameters.relay.mode.serving.limits.join_requests.bucket_size",
-		"mac_state.desired_parameters.relay.mode.serving.limits.join_requests.reload_rate",
-		"mac_state.desired_parameters.relay.mode.serving.limits.notifications.bucket_size",
-		"mac_state.desired_parameters.relay.mode.serving.limits.notifications.reload_rate",
-		"mac_state.desired_parameters.relay.mode.serving.limits.overall.bucket_size",
-		"mac_state.desired_parameters.relay.mode.serving.limits.overall.reload_rate",
-		"mac_state.desired_parameters.relay.mode.serving.limits.reset_behavior",
-		"mac_state.desired_parameters.relay.mode.serving.limits.uplink_messages.bucket_size",
-		"mac_state.desired_parameters.relay.mode.serving.limits.uplink_messages.reload_rate",
-		"mac_state.desired_parameters.relay.mode.serving.second_channel.ack_offset",
-		"mac_state.desired_parameters.relay.mode.serving.second_channel.data_rate_index",
-		"mac_state.desired_parameters.relay.mode.serving.second_channel.frequency",
-		"mac_state.desired_parameters.relay.mode.serving.uplink_forwarding_rules",
-		"mac_state.desired_parameters.rx1_data_rate_offset",
-		"mac_state.desired_parameters.rx1_delay",
-		"mac_state.desired_parameters.rx2_data_rate_index",
-		"mac_state.desired_parameters.rx2_frequency",
-		"mac_state.desired_parameters.uplink_dwell_time.value",
-		"mac_state.device_class",
-		"mac_state.last_confirmed_downlink_at",
-		"mac_state.last_dev_status_f_cnt_up",
-		"mac_state.last_downlink_at",
-		"mac_state.last_network_initiated_downlink_at",
-		"mac_state.lorawan_version",
-		"mac_state.ping_slot_periodicity.value",
-		"mac_state.queued_responses",
-		"mac_state.recent_mac_command_identifiers",
-		"mac_state.recent_uplinks",
-		"mac_state.rejected_adr_data_rate_indexes",
-		"mac_state.rejected_adr_tx_power_indexes",
-		"mac_state.rejected_data_rate_ranges",
-		"mac_state.rejected_frequencies",
-		"mac_state.rx_windows_available",
-	}
-
-	legacyADRSettingsFields = []string{
-		"mac_settings.adr_margin",
-		"mac_settings.use_adr.value",
-		"mac_settings.use_adr",
-	}
-
-	adrSettingsFields = []string{
-		"mac_settings.adr.mode.disabled",
-		"mac_settings.adr.mode.dynamic.channel_steering.mode.disabled",
-		"mac_settings.adr.mode.dynamic.channel_steering.mode.lora_narrow",
-		"mac_settings.adr.mode.dynamic.channel_steering.mode",
-		"mac_settings.adr.mode.dynamic.channel_steering",
-		"mac_settings.adr.mode.dynamic.margin",
-		"mac_settings.adr.mode.dynamic.max_data_rate_index.value",
-		"mac_settings.adr.mode.dynamic.max_data_rate_index",
-		"mac_settings.adr.mode.dynamic.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.max_tx_power_index",
-		"mac_settings.adr.mode.dynamic.min_data_rate_index.value",
-		"mac_settings.adr.mode.dynamic.min_data_rate_index",
-		"mac_settings.adr.mode.dynamic.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.min_tx_power_index",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_0.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_0.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_0",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_1.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_1.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_1",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_10.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_10.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_10",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_11.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_11.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_11",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_12.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_12.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_12",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_13.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_13.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_13",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_14.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_14.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_14",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_15.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_15.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_15",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_2.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_2.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_2",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_3.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_3.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_3",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_4.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_4.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_4",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_5.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_5.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_5",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_6.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_6.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_6",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_7.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_7.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_7",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_8.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_8.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_8",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_9.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_9.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_9",
-		"mac_settings.adr.mode.dynamic.overrides",
-		"mac_settings.adr.mode.dynamic",
-		"mac_settings.adr.mode.static.data_rate_index",
-		"mac_settings.adr.mode.static.nb_trans",
-		"mac_settings.adr.mode.static.tx_power_index",
-		"mac_settings.adr.mode.static",
-		"mac_settings.adr.mode",
-		"mac_settings.adr",
-	}
-
-	dynamicADRSettingsFields = []string{
-		"mac_settings.adr.mode.dynamic.channel_steering.mode.disabled",
-		"mac_settings.adr.mode.dynamic.channel_steering.mode.lora_narrow",
-		"mac_settings.adr.mode.dynamic.channel_steering.mode",
-		"mac_settings.adr.mode.dynamic.channel_steering",
-		"mac_settings.adr.mode.dynamic.margin",
-		"mac_settings.adr.mode.dynamic.max_data_rate_index.value",
-		"mac_settings.adr.mode.dynamic.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.max_tx_power_index",
-		"mac_settings.adr.mode.dynamic.min_data_rate_index.value",
-		"mac_settings.adr.mode.dynamic.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.min_tx_power_index",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_0.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_0.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_1.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_1.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_10.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_10.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_11.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_11.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_12.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_12.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_13.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_13.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_14.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_14.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_15.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_15.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_2.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_2.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_3.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_3.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_4.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_4.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_5.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_5.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_6.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_6.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_7.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_7.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_8.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_8.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_9.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_9.min_nb_trans",
-		"mac_settings.adr.mode.dynamic",
-	}
-)
-
 // Set implements NsEndDeviceRegistryServer.
-func (ns *NetworkServer) Set(ctx context.Context, req *ttnpb.SetEndDeviceRequest) (*ttnpb.EndDevice, error) {
+func (ns *NetworkServer) Set(ctx context.Context, req *ttnpb.SetEndDeviceRequest) (*ttnpb.EndDevice, error) { // nolint: gocyclo,lll
 	st := newSetDeviceState(req.EndDevice, req.FieldMask.GetPaths()...)
 
 	requiredRights := append(make([]ttnpb.Right, 0, 2),
@@ -1347,160 +406,45 @@ func (ns *NetworkServer) Set(ctx context.Context, req *ttnpb.SetEndDeviceRequest
 		return nil, err
 	}
 
-	// Ensure ids.dev_addr and session.dev_addr are consistent.
-	if st.HasSetField("ids.dev_addr") {
-		if err := st.ValidateField(func(dev *ttnpb.EndDevice) bool {
-			if st.Device.Ids.DevAddr == nil {
-				return dev.GetSession() == nil
-			}
-			return dev.GetSession() != nil && bytes.Equal(dev.Session.DevAddr, st.Device.Ids.DevAddr)
-		}, "session.dev_addr"); err != nil {
-			return nil, err
-		}
-	} else if st.HasSetField("session.dev_addr") {
-		st.Device.Ids.DevAddr = nil
-		if devAddr := types.MustDevAddr(st.Device.GetSession().GetDevAddr()); devAddr != nil {
-			st.Device.Ids.DevAddr = devAddr.Bytes()
-		}
-		st.AddSetFields(
-			"ids.dev_addr",
-		)
+	fps, err := ns.FrequencyPlansStore(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	// Ensure FieldIsZero(left) -> FieldIsZero(r), for each r in right.
-	for left, right := range ifZeroThenZeroFields {
-		if st.HasSetField(left) {
-			if !st.Device.FieldIsZero(left) {
-				continue
+	var profile *ttnpb.MACSettingsProfile
+
+	if st.HasSetField(
+		"mac_settings_profile_ids",
+		"mac_settings_profile_ids.application_ids",
+		"mac_settings_profile_ids.application_ids.application_id",
+		"mac_settings_profile_ids.profile_id",
+	) {
+		if st.Device.MacSettingsProfileIds != nil {
+			// If mac_settings_profile_ids is set, mac_settings must not be set.
+			if st.HasSetField(macSettingsFields...) {
+				return nil, newInvalidFieldValueError("mac_settings")
 			}
-			if err := st.ValidateFieldsAreZero(right...); err != nil {
+			profile, err = ns.macSettingsProfiles.Get(
+				ctx,
+				st.Device.MacSettingsProfileIds,
+				[]string{"ids", "mac_settings"},
+			)
+			if err != nil {
 				return nil, err
 			}
-		}
-		for _, r := range right {
-			if !st.HasSetField(r) || st.Device.FieldIsZero(r) {
-				continue
-			}
-			if err := st.ValidateFieldIsNotZero(left); err != nil {
+
+			if err = validateProfile(profile.GetMacSettings(), st.Device, fps); err != nil {
 				return nil, err
 			}
 		}
 	}
 
-	// Ensure FieldIsZero(left) -> !FieldIsZero(r), for each r in right.
-	for left, right := range ifZeroThenNotZeroFields {
-		if st.HasSetField(left) {
-			if !st.Device.FieldIsZero(left) {
-				continue
-			}
-			if err := st.ValidateFieldsAreNotZero(right...); err != nil {
-				return nil, err
-			}
-		}
-		for _, r := range right {
-			if !st.HasSetField(r) || !st.Device.FieldIsZero(r) {
-				continue
-			}
-			if err := st.ValidateFieldIsNotZero(left); err != nil {
-				return nil, err
-			}
-		}
+	if err := validateADR(st); err != nil {
+		return nil, err
 	}
 
-	// Ensure FieldIsZero(left) -> r.Func(map rr -> *ttnpb.EndDevice), for each rr in r.Fields for each r in rs.
-	for left, rs := range ifZeroThenFuncFields {
-		for _, r := range rs {
-			if st.HasSetField(left) {
-				if !st.Device.FieldIsZero(left) {
-					continue
-				}
-				if err := st.ValidateFields(r.Func, r.Fields...); err != nil {
-					return nil, err
-				}
-			}
-			if !st.HasSetField(r.Fields...) {
-				continue
-			}
-
-			left := left
-			r := r
-			if err := st.ValidateFields(func(m map[string]*ttnpb.EndDevice) (bool, string) {
-				if !m[left].FieldIsZero(left) {
-					return true, ""
-				}
-				return r.Func(m)
-			}, append([]string{left}, r.Fields...)...); err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	// Ensure !FieldIsZero(left) -> FieldIsZero(r), for each r in right.
-	for left, right := range ifNotZeroThenZeroFields {
-		if st.HasSetField(left) {
-			if st.Device.FieldIsZero(left) {
-				continue
-			}
-			if err := st.ValidateFieldsAreZero(right...); err != nil {
-				return nil, err
-			}
-		}
-		for _, r := range right {
-			if !st.HasSetField(r) || st.Device.FieldIsZero(r) {
-				continue
-			}
-			if err := st.ValidateFieldIsZero(left); err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	// Ensure !FieldIsZero(left) -> !FieldIsZero(r), for each r in right.
-	for left, right := range ifNotZeroThenNotZeroFields {
-		if st.HasSetField(left) {
-			if st.Device.FieldIsZero(left) {
-				continue
-			}
-			if err := st.ValidateFieldsAreNotZero(right...); err != nil {
-				return nil, err
-			}
-		}
-		for _, r := range right {
-			if !st.HasSetField(r) || !st.Device.FieldIsZero(r) {
-				continue
-			}
-			if err := st.ValidateFieldIsZero(left); err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	// Ensure !FieldIsZero(left) -> r.Func(map rr -> *ttnpb.EndDevice), for each rr in r.Fields for each r in rs.
-	for left, rs := range ifNotZeroThenFuncFields {
-		for _, r := range rs {
-			if st.HasSetField(left) {
-				if st.Device.FieldIsZero(left) {
-					continue
-				}
-				if err := st.ValidateFields(r.Func, r.Fields...); err != nil {
-					return nil, err
-				}
-			}
-			if !st.HasSetField(r.Fields...) {
-				continue
-			}
-
-			left := left
-			r := r
-			if err := st.ValidateFields(func(m map[string]*ttnpb.EndDevice) (bool, string) {
-				if m[left].FieldIsZero(left) {
-					return true, ""
-				}
-				return r.Func(m)
-			}, append([]string{left}, r.Fields...)...); err != nil {
-				return nil, err
-			}
-		}
+	if err := validateZeroFields(st); err != nil {
+		return nil, err
 	}
 
 	// Ensure parameters are consistent with band specifications.
@@ -1562,1056 +506,12 @@ func (ns *NetworkServer) Set(ctx context.Context, req *ttnpb.SetEndDeviceRequest
 		"pending_mac_state.desired_parameters.rx2_data_rate_index",
 		"supports_class_b",
 	) {
-		var deferredPHYValidations []func(*band.Band, *frequencyplans.FrequencyPlan) error
-		withPHY := func(f func(*band.Band, *frequencyplans.FrequencyPlan) error) error {
-			deferredPHYValidations = append(deferredPHYValidations, f)
-			return nil
-		}
-		if err := st.WithFields(func(m map[string]*ttnpb.EndDevice) error {
-			fps, err := ns.FrequencyPlansStore(ctx)
-			if err != nil {
-				return err
-			}
-			fp, phy, err := DeviceFrequencyPlanAndBand(&ttnpb.EndDevice{
-				FrequencyPlanId:   m["frequency_plan_id"].GetFrequencyPlanId(),
-				LorawanPhyVersion: m["lorawan_phy_version"].GetLorawanPhyVersion(),
-			}, fps)
-			if err != nil {
-				return err
-			}
-			withPHY = func(f func(*band.Band, *frequencyplans.FrequencyPlan) error) error {
-				return f(phy, fp)
-			}
-			for _, f := range deferredPHYValidations {
-				if err := f(phy, fp); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
-			"frequency_plan_id",
-			"lorawan_phy_version",
-		); err != nil {
+		if err := validateBandSpecifications(st, fps); err != nil {
 			return nil, err
-		}
-
-		hasPHYUpdate := st.HasSetField(
-			"frequency_plan_id",
-			"lorawan_phy_version",
-		)
-		hasSetField := func(field string) (fieldToRetrieve string, validate bool) {
-			return field, st.HasSetField(field) || hasPHYUpdate
-		}
-
-		setFields := func(fields ...string) []string {
-			setFields := make([]string, 0, len(fields))
-			for _, field := range fields {
-				if st.HasSetField(field) {
-					setFields = append(setFields, field)
-				}
-			}
-			return setFields
-		}
-
-		if st.HasSetField(
-			"frequency_plan_id",
-			"version_ids.band_id",
-		) {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, fp *frequencyplans.FrequencyPlan) error {
-					if devBandID := dev.GetVersionIds().GetBandId(); devBandID != "" && devBandID != fp.BandID {
-						return newInvalidFieldValueError("version_ids.band_id").WithCause(
-							errDeviceAndFrequencyPlanBandMismatch.WithAttributes(
-								"dev_band_id", devBandID,
-								"fp_band_id", fp.BandID,
-							),
-						)
-					}
-					return nil
-				})
-			}, "version_ids.band_id"); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_settings.rx2_data_rate_index.value"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetMacSettings().GetRx2DataRateIndex() == nil {
-						return nil
-					}
-					_, ok := phy.DataRates[dev.MacSettings.Rx2DataRateIndex.Value]
-					if !ok {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_settings.desired_rx2_data_rate_index.value"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetMacSettings().GetDesiredRx2DataRateIndex() == nil {
-						return nil
-					}
-					_, ok := phy.DataRates[dev.MacSettings.DesiredRx2DataRateIndex.Value]
-					if !ok {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_settings.ping_slot_data_rate_index.value"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetMacSettings().GetPingSlotDataRateIndex() == nil {
-						return nil
-					}
-					_, ok := phy.DataRates[dev.MacSettings.PingSlotDataRateIndex.Value]
-					if !ok {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_settings.desired_ping_slot_data_rate_index.value"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetMacSettings().GetDesiredPingSlotDataRateIndex() == nil {
-						return nil
-					}
-					_, ok := phy.DataRates[dev.MacSettings.DesiredPingSlotDataRateIndex.Value]
-					if !ok {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_settings.desired_relay.mode.served.second_channel.data_rate_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetMacSettings().GetDesiredRelay().GetServed().GetSecondChannel() == nil {
-						return nil
-					}
-					_, ok := phy.DataRates[dev.MacSettings.DesiredRelay.GetServed().SecondChannel.DataRateIndex]
-					if !ok {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_settings.desired_relay.mode.serving.default_channel_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					chIdx := dev.GetMacSettings().GetDesiredRelay().GetServing().GetDefaultChannelIndex()
-					if chIdx == nil {
-						return nil
-					}
-					if chIdx.Value >= uint32(len(phy.Relay.WORChannels)) {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_settings.desired_relay.mode.serving.second_channel.data_rate_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetMacSettings().GetDesiredRelay().GetServing().GetSecondChannel() == nil {
-						return nil
-					}
-					_, ok := phy.DataRates[dev.MacSettings.DesiredRelay.GetServing().SecondChannel.DataRateIndex]
-					if !ok {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_settings.adr.mode.dynamic.max_data_rate_index.value"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetMacSettings().GetAdr().GetDynamic().GetMaxDataRateIndex() == nil {
-						return nil
-					}
-					drIdx := dev.MacSettings.Adr.GetDynamic().MaxDataRateIndex.Value
-					_, ok := phy.DataRates[drIdx]
-					if !ok || drIdx > phy.MaxADRDataRateIndex {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_settings.adr.mode.dynamic.min_data_rate_index.value"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetMacSettings().GetAdr().GetDynamic().GetMinDataRateIndex() == nil {
-						return nil
-					}
-					drIdx := dev.MacSettings.Adr.GetDynamic().MinDataRateIndex.Value
-					_, ok := phy.DataRates[drIdx]
-					if !ok || drIdx > phy.MaxADRDataRateIndex {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_settings.adr.mode.dynamic.max_tx_power_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetMacSettings().GetAdr().GetDynamic().GetMaxTxPowerIndex() == nil {
-						return nil
-					}
-					if dev.MacSettings.Adr.GetDynamic().MaxTxPowerIndex.Value > uint32(phy.MaxTxPowerIndex()) {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_settings.adr.mode.dynamic.min_tx_power_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetMacSettings().GetAdr().GetDynamic().GetMinTxPowerIndex() == nil {
-						return nil
-					}
-					if dev.MacSettings.Adr.GetDynamic().MinTxPowerIndex.Value > uint32(phy.MaxTxPowerIndex()) {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if setFields := setFields(dynamicADRSettingsFields...); hasPHYUpdate || len(setFields) > 0 {
-			fields := setFields
-			if hasPHYUpdate {
-				fields = append(fields, "mac_settings.adr.mode")
-			}
-			if err := st.WithFields(func(m map[string]*ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if phy.SupportsDynamicADR {
-						return nil
-					}
-					for _, field := range fields {
-						if m[field].GetMacSettings().GetAdr().GetDynamic() != nil {
-							return newInvalidFieldValueError(field)
-						}
-					}
-					return nil
-				})
-			},
-				fields...,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_settings.adr.mode.static.data_rate_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetMacSettings().GetAdr().GetStatic() == nil {
-						return nil
-					}
-					_, ok := phy.DataRates[dev.MacSettings.Adr.GetStatic().DataRateIndex]
-					if !ok {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_settings.adr.mode.static.tx_power_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetMacSettings().GetAdr().GetStatic() == nil {
-						return nil
-					}
-					if dev.MacSettings.Adr.GetStatic().TxPowerIndex > uint32(phy.MaxTxPowerIndex()) {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_settings.uplink_dwell_time.value"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetMacSettings().GetUplinkDwellTime() == nil {
-						return nil
-					}
-					if !phy.TxParamSetupReqSupport {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_settings.downlink_dwell_time.value"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetMacSettings().GetDownlinkDwellTime() == nil {
-						return nil
-					}
-					if !phy.TxParamSetupReqSupport {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_settings.relay.mode.served.second_channel.data_rate_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetMacSettings().GetRelay().GetServed().GetSecondChannel() == nil {
-						return nil
-					}
-					_, ok := phy.DataRates[dev.MacSettings.Relay.GetServed().SecondChannel.DataRateIndex]
-					if !ok {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_settings.relay.mode.serving.default_channel_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					chIdx := dev.GetMacSettings().GetRelay().GetServing().GetDefaultChannelIndex()
-					if chIdx == nil {
-						return nil
-					}
-					if chIdx.Value >= uint32(len(phy.Relay.WORChannels)) {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_settings.relay.mode.serving.second_channel.data_rate_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetMacSettings().GetRelay().GetServing().GetSecondChannel() == nil {
-						return nil
-					}
-					_, ok := phy.DataRates[dev.MacSettings.Relay.GetServing().SecondChannel.DataRateIndex]
-					if !ok {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_state.current_parameters.rx2_data_rate_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				if dev.GetMacState() == nil {
-					return nil
-				}
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					_, ok := phy.DataRates[dev.MacState.CurrentParameters.Rx2DataRateIndex]
-					if !ok {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_state.desired_parameters.rx2_data_rate_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				if dev.GetMacState() == nil {
-					return nil
-				}
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					_, ok := phy.DataRates[dev.MacState.DesiredParameters.Rx2DataRateIndex]
-					if !ok {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("pending_mac_state.current_parameters.relay.mode.served.second_channel.data_rate_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetPendingMacState().GetCurrentParameters().GetRelay().GetServed().GetSecondChannel() == nil {
-						return nil
-					}
-					_, ok := phy.DataRates[dev.PendingMacState.CurrentParameters.Relay.GetServed().SecondChannel.DataRateIndex]
-					if !ok {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("pending_mac_state.current_parameters.relay.mode.serving.default_channel_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetPendingMacState().GetCurrentParameters().GetRelay().GetServing() == nil {
-						return nil
-					}
-					chIdx := dev.PendingMacState.CurrentParameters.Relay.GetServing().DefaultChannelIndex
-					if chIdx >= uint32(len(phy.Relay.WORChannels)) {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("pending_mac_state.current_parameters.relay.mode.serving.second_channel.data_rate_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetPendingMacState().GetCurrentParameters().GetRelay().GetServing().GetSecondChannel() == nil {
-						return nil
-					}
-					_, ok := phy.DataRates[dev.PendingMacState.CurrentParameters.Relay.GetServing().SecondChannel.DataRateIndex]
-					if !ok {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("pending_mac_state.current_parameters.rx2_data_rate_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				if dev.GetPendingMacState() == nil {
-					return nil
-				}
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					_, ok := phy.DataRates[dev.PendingMacState.CurrentParameters.Rx2DataRateIndex]
-					if !ok {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("pending_mac_state.desired_parameters.relay.mode.served.second_channel.data_rate_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetPendingMacState().GetDesiredParameters().GetRelay().GetServed().GetSecondChannel() == nil {
-						return nil
-					}
-					_, ok := phy.DataRates[dev.PendingMacState.DesiredParameters.Relay.GetServed().SecondChannel.DataRateIndex]
-					if !ok {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("pending_mac_state.desired_parameters.relay.mode.serving.default_channel_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetPendingMacState().GetDesiredParameters().GetRelay().GetServing() == nil {
-						return nil
-					}
-					chIdx := dev.PendingMacState.DesiredParameters.Relay.GetServing().DefaultChannelIndex
-					if chIdx >= uint32(len(phy.Relay.WORChannels)) {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("pending_mac_state.desired_parameters.relay.mode.serving.second_channel.data_rate_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetPendingMacState().GetDesiredParameters().GetRelay().GetServing().GetSecondChannel() == nil {
-						return nil
-					}
-					_, ok := phy.DataRates[dev.PendingMacState.DesiredParameters.Relay.GetServing().SecondChannel.DataRateIndex]
-					if !ok {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("pending_mac_state.desired_parameters.rx2_data_rate_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				if dev.GetPendingMacState() == nil {
-					return nil
-				}
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					_, ok := phy.DataRates[dev.PendingMacState.DesiredParameters.Rx2DataRateIndex]
-					if !ok {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_state.current_parameters.ping_slot_data_rate_index_value.value"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				if dev.GetMacState() == nil || dev.MacState.CurrentParameters.PingSlotDataRateIndexValue == nil {
-					return nil
-				}
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					_, ok := phy.DataRates[dev.MacState.CurrentParameters.PingSlotDataRateIndexValue.Value]
-					if !ok {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_state.current_parameters.relay.mode.served.second_channel.data_rate_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetMacState().GetCurrentParameters().GetRelay().GetServed().GetSecondChannel() == nil {
-						return nil
-					}
-					_, ok := phy.DataRates[dev.MacState.CurrentParameters.Relay.GetServed().SecondChannel.DataRateIndex]
-					if !ok {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_state.current_parameters.relay.mode.serving.default_channel_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetMacState().GetCurrentParameters().GetRelay().GetServing() == nil {
-						return nil
-					}
-					chIdx := dev.MacState.CurrentParameters.Relay.GetServing().DefaultChannelIndex
-					if chIdx >= uint32(len(phy.Relay.WORChannels)) {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_state.current_parameters.relay.mode.serving.second_channel.data_rate_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetMacState().GetCurrentParameters().GetRelay().GetServing().GetSecondChannel() == nil {
-						return nil
-					}
-					_, ok := phy.DataRates[dev.MacState.CurrentParameters.Relay.GetServing().SecondChannel.DataRateIndex]
-					if !ok {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_state.desired_parameters.ping_slot_data_rate_index_value.value"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				if dev.GetMacState() == nil || dev.MacState.DesiredParameters.PingSlotDataRateIndexValue == nil {
-					return nil
-				}
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					_, ok := phy.DataRates[dev.MacState.DesiredParameters.PingSlotDataRateIndexValue.Value]
-					if !ok {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_state.desired_parameters.relay.mode.served.second_channel.data_rate_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetMacState().GetDesiredParameters().GetRelay().GetServed().GetSecondChannel() == nil {
-						return nil
-					}
-					_, ok := phy.DataRates[dev.MacState.DesiredParameters.Relay.GetServed().SecondChannel.DataRateIndex]
-					if !ok {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_state.desired_parameters.relay.mode.serving.default_channel_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetMacState().GetDesiredParameters().GetRelay().GetServing() == nil {
-						return nil
-					}
-					chIdx := dev.MacState.DesiredParameters.Relay.GetServing().DefaultChannelIndex
-					if chIdx >= uint32(len(phy.Relay.WORChannels)) {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("mac_state.desired_parameters.relay.mode.serving.second_channel.data_rate_index"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if dev.GetMacState().GetDesiredParameters().GetRelay().GetServing().GetSecondChannel() == nil {
-						return nil
-					}
-					_, ok := phy.DataRates[dev.MacState.DesiredParameters.Relay.GetServing().SecondChannel.DataRateIndex]
-					if !ok {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-
-		if field, validate := hasSetField("pending_mac_state.current_parameters.ping_slot_data_rate_index_value.value"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				if dev.GetPendingMacState() == nil || dev.PendingMacState.CurrentParameters.PingSlotDataRateIndexValue == nil {
-					return nil
-				}
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					_, ok := phy.DataRates[dev.PendingMacState.CurrentParameters.PingSlotDataRateIndexValue.Value]
-					if !ok {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-		if field, validate := hasSetField("pending_mac_state.desired_parameters.ping_slot_data_rate_index_value.value"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				if dev.GetPendingMacState() == nil || dev.PendingMacState.DesiredParameters.PingSlotDataRateIndexValue == nil {
-					return nil
-				}
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					_, ok := phy.DataRates[dev.PendingMacState.DesiredParameters.PingSlotDataRateIndexValue.Value]
-					if !ok {
-						return newInvalidFieldValueError(field)
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-
-		if field, validate := hasSetField("mac_settings.factory_preset_frequencies"); validate {
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				if dev.GetMacSettings() == nil || len(dev.MacSettings.FactoryPresetFrequencies) == 0 {
-					return nil
-				}
-				return withPHY(func(phy *band.Band, fp *frequencyplans.FrequencyPlan) error {
-					switch phy.CFListType {
-					case ttnpb.CFListType_FREQUENCIES:
-						// Factory preset frequencies in bands which provide frequencies as part of the CFList
-						// are interpreted as being used both for uplinks and downlinks.
-						for _, frequency := range dev.MacSettings.FactoryPresetFrequencies {
-							_, inSubBand := fp.FindSubBand(frequency)
-							for _, sb := range phy.SubBands {
-								if sb.MinFrequency <= frequency && frequency <= sb.MaxFrequency {
-									inSubBand = true
-									break
-								}
-							}
-							if !inSubBand {
-								return newInvalidFieldValueError(field)
-							}
-						}
-					case ttnpb.CFListType_CHANNEL_MASKS:
-						// Factory preset frequencies in bands which provide channel masks as part of the CFList
-						// are interpreted as enabling explicit uplink channels.
-						uplinkChannels := make(map[uint64]struct{}, len(phy.UplinkChannels))
-						for _, ch := range phy.UplinkChannels {
-							uplinkChannels[ch.Frequency] = struct{}{}
-						}
-						for _, frequency := range dev.MacSettings.FactoryPresetFrequencies {
-							if _, ok := uplinkChannels[frequency]; !ok {
-								return newInvalidFieldValueError(field)
-							}
-						}
-					default:
-						panic("unreachable")
-					}
-					return nil
-				})
-			},
-				field,
-			); err != nil {
-				return nil, err
-			}
-		}
-
-		if hasPHYUpdate || st.HasSetField(
-			"mac_settings.ping_slot_frequency.value",
-			"supports_class_b",
-		) {
-			if err := st.WithFields(func(m map[string]*ttnpb.EndDevice) error {
-				if !m["supports_class_b"].GetSupportsClassB() ||
-					m["mac_settings.ping_slot_frequency.value"].GetMacSettings().GetPingSlotFrequency().GetValue() > 0 {
-					return nil
-				}
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if len(phy.PingSlotFrequencies) == 0 {
-						return newInvalidFieldValueError("mac_settings.ping_slot_frequency.value")
-					}
-					return nil
-				})
-			},
-				"mac_settings.ping_slot_frequency.value",
-				"supports_class_b",
-			); err != nil {
-				return nil, err
-			}
-		}
-
-		if hasPHYUpdate || st.HasSetField(
-			"mac_settings.desired_ping_slot_frequency.value",
-			"supports_class_b",
-		) {
-			if err := st.WithFields(func(m map[string]*ttnpb.EndDevice) error {
-				if !m["supports_class_b"].GetSupportsClassB() ||
-					m["mac_settings.desired_ping_slot_frequency.value"].GetMacSettings().GetDesiredPingSlotFrequency().GetValue() > 0 {
-					return nil
-				}
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if len(phy.PingSlotFrequencies) == 0 {
-						return newInvalidFieldValueError("mac_settings.desired_ping_slot_frequency.value")
-					}
-					return nil
-				})
-			},
-				"mac_settings.desired_ping_slot_frequency.value",
-				"supports_class_b",
-			); err != nil {
-				return nil, err
-			}
-		}
-
-		if hasPHYUpdate || st.HasSetField(
-			"mac_settings.beacon_frequency.value",
-			"supports_class_b",
-		) {
-			if err := st.WithFields(func(m map[string]*ttnpb.EndDevice) error {
-				if !m["supports_class_b"].GetSupportsClassB() ||
-					m["mac_settings.beacon_frequency.value"].GetMacSettings().GetBeaconFrequency().GetValue() > 0 {
-					return nil
-				}
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if len(phy.Beacon.Frequencies) == 0 {
-						return newInvalidFieldValueError("mac_settings.beacon_frequency.value")
-					}
-					return nil
-				})
-			},
-				"mac_settings.beacon_frequency.value",
-				"supports_class_b",
-			); err != nil {
-				return nil, err
-			}
-		}
-
-		if hasPHYUpdate || st.HasSetField(
-			"mac_settings.desired_beacon_frequency.value",
-			"supports_class_b",
-		) {
-			if err := st.WithFields(func(m map[string]*ttnpb.EndDevice) error {
-				if !m["supports_class_b"].GetSupportsClassB() ||
-					m["mac_settings.desired_beacon_frequency.value"].GetMacSettings().GetDesiredBeaconFrequency().GetValue() > 0 {
-					return nil
-				}
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if len(phy.Beacon.Frequencies) == 0 {
-						return newInvalidFieldValueError("mac_settings.desired_beacon_frequency.value")
-					}
-					return nil
-				})
-			},
-				"mac_settings.desired_beacon_frequency.value",
-				"supports_class_b",
-			); err != nil {
-				return nil, err
-			}
-		}
-
-		for p, isValid := range map[string]func(*ttnpb.EndDevice, *band.Band) bool{
-			"mac_settings.use_adr.value": func(dev *ttnpb.EndDevice, phy *band.Band) bool {
-				return !dev.GetMacSettings().GetUseAdr().GetValue() || phy.SupportsDynamicADR
-			},
-			"mac_state.current_parameters.adr_data_rate_index": func(dev *ttnpb.EndDevice, phy *band.Band) bool {
-				return dev.GetMacState().GetCurrentParameters().GetAdrDataRateIndex() <= phy.MaxADRDataRateIndex
-			},
-			"mac_state.current_parameters.adr_tx_power_index": func(dev *ttnpb.EndDevice, phy *band.Band) bool {
-				return dev.GetMacState().GetCurrentParameters().GetAdrTxPowerIndex() <= uint32(phy.MaxTxPowerIndex())
-			},
-			"mac_state.current_parameters.channels": func(dev *ttnpb.EndDevice, phy *band.Band) bool {
-				return len(dev.GetMacState().GetCurrentParameters().GetChannels()) <= int(phy.MaxUplinkChannels)
-			},
-			"mac_state.desired_parameters.adr_data_rate_index": func(dev *ttnpb.EndDevice, phy *band.Band) bool {
-				return dev.GetMacState().GetDesiredParameters().GetAdrDataRateIndex() <= phy.MaxADRDataRateIndex
-			},
-			"mac_state.desired_parameters.adr_tx_power_index": func(dev *ttnpb.EndDevice, phy *band.Band) bool {
-				return dev.GetMacState().GetDesiredParameters().GetAdrTxPowerIndex() <= uint32(phy.MaxTxPowerIndex())
-			},
-			"mac_state.desired_parameters.channels": func(dev *ttnpb.EndDevice, phy *band.Band) bool {
-				return len(dev.GetMacState().GetDesiredParameters().GetChannels()) <= int(phy.MaxUplinkChannels)
-			},
-			"pending_mac_state.current_parameters.adr_data_rate_index": func(dev *ttnpb.EndDevice, phy *band.Band) bool {
-				return dev.GetPendingMacState().GetCurrentParameters().GetAdrDataRateIndex() <= phy.MaxADRDataRateIndex
-			},
-			"pending_mac_state.current_parameters.adr_tx_power_index": func(dev *ttnpb.EndDevice, phy *band.Band) bool {
-				return dev.GetPendingMacState().GetCurrentParameters().GetAdrTxPowerIndex() <= uint32(phy.MaxTxPowerIndex())
-			},
-			"pending_mac_state.current_parameters.channels": func(dev *ttnpb.EndDevice, phy *band.Band) bool {
-				return len(dev.GetPendingMacState().GetCurrentParameters().GetChannels()) <= int(phy.MaxUplinkChannels)
-			},
-			"pending_mac_state.desired_parameters.adr_data_rate_index": func(dev *ttnpb.EndDevice, phy *band.Band) bool {
-				return dev.GetPendingMacState().GetDesiredParameters().GetAdrDataRateIndex() <= phy.MaxADRDataRateIndex
-			},
-			"pending_mac_state.desired_parameters.adr_tx_power_index": func(dev *ttnpb.EndDevice, phy *band.Band) bool {
-				return dev.GetPendingMacState().GetDesiredParameters().GetAdrTxPowerIndex() <= uint32(phy.MaxTxPowerIndex())
-			},
-			"pending_mac_state.desired_parameters.channels": func(dev *ttnpb.EndDevice, phy *band.Band) bool {
-				return len(dev.GetPendingMacState().GetDesiredParameters().GetChannels()) <= int(phy.MaxUplinkChannels)
-			},
-		} {
-			if !hasPHYUpdate && !st.HasSetField(p) {
-				continue
-			}
-			p, isValid := p, isValid
-			if err := st.WithField(func(dev *ttnpb.EndDevice) error {
-				return withPHY(func(phy *band.Band, _ *frequencyplans.FrequencyPlan) error {
-					if !isValid(dev, phy) {
-						return newInvalidFieldValueError(p)
-					}
-					return nil
-				})
-			}, p); err != nil {
-				return nil, err
-			}
 		}
 	}
 
-	// Ensure ADR dynamic parameters are monotonic.
-	// If one of the extrema is missing, the other extrema is considered to be valid.
-	if err := st.ValidateSetFields(func(m map[string]*ttnpb.EndDevice) (bool, string) {
-		{
-			min := m["mac_settings.adr.mode.dynamic.min_data_rate_index.value"].GetMacSettings().GetAdr().GetDynamic().GetMinDataRateIndex()
-			max := m["mac_settings.adr.mode.dynamic.max_data_rate_index.value"].GetMacSettings().GetAdr().GetDynamic().GetMaxDataRateIndex()
-
-			if min != nil && max != nil && max.Value < min.Value {
-				return false, "mac_settings.adr.mode.dynamic.max_data_rate_index.value"
-			}
-		}
-		{
-			min := m["mac_settings.adr.mode.dynamic.min_tx_power_index"].GetMacSettings().GetAdr().GetDynamic().GetMinTxPowerIndex()
-			max := m["mac_settings.adr.mode.dynamic.max_tx_power_index"].GetMacSettings().GetAdr().GetDynamic().GetMaxTxPowerIndex()
-
-			if min != nil && max != nil && max.Value < min.Value {
-				return false, "mac_settings.adr.mode.dynamic.max_tx_power_index"
-			}
-		}
-		{
-			min := m["mac_settings.adr.mode.dynamic.min_nb_trans"].GetMacSettings().GetAdr().GetDynamic().GetMinNbTrans()
-			max := m["mac_settings.adr.mode.dynamic.max_nb_trans"].GetMacSettings().GetAdr().GetDynamic().GetMaxNbTrans()
-
-			if min != nil && max != nil && max.Value < min.Value {
-				return false, "mac_settings.adr.mode.dynamic.max_nb_trans"
-			}
-		}
-		for drIdx := ttnpb.DataRateIndex_DATA_RATE_0; drIdx <= ttnpb.DataRateIndex_DATA_RATE_15; drIdx++ {
-			baseField := fmt.Sprintf("mac_settings.adr.mode.dynamic.overrides.data_rate_%d.", drIdx)
-			min := mac.DataRateIndexOverridesOf(m[baseField+"min_nb_trans"].GetMacSettings().GetAdr().GetDynamic().GetOverrides(), drIdx).GetMinNbTrans() // nolint: lll
-			max := mac.DataRateIndexOverridesOf(m[baseField+"max_nb_trans"].GetMacSettings().GetAdr().GetDynamic().GetOverrides(), drIdx).GetMaxNbTrans() // nolint: lll
-
-			if min != nil && max != nil && max.Value < min.Value {
-				return false, baseField + "max_nb_trans"
-			}
-		}
-		return true, ""
-	},
-		"mac_settings.adr.mode.dynamic.max_data_rate_index.value",
-		"mac_settings.adr.mode.dynamic.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.max_tx_power_index",
-		"mac_settings.adr.mode.dynamic.min_data_rate_index.value",
-		"mac_settings.adr.mode.dynamic.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.min_tx_power_index",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_0.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_0.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_1.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_1.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_10.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_10.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_11.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_11.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_12.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_12.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_13.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_13.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_14.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_14.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_15.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_15.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_2.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_2.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_3.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_3.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_4.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_4.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_5.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_5.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_6.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_6.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_7.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_7.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_8.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_8.min_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_9.max_nb_trans",
-		"mac_settings.adr.mode.dynamic.overrides.data_rate_9.min_nb_trans",
-	); err != nil {
+	if err := validateADRDynamicParameters(st); err != nil {
 		return nil, err
 	}
 
@@ -3021,6 +921,13 @@ func (ns *NetworkServer) Set(ctx context.Context, req *ttnpb.SetEndDeviceRequest
 		"mac_state.pending_application_downlink.f_cnt",
 		"mac_state.pending_application_downlink.f_port",
 		"mac_state.pending_application_downlink.frm_payload",
+		"mac_state.pending_application_downlink.network_ids",
+		"mac_state.pending_application_downlink.network_ids.cluster_address",
+		"mac_state.pending_application_downlink.network_ids.cluster_id",
+		"mac_state.pending_application_downlink.network_ids.net_id",
+		"mac_state.pending_application_downlink.network_ids.ns_id",
+		"mac_state.pending_application_downlink.network_ids.tenant_address",
+		"mac_state.pending_application_downlink.network_ids.tenant_id",
 		"mac_state.pending_application_downlink.priority",
 		"mac_state.pending_application_downlink.session_key_id",
 		"mac_state.pending_relay_downlink.raw_payload",
@@ -3458,7 +1365,7 @@ func (ns *NetworkServer) Set(ctx context.Context, req *ttnpb.SetEndDeviceRequest
 				if err != nil {
 					return err
 				}
-				macState, err := mac.NewState(st.Device, fps, ns.defaultMACSettings)
+				macState, err := mac.NewState(st.Device, fps, ns.defaultMACSettings, profile.GetMacSettings())
 				if err != nil {
 					return err
 				}
@@ -3529,6 +1436,53 @@ func (ns *NetworkServer) Set(ctx context.Context, req *ttnpb.SetEndDeviceRequest
 					"pending_mac_state.queued_join_accept.keys.s_nwk_s_int_key.kek_label",
 					"pending_mac_state.queued_join_accept.keys.s_nwk_s_int_key.key",
 				)
+			}
+		}
+
+		changes := make(map[*ttnpb.MACSettingsProfileIdentifiers]string, 2)
+
+		if st.Device.MacSettingsProfileIds != nil && stored.GetMacSettingsProfileIds() == nil {
+			changes[st.Device.MacSettingsProfileIds] = "inc"
+			st.Device.MacSettings = nil
+			st.AddSetFields(macSettingsFields...)
+		}
+		if st.Device.MacSettingsProfileIds != nil && stored.GetMacSettingsProfileIds() != nil &&
+			st.Device.MacSettingsProfileIds != stored.GetMacSettingsProfileIds() {
+			changes[st.Device.MacSettingsProfileIds] = "inc"
+			changes[stored.MacSettingsProfileIds] = "dec"
+		}
+		if st.Device.MacSettingsProfileIds == nil && stored.GetMacSettingsProfileIds() != nil {
+			profile, err := ns.macSettingsProfiles.Get(
+				ctx,
+				stored.MacSettingsProfileIds,
+				[]string{"ids", "mac_settings", "end_devices_count"},
+			)
+			if err != nil {
+				return err
+			}
+			changes[stored.MacSettingsProfileIds] = "dec"
+			st.Device.MacSettings = profile.MacSettings
+			st.AddSetFields(macSettingsFields...)
+		}
+
+		for id, change := range changes {
+			_, err = ns.macSettingsProfiles.Set(
+				ctx,
+				id,
+				[]string{"ids", "mac_settings", "end_devices_count"},
+				func(_ context.Context, existing *ttnpb.MACSettingsProfile) (*ttnpb.MACSettingsProfile, []string, error) {
+					switch change {
+					case "inc":
+						existing.EndDevicesCount++
+					case "dec":
+						if existing.EndDevicesCount > 0 {
+							existing.EndDevicesCount--
+						}
+					}
+					return existing, []string{"ids", "mac_settings", "end_devices_count"}, nil
+				})
+			if err != nil {
+				return err
 			}
 		}
 
@@ -3613,7 +1567,14 @@ func (ns *NetworkServer) ResetFactoryDefaults(ctx context.Context, req *ttnpb.Re
 			if err != nil {
 				return nil, nil, err
 			}
-			macState, err := mac.NewState(stored, fps, ns.defaultMACSettings)
+			var profile *ttnpb.MACSettingsProfile
+			if stored.MacSettingsProfileIds != nil {
+				profile, err = ns.macSettingsProfiles.Get(ctx, stored.MacSettingsProfileIds, []string{"mac_settings"})
+				if err != nil {
+					return nil, nil, err
+				}
+			}
+			macState, err := mac.NewState(stored, fps, ns.defaultMACSettings, profile.GetMacSettings())
 			if err != nil {
 				return nil, nil, err
 			}
@@ -3672,7 +1633,9 @@ func (ns *NetworkServer) Delete(ctx context.Context, req *ttnpb.EndDeviceIdentif
 type nsEndDeviceBatchRegistry struct {
 	ttnpb.UnimplementedNsEndDeviceBatchRegistryServer
 
-	devices DeviceRegistry
+	devices             DeviceRegistry
+	macSettingsProfiles MACSettingsProfileRegistry
+	frequencyPlans      func(context.Context) (*frequencyplans.Store, error)
 }
 
 // Delete implements ttipb.NsEndDeviceBatchRegistryServer.
@@ -3705,6 +1668,140 @@ func (srv *nsEndDeviceBatchRegistry) Delete(
 	}
 
 	return ttnpb.Empty, nil
+}
+
+func (srv *nsEndDeviceBatchRegistry) SetMACSettingsProfile( // nolint: gocyclo
+	ctx context.Context,
+	req *ttnpb.BatchSetMACSettingsProfileRequest,
+) (*ttnpb.EndDevices, error) {
+	// Check if the user has rights on the application.
+	if err := rights.RequireApplication(
+		ctx,
+		req.ApplicationIds,
+		ttnpb.Right_RIGHT_APPLICATION_DEVICES_WRITE,
+	); err != nil {
+		return nil, err
+	}
+
+	if req.MacSettingsProfileIds != nil {
+		devices, err := srv.devices.BatchGetByID(ctx, req.ApplicationIds, req.DeviceIds, ttnpb.EndDeviceFieldPathsTopLevel)
+		if err != nil {
+			logRegistryRPCError(ctx, err, "Failed to get devices from registry")
+			return nil, err
+		}
+
+		fps, err := srv.frequencyPlans(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		profile, err := srv.macSettingsProfiles.Get(
+			ctx,
+			req.MacSettingsProfileIds,
+			[]string{"ids", "mac_settings", "end_devices_count"},
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, dev := range devices {
+			err = validateProfile(profile.GetMacSettings(), dev, fps)
+			if err != nil {
+				logRegistryRPCError(ctx, err, "Failed to validate mac settings profile")
+				return nil, err
+			}
+		}
+	}
+
+	type change struct {
+		changed string
+		count   uint32
+	}
+	changes := make(map[*ttnpb.MACSettingsProfileIdentifiers]change, len(req.DeviceIds)*2)
+
+	storedDevices, err := srv.devices.BatchSetByID(
+		ctx,
+		req.ApplicationIds,
+		req.DeviceIds,
+		[]string{"ids", "mac_settings_profile_ids", "mac_settings"},
+		func(stored *ttnpb.EndDevice) error {
+			if req.MacSettingsProfileIds != nil && stored.MacSettingsProfileIds == nil {
+				if c, ok := changes[req.MacSettingsProfileIds]; !ok {
+					changes[req.MacSettingsProfileIds] = change{"inc", 1}
+				} else {
+					c.count++
+					changes[req.MacSettingsProfileIds] = c
+				}
+				stored.MacSettingsProfileIds = req.MacSettingsProfileIds
+				stored.MacSettings = nil
+			}
+			if req.MacSettingsProfileIds != nil && stored.MacSettingsProfileIds != nil &&
+				req.MacSettingsProfileIds != stored.MacSettingsProfileIds {
+				if c, ok := changes[req.MacSettingsProfileIds]; !ok {
+					changes[req.MacSettingsProfileIds] = change{"inc", 1}
+				} else {
+					c.count++
+					changes[req.MacSettingsProfileIds] = c
+				}
+				if c, ok := changes[stored.MacSettingsProfileIds]; !ok {
+					changes[stored.MacSettingsProfileIds] = change{"dec", 1}
+				} else {
+					c.count++
+					changes[stored.MacSettingsProfileIds] = c
+				}
+				stored.MacSettingsProfileIds = req.MacSettingsProfileIds
+				stored.MacSettings = nil
+			}
+			if req.MacSettingsProfileIds == nil && stored.MacSettingsProfileIds != nil {
+				profile, err := srv.macSettingsProfiles.Get(
+					ctx,
+					stored.MacSettingsProfileIds,
+					[]string{"ids", "mac_settings", "end_devices_count"},
+				)
+				if err != nil {
+					return err
+				}
+				if c, ok := changes[stored.MacSettingsProfileIds]; !ok {
+					changes[stored.MacSettingsProfileIds] = change{"dec", 1}
+				} else {
+					c.count++
+					changes[stored.MacSettingsProfileIds] = c
+				}
+				stored.MacSettings = profile.MacSettings
+				stored.MacSettingsProfileIds = nil
+			}
+			return nil
+		})
+	if err != nil {
+		logRegistryRPCError(ctx, err, "Failed to set devices in registry")
+		return nil, err
+	}
+
+	for id, change := range changes {
+		_, err = srv.macSettingsProfiles.Set(
+			ctx,
+			id,
+			[]string{"ids", "mac_settings", "end_devices_count"},
+			func(_ context.Context, existing *ttnpb.MACSettingsProfile) (*ttnpb.MACSettingsProfile, []string, error) {
+				switch change.changed {
+				case "inc":
+					existing.EndDevicesCount += change.count
+				case "dec":
+					if existing.EndDevicesCount > 0 {
+						existing.EndDevicesCount -= change.count
+					}
+				}
+				return existing, []string{"ids", "mac_settings", "end_devices_count"}, nil
+			})
+		if err != nil {
+			logRegistryRPCError(ctx, err, "Failed to set mac settings profile in registry")
+			return nil, err
+		}
+	}
+
+	return &ttnpb.EndDevices{
+		EndDevices: storedDevices,
+	}, nil
 }
 
 func init() {

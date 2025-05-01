@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { isEmpty } from 'lodash'
+
 import { id as idRegexp } from '@ttn-lw/lib/regexp'
 
 export const encodeAttributes = formValue =>
@@ -60,5 +62,6 @@ export const attributeValueTooLongCheck = object =>
   object === undefined ||
   object === null ||
   (object instanceof Object &&
-    Object.values(object).some(value => value !== undefined) &&
-    Object.values(object).every(value => value.length <= 200))
+    (isEmpty(object) ||
+      (Object.values(object).some(value => value !== undefined) &&
+        Object.values(object).every(value => value.length <= 200))))

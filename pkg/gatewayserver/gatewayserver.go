@@ -36,6 +36,7 @@ import (
 	"go.thethings.network/lorawan-stack/v3/pkg/component"
 	"go.thethings.network/lorawan-stack/v3/pkg/config"
 	"go.thethings.network/lorawan-stack/v3/pkg/config/tlsconfig"
+	"go.thethings.network/lorawan-stack/v3/pkg/crypto"
 	"go.thethings.network/lorawan-stack/v3/pkg/encoding/lorawan"
 	"go.thethings.network/lorawan-stack/v3/pkg/errors"
 	"go.thethings.network/lorawan-stack/v3/pkg/events"
@@ -87,6 +88,7 @@ type GatewayServer struct {
 
 	requireRegisteredGateways bool
 	forward                   map[string][]types.DevAddrPrefix
+	gatewayTokenHashKeyID     string
 
 	entityRegistry EntityRegistry
 
@@ -124,17 +126,22 @@ var (
 		"listen_frontend",
 		"start frontend listener `{protocol}` on address `{address}`",
 	)
-	errNotConnected        = errors.DefineNotFound("not_connected", "gateway `{gateway_uid}` not connected")
-	errSetupUpstream       = errors.DefineFailedPrecondition("upstream", "setup upstream `{name}`")
-	errInvalidUpstreamName = errors.DefineInvalidArgument("invalid_upstream_name", "upstream `{name}` is invalid")
+	errNotConnected               = errors.DefineNotFound("not_connected", "gateway `{gateway_uid}` not connected")
+	errSetupUpstream              = errors.DefineFailedPrecondition("upstream", "setup upstream `{name}`")
+	errInvalidUpstreamName        = errors.DefineInvalidArgument("invalid_upstream_name", "upstream `{name}` is invalid")
+	errEmptyGatewayTokenHashKeyID = errors.DefineFailedPrecondition(
+		"empty_gateway_token_hash_key_id", "gateway token hash key ID is empty",
+	)
 
 	modelAttribute    = "model"
 	firmwareAttribute = "firmware"
 )
 
 // New returns new *GatewayServer.
-func New(c *component.Component, conf *Config, opts ...Option) (gs *GatewayServer, err error) {
+func New(c *component.Component, conf *Config, opts ...Option) (gs *GatewayServer, err error) { //nolint:gocyclo
 	ctx := tracer.NewContextWithTracer(c.Context(), tracerNamespace)
+	ctx = log.NewContextWithField(ctx, "namespace", logNamespace)
+	logger := log.FromContext(ctx)
 
 	forward, err := conf.ForwardDevAddrPrefixes()
 	if err != nil {
@@ -144,7 +151,20 @@ func New(c *component.Component, conf *Config, opts ...Option) (gs *GatewayServe
 		forward[""] = []types.DevAddrPrefix{{}}
 	}
 
-	ctx = log.NewContextWithField(ctx, "namespace", logNamespace)
+	gatewayTokenHashKeyID := conf.GatewayTokenHashKeyID
+	if gatewayTokenHashKeyID == "" {
+		// Attempt to set a key in the key vault.
+		kvKeyWriter, ok := c.KeyService().KeyVault().(crypto.KeyVaultKeyWriter)
+		if !ok {
+			return nil, errEmptyGatewayTokenHashKeyID.New()
+		}
+		logger.Warn("No gateway token hash key ID configured, generating a random key")
+		gatewayTokenHashKeyID = random.String(16)
+		gatewayTokenHashKey := random.Bytes(16)
+		if err := kvKeyWriter.SetKey(ctx, gatewayTokenHashKeyID, gatewayTokenHashKey); err != nil {
+			return nil, err
+		}
+	}
 
 	gs = &GatewayServer{
 		Component:                 c,
@@ -152,6 +172,7 @@ func New(c *component.Component, conf *Config, opts ...Option) (gs *GatewayServe
 		config:                    conf,
 		requireRegisteredGateways: conf.RequireRegisteredGateways,
 		forward:                   forward,
+		gatewayTokenHashKeyID:     gatewayTokenHashKeyID,
 		upstreamHandlers:          make(map[string]upstream.Handler),
 		statsRegistry:             conf.Stats,
 		entityRegistry:            NewIS(c),
@@ -454,8 +475,8 @@ func (gs *GatewayServer) RegisterServices(s *grpc.Server) {
 
 // RegisterHandlers registers gRPC handlers.
 func (gs *GatewayServer) RegisterHandlers(s *runtime.ServeMux, conn *grpc.ClientConn) {
-	ttnpb.RegisterGsHandler(gs.Context(), s, conn)
-	ttnpb.RegisterGtwGsHandler(gs.Context(), s, conn)
+	ttnpb.RegisterGsHandler(gs.Context(), s, conn)    //nolint:errcheck
+	ttnpb.RegisterGtwGsHandler(gs.Context(), s, conn) //nolint:errcheck
 }
 
 // Roles returns the roles that the Gateway Server fulfills.
@@ -518,7 +539,7 @@ func (gs *GatewayServer) FillGatewayContext(ctx context.Context, ids *ttnpb.Gate
 			return nil, nil, errUnauthenticatedGatewayConnection.WithCause(err)
 		}
 		if !linkRightsInContext {
-			token := gatewaytokens.New(gs.config.GatewayTokenHashKeyID, ids, linkRights, gs.KeyService())
+			token := gatewaytokens.New(gs.gatewayTokenHashKeyID, ids, linkRights, gs.KeyService())
 			ctx, err = gatewaytokens.AuthenticatedContext(gatewaytokens.NewContext(ctx, token))
 			if err != nil {
 				return nil, nil, err
@@ -967,7 +988,7 @@ func (host *upstreamHost) handlePacket(ctx context.Context, item any) {
 
 var errMessageCRC = errors.DefineInvalidArgument("message_crc", "message CRC failed")
 
-func (gs *GatewayServer) handleUpstream(ctx context.Context, conn connectionEntry) {
+func (gs *GatewayServer) handleUpstream(ctx context.Context, conn connectionEntry) { //nolint:gocyclo
 	var (
 		gtw      = conn.Gateway()
 		protocol = conn.Frontend().Protocol()
@@ -1101,7 +1122,7 @@ func (gs *GatewayServer) updateConnStats(ctx context.Context, conn connectionEnt
 		Protocol:             conn.Connection.Frontend().Protocol(),
 		GatewayRemoteAddress: conn.Connection.GatewayRemoteAddress(),
 	}
-	registerGatewayConnectionStats(ctx, ids, stats)
+	registerGatewayConnectionStats(ctx, ids, ttnpb.Clone(stats))
 	if gs.statsRegistry != nil {
 		if err := gs.statsRegistry.Set(
 			decoupledCtx,
@@ -1121,7 +1142,7 @@ func (gs *GatewayServer) updateConnStats(ctx context.Context, conn connectionEnt
 			ConnectedAt:    nil,
 			DisconnectedAt: timestamppb.Now(),
 		}
-		registerGatewayConnectionStats(decoupledCtx, ids, stats)
+		registerGatewayConnectionStats(decoupledCtx, ids, ttnpb.Clone(stats))
 		if gs.statsRegistry == nil {
 			return
 		}
@@ -1166,7 +1187,9 @@ func (gs *GatewayServer) updateConnStats(ctx context.Context, conn connectionEnt
 		lastUpdate = time.Now()
 
 		stats, paths := conn.Stats()
-		registerGatewayConnectionStats(decoupledCtx, ids, stats)
+		// The stats must be cloned, they are passed to the event publisher and must not be modified
+		// by another goroutine during proto marshalling, otherwise it will trigger a panic.
+		registerGatewayConnectionStats(decoupledCtx, ids, ttnpb.Clone(stats))
 		if gs.statsRegistry == nil {
 			continue
 		}

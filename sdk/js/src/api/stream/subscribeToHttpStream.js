@@ -25,6 +25,7 @@ import 'web-streams-polyfill/dist/polyfill'
  * @async
  * @param {object} payload -  - The body of the initial request.
  * @param {string} url - The stream endpoint.
+ * @param {string} method - The stream request method.
  *
  * @example
  * (async () => {
@@ -50,7 +51,7 @@ import 'web-streams-polyfill/dist/polyfill'
  * @returns {object} The stream subscription object with the `on` function for
  * attaching listeners and the `close` function to close the stream.
  */
-export default async (payload, url) => {
+export default async (payload, url, method) => {
   const initialListeners = Object.values(EVENTS).reduce(
     (acc, curr) => ({ ...acc, [curr]: null }),
     {},
@@ -67,9 +68,14 @@ export default async (payload, url) => {
   }
 
   const abortController = new AbortController()
-  const response = await fetch(url, {
-    body: JSON.stringify(payload),
-    method: 'POST',
+  let finalUrl = url
+  if (method.toLowerCase() === 'get' && payload && Object.keys(payload).length > 0) {
+    const queryParams = new URLSearchParams(payload).toString()
+    finalUrl = url.includes('?') ? `${url}&${queryParams}` : `${url}?${queryParams}`
+  }
+  const response = await fetch(finalUrl, {
+    ...(method.toLowerCase() !== 'get' && { body: JSON.stringify(payload) }),
+    method,
     signal: abortController.signal,
     headers: {
       Authorization,

@@ -126,6 +126,14 @@ Cypress.Commands.add('getAccessToken', callback => {
   callback(accessToken)
 })
 
+Cypress.Commands.add('setAllTutorialSeen', user => {
+  const tutorialNames = ['TUTORIAL_LIVE_DATA_SPLIT_VIEW']
+  cy.task(
+    'execSql',
+    `UPDATE users SET console_preferences = '{"dashboard_layouts":{},"sort_by":{},"tutorials":{"seen":[${tutorialNames.map(name => `"${name}"`).join(',')}]}}'::jsonb::text::bytea WHERE primary_email_address = '${user.primary_email_address}';`,
+  )
+})
+
 // Helper function to create a new user programmatically.
 Cypress.Commands.add('createUser', user => {
   const baseUrl = Cypress.config('baseUrl')
@@ -147,6 +155,8 @@ Cypress.Commands.add('createUser', user => {
     })
   })
 
+  // Set all tutorials as seen.
+  cy.setAllTutorialSeen(user)
   // Reset cookies and local storage to avoid csrf and session state inconsistencies within tests.
   cy.clearCookies()
   cy.clearLocalStorage()
@@ -491,7 +501,7 @@ const getFieldDescriptorByLabel = label => {
   return cy
     .get('@field')
     .invoke('attr', 'aria-describedby')
-    .then(describedBy => cy.get(`[id="${describedBy}"]`))
+    .then(describedBy => cy.get(`[id="${describedBy}"]`).scrollIntoView())
 }
 
 // Helper function to select field error.
@@ -499,7 +509,11 @@ Cypress.Commands.add('findErrorByLabelText', label => {
   getFieldDescriptorByLabel(label).as('error')
 
   // Check for the error icon.
-  cy.get('@error').children().first().should('contain', 'error').and('be.visible')
+  cy.get('@error')
+    .children()
+    .first()
+    .should('have.class', 'tabler-icon-exclamation-circle')
+    .and('be.visible')
 
   return cy.get('@error')
 })
@@ -509,7 +523,11 @@ Cypress.Commands.add('findWarningByLabelText', label => {
   getFieldDescriptorByLabel(label).as('warning')
 
   // Check for the warning icon.
-  cy.get('@warning').children().first().should('contain', 'warning').and('be.visible')
+  cy.get('@warning')
+    .children()
+    .first()
+    .should('have.class', 'tabler-icon-warning-triangle')
+    .and('be.visible')
 
   return cy.get('@warning')
 })

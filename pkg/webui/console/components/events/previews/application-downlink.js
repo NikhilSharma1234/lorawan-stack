@@ -39,7 +39,7 @@ const ApplicationDownlinkPreview = React.memo(({ event }) => {
       ) : (
         <DescriptionList.Byte title={messages.payload} data={data.frm_payload} convertToHex />
       )}
-      <DescriptionList.Item title={messages.fPort}>{data.f_port}</DescriptionList.Item>
+      <DescriptionList.Item title={sharedMessages.fPort}>{data.f_port}</DescriptionList.Item>
     </DescriptionList>
   )
 })

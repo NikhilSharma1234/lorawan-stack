@@ -103,11 +103,12 @@ var (
 	EvtScheduleJoinAcceptSuccess   = evtScheduleJoinAcceptSuccess
 	EvtUpdateEndDevice             = evtUpdateEndDevice
 
-	NewDeviceRegistry           func(context.Context) (DeviceRegistry, func())
-	NewApplicationUplinkQueue   func(context.Context) (ApplicationUplinkQueue, func())
-	NewDownlinkTaskQueue        func(context.Context) (DownlinkTaskQueue, func())
-	NewUplinkDeduplicator       func(context.Context) (UplinkDeduplicator, func())
-	NewScheduledDownlinkMatcher func(context.Context) (ScheduledDownlinkMatcher, func())
+	NewDeviceRegistry             func(context.Context) (DeviceRegistry, func())
+	NewApplicationUplinkQueue     func(context.Context) (ApplicationUplinkQueue, func())
+	NewDownlinkTaskQueue          func(context.Context) (DownlinkTaskQueue, func())
+	NewUplinkDeduplicator         func(context.Context) (UplinkDeduplicator, func())
+	NewScheduledDownlinkMatcher   func(context.Context) (ScheduledDownlinkMatcher, func())
+	NewMACSettingsProfileRegistry func(context.Context) (MACSettingsProfileRegistry, func())
 )
 
 type DownlinkPath = downlinkPath
@@ -221,7 +222,7 @@ func MakeCFList(conf CFListConfig) *ttnpb.CFList {
 	if dr.MaxMACPayloadSize(downlinkDwellTime)+5 < lorawan.JoinAcceptWithCFListLength {
 		return nil
 	}
-	return mac.CFList(&phy, mac.DeviceDesiredChannels(&ttnpb.EndDevice{}, &phy, fp, nil)...)
+	return mac.CFList(&phy, mac.DeviceDesiredChannels(&ttnpb.EndDevice{}, &phy, fp, nil, nil)...)
 }
 
 type NsJsJoinRequestConfig struct {
@@ -1601,17 +1602,18 @@ func (env TestEnvironment) AssertJoin(ctx context.Context, conf JoinAssertionCon
 			t, a := test.MustNewTFromContext(ctx)
 			t.Helper()
 
+			var profileMACSettings *ttnpb.MACSettings
 			defaultMACSettings := test.Must(env.Config.DefaultMACSettings.Parse())
 
 			defaultLoRaWANVersion := mac.DeviceDefaultLoRaWANVersion(conf.Device)
 
-			defaultRX1DROffset := mac.DeviceDefaultRX1DataRateOffset(conf.Device, defaultMACSettings)
-			defaultRX2DRIdx := mac.DeviceDefaultRX2DataRateIndex(conf.Device, phy, defaultMACSettings)
-			defaultRX2Freq := mac.DeviceDefaultRX2Frequency(conf.Device, phy, defaultMACSettings)
+			defaultRX1DROffset := mac.DeviceDefaultRX1DataRateOffset(conf.Device, defaultMACSettings, profileMACSettings)
+			defaultRX2DRIdx := mac.DeviceDefaultRX2DataRateIndex(conf.Device, phy, defaultMACSettings, profileMACSettings)
+			defaultRX2Freq := mac.DeviceDefaultRX2Frequency(conf.Device, phy, defaultMACSettings, profileMACSettings)
 
-			desiredRX1Delay := mac.DeviceDesiredRX1Delay(conf.Device, phy, defaultMACSettings)
-			desiredRX1DROffset := mac.DeviceDesiredRX1DataRateOffset(conf.Device, defaultMACSettings)
-			desiredRX2DRIdx := mac.DeviceDesiredRX2DataRateIndex(conf.Device, phy, fp, defaultMACSettings)
+			desiredRX1Delay := mac.DeviceDesiredRX1Delay(conf.Device, phy, defaultMACSettings, profileMACSettings)
+			desiredRX1DROffset := mac.DeviceDesiredRX1DataRateOffset(conf.Device, defaultMACSettings, profileMACSettings)
+			desiredRX2DRIdx := mac.DeviceDesiredRX2DataRateIndex(conf.Device, phy, fp, defaultMACSettings, profileMACSettings)
 
 			deduplicatedUpConf := upConf
 			deduplicatedUpConf.DecodePayload = true
@@ -1682,41 +1684,41 @@ func (env TestEnvironment) AssertJoin(ctx context.Context, conf JoinAssertionCon
 					MaxEirp:                    phy.DefaultMaxEIRP,
 					AdrDataRateIndex:           ttnpb.DataRateIndex_DATA_RATE_0,
 					AdrNbTrans:                 1,
-					Rx1Delay:                   mac.DeviceDefaultRX1Delay(dev, phy, defaultMACSettings),
+					Rx1Delay:                   mac.DeviceDefaultRX1Delay(dev, phy, defaultMACSettings, profileMACSettings), // nolint: lll
 					Rx1DataRateOffset:          defaultRX1DROffset,
 					Rx2DataRateIndex:           defaultRX2DRIdx,
 					Rx2Frequency:               defaultRX2Freq,
-					MaxDutyCycle:               mac.DeviceDefaultMaxDutyCycle(dev, defaultMACSettings),
+					MaxDutyCycle:               mac.DeviceDefaultMaxDutyCycle(dev, defaultMACSettings, profileMACSettings), // nolint: lll
 					RejoinTimePeriodicity:      ttnpb.RejoinTimeExponent_REJOIN_TIME_0,
 					RejoinCountPeriodicity:     ttnpb.RejoinCountExponent_REJOIN_COUNT_16,
-					PingSlotFrequency:          mac.DeviceDefaultPingSlotFrequency(dev, phy, defaultMACSettings),
-					BeaconFrequency:            mac.DeviceDefaultBeaconFrequency(dev, phy, defaultMACSettings),
-					Channels:                   mac.DeviceDefaultChannels(dev, phy, defaultMACSettings),
-					UplinkDwellTime:            mac.DeviceUplinkDwellTime(dev, phy, defaultMACSettings),
-					DownlinkDwellTime:          mac.DeviceDownlinkDwellTime(dev, phy, defaultMACSettings),
+					PingSlotFrequency:          mac.DeviceDefaultPingSlotFrequency(dev, phy, defaultMACSettings, profileMACSettings), // nolint: lll
+					BeaconFrequency:            mac.DeviceDefaultBeaconFrequency(dev, phy, defaultMACSettings, profileMACSettings),   // nolint: lll
+					Channels:                   mac.DeviceDefaultChannels(dev, phy, defaultMACSettings, profileMACSettings),          // nolint: lll
+					UplinkDwellTime:            mac.DeviceUplinkDwellTime(dev, phy, defaultMACSettings, profileMACSettings),          // nolint: lll
+					DownlinkDwellTime:          mac.DeviceDownlinkDwellTime(dev, phy, defaultMACSettings, profileMACSettings),        // nolint: lll
 					AdrAckLimitExponent:        &ttnpb.ADRAckLimitExponentValue{Value: phy.ADRAckLimit},
 					AdrAckDelayExponent:        &ttnpb.ADRAckDelayExponentValue{Value: phy.ADRAckDelay},
-					PingSlotDataRateIndexValue: mac.DeviceDefaultPingSlotDataRateIndexValue(dev, phy, defaultMACSettings),
+					PingSlotDataRateIndexValue: mac.DeviceDefaultPingSlotDataRateIndexValue(dev, phy, defaultMACSettings, profileMACSettings), // nolint: lll
 				},
 				DesiredParameters: &ttnpb.MACParameters{
-					MaxEirp:                    mac.DeviceDesiredMaxEIRP(dev, phy, fp, defaultMACSettings),
+					MaxEirp:                    mac.DeviceDesiredMaxEIRP(dev, phy, fp, defaultMACSettings, profileMACSettings), // nolint: lll
 					AdrDataRateIndex:           ttnpb.DataRateIndex_DATA_RATE_0,
 					AdrNbTrans:                 1,
 					Rx1Delay:                   desiredRX1Delay,
 					Rx1DataRateOffset:          desiredRX1DROffset,
 					Rx2DataRateIndex:           desiredRX2DRIdx,
-					Rx2Frequency:               mac.DeviceDesiredRX2Frequency(dev, phy, fp, defaultMACSettings),
-					MaxDutyCycle:               mac.DeviceDesiredMaxDutyCycle(dev, defaultMACSettings),
+					Rx2Frequency:               mac.DeviceDesiredRX2Frequency(dev, phy, fp, defaultMACSettings, profileMACSettings), // nolint: lll
+					MaxDutyCycle:               mac.DeviceDesiredMaxDutyCycle(dev, defaultMACSettings, profileMACSettings),          // nolint: lll
 					RejoinTimePeriodicity:      ttnpb.RejoinTimeExponent_REJOIN_TIME_0,
 					RejoinCountPeriodicity:     ttnpb.RejoinCountExponent_REJOIN_COUNT_16,
-					PingSlotFrequency:          mac.DeviceDesiredPingSlotFrequency(dev, phy, fp, defaultMACSettings),
-					BeaconFrequency:            mac.DeviceDesiredBeaconFrequency(dev, phy, defaultMACSettings),
-					Channels:                   mac.DeviceDesiredChannels(dev, phy, fp, defaultMACSettings),
+					PingSlotFrequency:          mac.DeviceDesiredPingSlotFrequency(dev, phy, fp, defaultMACSettings, profileMACSettings), // nolint: lll
+					BeaconFrequency:            mac.DeviceDesiredBeaconFrequency(dev, phy, defaultMACSettings, profileMACSettings),       // nolint: lll
+					Channels:                   mac.DeviceDesiredChannels(dev, phy, fp, defaultMACSettings, profileMACSettings),          // nolint: lll
 					UplinkDwellTime:            mac.DeviceDesiredUplinkDwellTime(phy, fp),
 					DownlinkDwellTime:          mac.DeviceDesiredDownlinkDwellTime(phy, fp),
-					AdrAckLimitExponent:        mac.DeviceDesiredADRAckLimitExponent(dev, phy, defaultMACSettings),
-					AdrAckDelayExponent:        mac.DeviceDesiredADRAckDelayExponent(dev, phy, defaultMACSettings),
-					PingSlotDataRateIndexValue: mac.DeviceDesiredPingSlotDataRateIndexValue(dev, phy, fp, defaultMACSettings),
+					AdrAckLimitExponent:        mac.DeviceDesiredADRAckLimitExponent(dev, phy, defaultMACSettings, profileMACSettings),            // nolint: lll
+					AdrAckDelayExponent:        mac.DeviceDesiredADRAckDelayExponent(dev, phy, defaultMACSettings, profileMACSettings),            // nolint: lll
+					PingSlotDataRateIndexValue: mac.DeviceDesiredPingSlotDataRateIndexValue(dev, phy, fp, defaultMACSettings, profileMACSettings), // nolint: lll
 				},
 				DeviceClass:    test.Must(mac.DeviceDefaultClass(dev)),
 				LorawanVersion: defaultLoRaWANVersion,
@@ -2103,6 +2105,13 @@ func StartTest(ctx context.Context, conf TestConfig) (*NetworkServer, context.Co
 		}
 		conf.NetworkServer.ScheduledDownlinkMatcher = v
 	}
+	if conf.NetworkServer.MACSettingsProfileRegistry == nil {
+		v, closeFn := NewMACSettingsProfileRegistry(ctx)
+		if closeFn != nil {
+			closeFuncs = append(closeFuncs, closeFn)
+		}
+		conf.NetworkServer.MACSettingsProfileRegistry = v
+	}
 
 	ns := test.Must(New(
 		componenttest.NewComponent(tb, &conf.Component, cmpOpts...),
@@ -2178,7 +2187,12 @@ func LogEvents(t *testing.T, ch <-chan test.EventPubSubPublishRequest) {
 var MACStateOptions = test.MACStateOptions
 
 func MakeMACState(dev *ttnpb.EndDevice, defaults *ttnpb.MACSettings, opts ...test.MACStateOption) *ttnpb.MACState {
-	return MACStateOptions.Compose(opts...)(test.Must(mac.NewState(dev, test.FrequencyPlanStore, defaults)))
+	return MACStateOptions.Compose(opts...)(test.Must(mac.NewState(
+		dev,
+		test.FrequencyPlanStore,
+		defaults,
+		nil,
+	)))
 }
 
 type SessionOptionNamespace struct{ test.SessionOptionNamespace }
@@ -2534,6 +2548,13 @@ type MockDeviceRegistry struct {
 		appIDs *ttnpb.ApplicationIdentifiers,
 		deviceIDs []string,
 	) ([]*ttnpb.EndDeviceIdentifiers, error)
+	BatchSetByIDFunc func(
+		ctx context.Context,
+		appIDs *ttnpb.ApplicationIdentifiers,
+		deviceIDs []string,
+		paths []string,
+		callback func(dev *ttnpb.EndDevice) error,
+	) ([]*ttnpb.EndDevice, error)
 }
 
 // GetByEUI panics.
@@ -2567,7 +2588,7 @@ func (m MockDeviceRegistry) Range(ctx context.Context, paths []string, f func(co
 	panic("Range must not be called")
 }
 
-// BatchGetByID panics.
+// BatchGetByID calls BatchGetByIDFunc if set and panics otherwise.
 func (m MockDeviceRegistry) BatchGetByID(
 	ctx context.Context, appID *ttnpb.ApplicationIdentifiers, devIDs []string, paths []string,
 ) ([]*ttnpb.EndDevice, error) {
@@ -2577,7 +2598,7 @@ func (m MockDeviceRegistry) BatchGetByID(
 	return m.BatchGetByIDFunc(ctx, appID, devIDs, paths)
 }
 
-// GetByID calls GetByIDFunc if set and panics otherwise.
+// BatchDelete calls BatchDeleteFunc if set and panics otherwise.
 func (m MockDeviceRegistry) BatchDelete(
 	ctx context.Context,
 	appIDs *ttnpb.ApplicationIdentifiers,
@@ -2587,4 +2608,89 @@ func (m MockDeviceRegistry) BatchDelete(
 		panic("BatchDeleteFunc called, but not set")
 	}
 	return m.BatchDeleteFunc(ctx, appIDs, deviceIDs)
+}
+
+// BatchSetByID calls BatchSetByIDFunc if set and panics otherwise.
+func (m MockDeviceRegistry) BatchSetByID(
+	ctx context.Context,
+	appIDs *ttnpb.ApplicationIdentifiers,
+	deviceIDs []string,
+	paths []string,
+	callback func(dev *ttnpb.EndDevice) error,
+) ([]*ttnpb.EndDevice, error) {
+	if m.BatchSetByIDFunc == nil {
+		panic("BatchSetByIDFunc called, but not set")
+	}
+	return m.BatchSetByIDFunc(ctx, appIDs, deviceIDs, paths, callback)
+}
+
+type MockMACSettingsProfileRegistry struct {
+	GetFunc func(
+		ctx context.Context,
+		ids *ttnpb.MACSettingsProfileIdentifiers,
+		paths []string,
+	) (*ttnpb.MACSettingsProfile, error)
+	SetFunc func(
+		ctx context.Context,
+		ids *ttnpb.MACSettingsProfileIdentifiers,
+		paths []string,
+		f func(context.Context, *ttnpb.MACSettingsProfile) (*ttnpb.MACSettingsProfile, []string, error),
+	) (*ttnpb.MACSettingsProfile, error)
+	ListFunc func(
+		ctx context.Context,
+		ids *ttnpb.ApplicationIdentifiers,
+		paths []string,
+	) ([]*ttnpb.MACSettingsProfile, error)
+	WithPaginationFunc func(
+		ctx context.Context,
+		limit uint32,
+		page uint32,
+		total *int64,
+	) context.Context
+}
+
+func (m MockMACSettingsProfileRegistry) Get(
+	ctx context.Context,
+	ids *ttnpb.MACSettingsProfileIdentifiers,
+	paths []string,
+) (*ttnpb.MACSettingsProfile, error) {
+	if m.GetFunc == nil {
+		panic("GetFunc not set")
+	}
+	return m.GetFunc(ctx, ids, paths)
+}
+
+func (m MockMACSettingsProfileRegistry) Set(
+	ctx context.Context,
+	ids *ttnpb.MACSettingsProfileIdentifiers,
+	paths []string,
+	f func(context.Context, *ttnpb.MACSettingsProfile) (*ttnpb.MACSettingsProfile, []string, error),
+) (*ttnpb.MACSettingsProfile, error) {
+	if m.SetFunc == nil {
+		panic("SetFunc not set")
+	}
+	return m.SetFunc(ctx, ids, paths, f)
+}
+
+func (m MockMACSettingsProfileRegistry) List(
+	ctx context.Context,
+	ids *ttnpb.ApplicationIdentifiers,
+	paths []string,
+) ([]*ttnpb.MACSettingsProfile, error) {
+	if m.ListFunc == nil {
+		panic("ListFunc not set")
+	}
+	return m.ListFunc(ctx, ids, paths)
+}
+
+func (m MockMACSettingsProfileRegistry) WithPagination(
+	ctx context.Context,
+	limit uint32,
+	page uint32,
+	total *int64,
+) context.Context {
+	if m.WithPaginationFunc == nil {
+		panic("WithPaginationFunc not set")
+	}
+	return m.WithPaginationFunc(ctx, limit, page, total)
 }

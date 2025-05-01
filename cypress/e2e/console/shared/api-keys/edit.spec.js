@@ -62,7 +62,7 @@ describe('API keys', () => {
       cy.findByRole('button', { name: 'Save changes' }).click()
 
       cy.findByTestId('error-notification').should('not.exist')
-      cy.findByTestId('toast-notification')
+      cy.findByTestId('toast-notification-success')
         .should('be.visible')
         .findByText(`API key updated`)
         .should('be.visible')
@@ -131,7 +131,7 @@ describe('API keys', () => {
       cy.findByRole('button', { name: 'Save changes' }).click()
 
       cy.findByTestId('error-notification').should('not.exist')
-      cy.findByTestId('toast-notification')
+      cy.findByTestId('toast-notification-success')
         .should('be.visible')
         .findByText(`API key updated`)
         .should('be.visible')
@@ -202,7 +202,7 @@ describe('API keys', () => {
       cy.findByRole('button', { name: 'Save changes' }).click()
 
       cy.findByTestId('error-notification').should('not.exist')
-      cy.findByTestId('toast-notification')
+      cy.findByTestId('toast-notification-success')
         .should('be.visible')
         .findByText(`API key updated`)
         .should('be.visible')
@@ -254,7 +254,9 @@ describe('API keys', () => {
     })
 
     it('succeeds editing api key', () => {
-      cy.visit(`${Cypress.config('consoleRootPath')}/user/api-keys/${Cypress.config('apiKeyId')}`)
+      cy.visit(
+        `${Cypress.config('consoleRootPath')}/user-settings/api-keys/${Cypress.config('apiKeyId')}`,
+      )
 
       cy.findByLabelText('Name').type('_updated')
       cy.findByLabelText('Expiry date').type('2056-01-01')
@@ -264,14 +266,16 @@ describe('API keys', () => {
       cy.findByRole('button', { name: 'Save changes' }).click()
 
       cy.findByTestId('error-notification').should('not.exist')
-      cy.findByTestId('toast-notification')
+      cy.findByTestId('toast-notification-success')
         .should('be.visible')
         .findByText(`API key updated`)
         .should('be.visible')
     })
 
     it('succeeds deleting api key', () => {
-      cy.visit(`${Cypress.config('consoleRootPath')}/user/api-keys/${Cypress.config('apiKeyId')}`)
+      cy.visit(
+        `${Cypress.config('consoleRootPath')}/user-settings/api-keys/${Cypress.config('apiKeyId')}`,
+      )
 
       cy.findByRole('button', { name: /Delete key/ }).click()
 
@@ -284,7 +288,10 @@ describe('API keys', () => {
 
       cy.findByTestId('error-notification').should('not.exist')
 
-      cy.location('pathname').should('eq', `${Cypress.config('consoleRootPath')}/user/api-keys`)
+      cy.location('pathname').should(
+        'eq',
+        `${Cypress.config('consoleRootPath')}/user-settings/api-keys`,
+      )
 
       cy.findByRole('cell', { name: apiKeyName }).should('not.exist')
     })

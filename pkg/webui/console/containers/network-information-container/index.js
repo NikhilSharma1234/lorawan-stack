@@ -14,9 +14,12 @@
 
 import React from 'react'
 import { defineMessages } from 'react-intl'
+import { useSelector } from 'react-redux'
 
 import Notification from '@ttn-lw/components/notification'
 import Button from '@ttn-lw/components/button'
+
+import { selectConsolePreferences } from '@console/store/selectors/user-preferences'
 
 import RegistryTotals from './registry-totals'
 
@@ -26,25 +29,34 @@ const m = defineMessages({
   plansButton: 'Get started with The Things Stack Cloud',
 })
 
-const NetworkInformationContainer = () => (
-  <>
-    <Notification
-      info
-      small
-      content={m.openSourceInfo}
-      children={
-        <Button.AnchorLink
-          primary
-          href={'https://www.thethingsindustries.com/stack/plans/'}
-          message={m.plansButton}
-          target="_blank"
-          external
-        />
-      }
-      className="mt-cs-l"
-    />
-    <RegistryTotals />
-  </>
-)
+const NetworkInformationContainer = () => {
+  const consolePreferences = useSelector(selectConsolePreferences)
+  const darkTheme =
+    consolePreferences.console_theme === 'CONSOLE_THEME_DARK' ||
+    (consolePreferences.console_theme === 'CONSOLE_THEME_SYSTEM' &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches)
+
+  return (
+    <>
+      <Notification
+        dark={darkTheme}
+        info
+        small
+        content={m.openSourceInfo}
+        children={
+          <Button.AnchorLink
+            primary
+            href={'https://www.thethingsindustries.com/stack/plans/'}
+            message={m.plansButton}
+            target="_blank"
+            external
+          />
+        }
+        className="mt-cs-l"
+      />
+      <RegistryTotals />
+    </>
+  )
+}
 
 export default NetworkInformationContainer

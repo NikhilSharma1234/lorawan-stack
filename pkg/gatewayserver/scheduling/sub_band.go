@@ -47,12 +47,12 @@ type DutyCycleCeilings map[ttnpb.TxSchedulePriority]float32
 
 // DefaultDutyCycleCeilings contains the default duty-cycle ceilings per schedule priority.
 var DefaultDutyCycleCeilings DutyCycleCeilings = map[ttnpb.TxSchedulePriority]float32{
-	ttnpb.TxSchedulePriority_LOWEST:       0.40,
-	ttnpb.TxSchedulePriority_LOW:          0.50,
-	ttnpb.TxSchedulePriority_BELOW_NORMAL: 0.60,
-	ttnpb.TxSchedulePriority_NORMAL:       0.70,
-	ttnpb.TxSchedulePriority_ABOVE_NORMAL: 0.80,
-	ttnpb.TxSchedulePriority_HIGH:         0.90,
+	ttnpb.TxSchedulePriority_LOWEST:       0.60,
+	ttnpb.TxSchedulePriority_LOW:          0.70,
+	ttnpb.TxSchedulePriority_BELOW_NORMAL: 0.80,
+	ttnpb.TxSchedulePriority_NORMAL:       0.90,
+	ttnpb.TxSchedulePriority_ABOVE_NORMAL: 0.95,
+	ttnpb.TxSchedulePriority_HIGH:         1.00,
 	ttnpb.TxSchedulePriority_HIGHEST:      1.00,
 }
 

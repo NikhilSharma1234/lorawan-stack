@@ -94,7 +94,7 @@ describe('Gateway create', () => {
       `${Cypress.config('consoleRootPath')}/gateways/eui-${gateway.eui}`,
     )
     cy.findByRole('heading', { name: 'Test Gateway' })
-    cy.findByText(gateway.frequency_plan).should('be.visible')
+    cy.findByText('Europe 863-870 MHz (SF12 for RX2)').should('be.visible')
     cy.findByTestId('error-notification').should('not.exist')
   })
 
@@ -114,7 +114,7 @@ describe('Gateway create', () => {
     cy.findByLabelText('Gateway EUI').type(gateway.eui)
     cy.findByRole('button', { name: 'Confirm' }).click()
     cy.findByTestId('notification').should('not.exist')
-    cy.findByLabelText('Claim authentication code').type('12345')
+    cy.findByLabelText('Owner token').type('12345')
     cy.findByLabelText('Gateway ID').type(`eui-${gateway.eui}`)
     cy.findByText('Frequency plan')
       .parents('div[data-test-id="form-field"]')
@@ -163,7 +163,7 @@ describe('Gateway create', () => {
     cy.findByTestId('notification').should('not.exist')
     cy.findByLabelText('Frequency plan').selectOption(gateway.frequency_plan)
     cy.findByLabelText('Gateway ID').type(`eui-${gateway.eui}`)
-    cy.findByLabelText('Claim authentication code').type('12345')
+    cy.findByLabelText('Owner token').type('12345')
     cy.findByRole('button', { name: 'Claim gateway' }).click()
     cy.wait('@claim-request').its('request.body').should('deep.equal', expectedRequest)
     cy.findByTestId('error-notification').should('not.exist')
@@ -190,7 +190,7 @@ describe('Gateway create', () => {
     cy.findByLabelText('Gateway EUI').type(gateway.eui)
     cy.findByRole('button', { name: 'Confirm' }).click()
     cy.findByTestId('notification').should('be.visible')
-    cy.findByLabelText('Claim authentication code').type('12345')
+    cy.findByLabelText('Owner token').type('12345')
     cy.findByLabelText('Gateway ID').type(`eui-${gateway.eui}`)
     cy.findByText('Frequency plan')
       .parents('div[data-test-id="form-field"]')
@@ -239,7 +239,7 @@ describe('Gateway create', () => {
     cy.findByTestId('notification').should('be.visible')
     cy.findByLabelText('Frequency plan').selectOption(gateway.frequency_plan)
     cy.findByLabelText('Gateway ID').type(`eui-${gateway.eui}`)
-    cy.findByLabelText('Claim authentication code').type('12345')
+    cy.findByLabelText('Owner token').type('12345')
     cy.findByRole('button', { name: 'Claim gateway' }).click()
     cy.wait('@claim-request').its('request.body').should('deep.equal', expectedRequest)
     cy.findByTestId('error-notification').should('not.exist')
@@ -339,7 +339,7 @@ describe('Gateway create', () => {
     )
 
     cy.findByRole('heading', { name: 'Test Gateway' })
-    cy.findByText(gateway.frequency_plan).should('be.visible')
+    cy.findByText('Europe 863-870 MHz (SF12 for RX2)').should('be.visible')
     cy.findByTestId('error-notification').should('not.exist')
   })
 
@@ -377,7 +377,9 @@ describe('Gateway create', () => {
     )
     cy.findByRole('heading', { name: `eui-${gateway.eui}` })
     cy.findByText('Frequency plan')
-    cy.findByText('EU_863_870 , EU_863_870_TTN').should('be.visible')
+    cy.findByText(
+      'Europe 863-870 MHz (SF12 for RX2) , Europe 863-870 MHz (SF9 for RX2 - recommended)',
+    ).should('be.visible')
     cy.findByTestId('error-notification').should('not.exist')
   })
 

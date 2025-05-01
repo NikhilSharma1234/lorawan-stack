@@ -36,6 +36,7 @@ const RadioButton = ({
   checked,
   id,
   onChange,
+  children,
 }) => {
   const input = useRef()
   const context = useContext(RadioGroupContext)
@@ -94,22 +95,25 @@ const RadioButton = ({
 
   return (
     <label className={cls}>
-      <span className={style.radio}>
-        <input
-          type="radio"
-          ref={input}
-          readOnly={readOnly}
-          autoFocus={autoFocus}
-          onBlur={blur}
-          onFocus={focus}
-          onChange={handleChange}
-          value={value}
-          id={id}
-          {...radioProps}
-        />
-        <span className={style.dot} />
-      </span>
-      {label && <Message className={style.label} content={label} />}
+      {children}
+      <div>
+        <span className={style.radio}>
+          <input
+            type="radio"
+            ref={input}
+            readOnly={readOnly}
+            autoFocus={autoFocus}
+            onBlur={blur}
+            onFocus={focus}
+            onChange={handleChange}
+            value={value}
+            id={id}
+            {...radioProps}
+          />
+          <span className={style.dot} />
+        </span>
+        {label && <Message className={style.label} content={label} />}
+      </div>
     </label>
   )
 }
@@ -117,6 +121,7 @@ const RadioButton = ({
 RadioButton.propTypes = {
   autoFocus: PropTypes.bool,
   checked: PropTypes.bool,
+  children: PropTypes.node,
   className: PropTypes.string,
   disabled: PropTypes.bool,
   id: PropTypes.string,
@@ -142,6 +147,7 @@ RadioButton.defaultProps = {
   onChange: () => null,
   onBlur: () => null,
   onFocus: () => null,
+  children: null,
 }
 
 export default RadioButton

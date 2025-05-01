@@ -17,7 +17,6 @@ import React, { useEffect } from 'react'
 import {
   Routes,
   Route,
-  BrowserRouter,
   ScrollRestoration,
   createBrowserRouter,
   RouterProvider,
@@ -26,10 +25,12 @@ import {
 import { Helmet } from 'react-helmet'
 
 import { ToastContainer } from '@ttn-lw/components/toast'
+import HeaderComponent from '@ttn-lw/components/header'
 
 import ErrorView from '@ttn-lw/lib/components/error-view'
 import FullViewError from '@ttn-lw/lib/components/full-view-error'
 
+import Logo from '@account/containers/logo'
 import Header from '@account/containers/header'
 
 import Landing from '@account/views/landing'
@@ -45,12 +46,13 @@ import { setStatusOnline } from '@ttn-lw/lib/store/actions/status'
 import { selectUser } from '@account/store/selectors/user'
 
 import Front from '../front'
+import style from '../front/front.styl'
 
 const siteName = selectApplicationSiteName()
 const siteTitle = selectApplicationSiteTitle()
 const pageData = selectPageData()
 
-const errorRender = error => <FullViewError error={error} header={<Header />} />
+const errorRender = error => <FullViewError error={error} header={<Header alwaysShowLogo />} />
 const getScrollRestorationKey = location => {
   // Preserve scroll position only when necessary.
   // E.g. we don't want to scroll to top when changing tabs of a table,
@@ -62,21 +64,49 @@ const getScrollRestorationKey = location => {
   return `${pathname}${page ? `?page=${page}` : ''}`
 }
 
-const Layout = () => (
-  <>
-    <ScrollRestoration getKey={getScrollRestorationKey} />
-    <ToastContainer />
-    <ErrorView errorRender={errorRender}>
-      <React.Fragment>
-        <Helmet
-          titleTemplate={`%s - ${siteTitle ? `${siteTitle} - ` : ''}${siteName}`}
-          defaultTitle={`${siteTitle ? `${siteTitle} - ` : ''}${siteName}`}
-        />
-        <Outlet />
-      </React.Fragment>
-    </ErrorView>
-  </>
-)
+const Layout = () => {
+  const darkTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
+
+  const toggleTheme = theme => {
+    const htmlElement = document.documentElement
+
+    if (theme === 'dark') {
+      htmlElement.classList.add('dark')
+      htmlElement.classList.remove('light')
+    } else {
+      htmlElement.classList.add('light')
+      htmlElement.classList.remove('dark')
+    }
+  }
+
+  useEffect(() => {
+    toggleTheme(darkTheme ? 'dark' : 'light')
+  }, [darkTheme])
+
+  return (
+    <>
+      <ScrollRestoration getKey={getScrollRestorationKey} />
+      <ToastContainer />
+      <ErrorView errorRender={errorRender}>
+        <React.Fragment>
+          <Helmet
+            titleTemplate={`%s - ${siteTitle ? `${siteTitle} - ` : ''}${siteName}`}
+            defaultTitle={`${siteTitle ? `${siteTitle} - ` : ''}${siteName}`}
+          />
+          <div className={style.container}>
+            <section className={style.content}>
+              <div className={style.main}>
+                <Logo className={style.loginLogo} unlockSize />
+                <Outlet />
+              </div>
+            </section>
+            <section className={style.visual} />
+          </div>
+        </React.Fragment>
+      </ErrorView>
+    </>
+  )
+}
 
 const AccountRoot = () => {
   const user = useSelector(selectUser)
@@ -98,16 +128,17 @@ const AccountRoot = () => {
 
   if (pageData && pageData.error) {
     return (
-      <BrowserRouter history={history} basename="/oauth">
-        <FullViewError error={pageData.error} header={<Header />} />
-      </BrowserRouter>
+      <FullViewError
+        error={pageData.error}
+        header={<HeaderComponent safe alwaysShowLogo Logo={Logo} />}
+      />
     )
   }
 
   return (
     <Routes>
+      <Route path="/authorize/*" Component={Authorize} />
       <Route element={<Layout />}>
-        <Route path="/authorize/*" Component={Authorize} />
         <Route path="*" Component={Boolean(user) ? Landing : Front} />
       </Route>
     </Routes>

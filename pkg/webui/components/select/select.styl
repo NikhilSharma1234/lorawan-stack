@@ -16,22 +16,30 @@
   input-width-classes()
   // Overwriting react-select styling in global scope.
 
+  // stylelint-disable
+  :global(.select__input-container)
+    color: var(--c-text-neutral-heavy)
+  :global(.select__single-value)
+    color: light-dark(inherit, var(--c-text-neutral-heavy))
   :global(.select__option)
     padding: $cs.xs $cs.s
   :global(.select__option--is-selected)
-    background-color: $c-active-blue
+    background-color: var(--c-text-brand-normal)
   :global(.select__option--is-focused:not(.select__option--is-selected))
-    background-color: $c-backdrop
+    background-color: light-dark(var(--c-bg-neutral-semilight), var(--c-bg-neutral-normal))
   :global(.select__control--is-focused)
     box-shadow: none
-    border-color: $c-active-blue
-    color: black
+    border-color: var(--c-text-brand-normal)
+    color: var(--c-bg-neutral-max)
 
   :global(.select__control)
     width: 100%
     min-height: $default-input-height
-    border-radius: $br.s
+    border-radius: $br.xs
+    border: 1px solid var(--c-border-neutral-normal)
+    background: var(--c-bg-neutral-min)
   :global(.select__menu)
+    background: light-dark(var(--c-bg-neutral-min), var(--c-bg-neutral-light))
     z-index: $zi.dropdown
   :global(.select__dropdown-indicator)
     padding: 4px
@@ -46,24 +54,23 @@
 
   &.error
     :global(.select__control)
-      color: $c-error
-      border-color: $c-error
-      background-color: lighten($c-error, 49)
+      color: var(--c-bg-error-normal)
+      border-color: var(--c-bg-error-normal)
 
     :global(.select__control--is-focused)
-      box-shadow: 0 0 0 3px alpha($c-error, .2)
+      box-shadow: var(--shadow-box-error-normal)
 
   &.warning
     :global(.select__control)
-      color: $c-warning
-      border-color: $c-warning
-      background-color: lighten($c-warning, 42)
+      color: var(--c-bg-warning-normal)
+      border-color: var(--c-bg-warning-normal)
 
     :global(.select__control--is-focused)
-      box-shadow: 0 0 0 3px alpha($c-warning, .3)
+      box-shadow: var(--shadow-box-error-normal)
 
   &.selected-options-container
     display: inline-block
 
     .remove-option-button
       float: right
+  // stylelint-enable

@@ -51,6 +51,13 @@ type DeviceRegistry interface {
 		appIDs *ttnpb.ApplicationIdentifiers,
 		deviceIDs []string,
 	) ([]*ttnpb.EndDeviceIdentifiers, error)
+	BatchSetByID(
+		ctx context.Context,
+		appIDs *ttnpb.ApplicationIdentifiers,
+		deviceIDs []string,
+		paths []string,
+		callback func(dev *ttnpb.EndDevice) error,
+	) ([]*ttnpb.EndDevice, error)
 }
 
 var errDeviceExists = errors.DefineAlreadyExists("device_exists", "device already exists")
@@ -298,4 +305,12 @@ type ScheduledDownlinkMatcher interface {
 	// error is returned instead. Implementations are free to return an error even when a match should have been
 	// successful, for example if a long time has passed since the downlink was scheduled.
 	Match(ctx context.Context, ack *ttnpb.TxAcknowledgment) (*ttnpb.DownlinkMessage, error)
+}
+
+// MACSettingsProfileRegistry is a registry, containing MAC settings profiles.
+type MACSettingsProfileRegistry interface {
+	Get(ctx context.Context, ids *ttnpb.MACSettingsProfileIdentifiers, paths []string) (*ttnpb.MACSettingsProfile, error)                                                                                                  // nolint: lll
+	Set(ctx context.Context, ids *ttnpb.MACSettingsProfileIdentifiers, paths []string, f func(context.Context, *ttnpb.MACSettingsProfile) (*ttnpb.MACSettingsProfile, []string, error)) (*ttnpb.MACSettingsProfile, error) // nolint: lll
+	List(ctx context.Context, ids *ttnpb.ApplicationIdentifiers, paths []string) ([]*ttnpb.MACSettingsProfile, error)                                                                                                      // nolint: lll
+	WithPagination(ctx context.Context, limit uint32, page uint32, total *int64) context.Context
 }

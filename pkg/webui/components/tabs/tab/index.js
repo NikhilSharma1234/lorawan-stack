@@ -13,9 +13,14 @@
 // limitations under the License.
 
 import React, { useCallback } from 'react'
-import PropTypes from 'prop-types'
 import classnames from 'classnames'
 import { NavLink } from 'react-router-dom'
+
+import Tooltip from '@ttn-lw/components/tooltip'
+
+import Message from '@ttn-lw/lib/components/message'
+
+import PropTypes from '@ttn-lw/lib/prop-types'
 
 import style from './tab.styl'
 
@@ -30,6 +35,9 @@ const Tab = props => {
     children,
     link,
     exact = true,
+    tabClassName,
+    toggleStyle,
+    tooltip,
     ...rest
   } = props
 
@@ -39,11 +47,15 @@ const Tab = props => {
     }
   }, [disabled, name, onClick])
 
+  const tabClassNames = classnames(tabClassName, style.tab)
+
   const tabItemClassNames = classnames(className, style.tabItem, {
     [style.tabItemNarrow]: narrow,
-    [style.tabItemActive]: !disabled && active,
-    [style.tabItemDefault]: !disabled && !active,
+    [style.tabItemActive]: !toggleStyle && !disabled && active,
+    [style.tabItemDefault]: !toggleStyle && !disabled && !active,
     [style.tabItemDisabled]: disabled,
+    [style.tabItemToggleStyle]: toggleStyle,
+    [style.tabItemToggleStyleActive]: toggleStyle && !disabled && active,
   })
 
   // There is no support for disabled on anchors in html and hence in
@@ -69,9 +81,17 @@ const Tab = props => {
     componentProps.onClick = handleClick
   }
 
-  return (
-    <li {...rest} className={style.tab}>
+  const wrappedChildren = tooltip ? (
+    <Tooltip content={<Message content={tooltip} />} delay={0} small>
       <Component {...componentProps} children={children} />
+    </Tooltip>
+  ) : (
+    <Component {...componentProps} children={children} />
+  )
+
+  return (
+    <li {...rest} className={tabClassNames}>
+      {wrappedChildren}
     </li>
   )
 }
@@ -93,17 +113,25 @@ Tab.propTypes = {
    * name of the new active tab as an argument.
    */
   onClick: PropTypes.func,
+  tabClassName: PropTypes.string,
+  /** A flag specifying whether the tab should render a toggle style. */
+  toggleStyle: PropTypes.bool,
+  /** A tooltip to be displayed on hover. */
+  tooltip: PropTypes.message,
 }
 
 Tab.defaultProps = {
   children: undefined,
   className: undefined,
+  tabClassName: undefined,
   link: undefined,
   onClick: () => null,
   active: false,
   disabled: false,
   narrow: false,
   exact: true,
+  toggleStyle: false,
+  tooltip: undefined,
 }
 
 export default Tab

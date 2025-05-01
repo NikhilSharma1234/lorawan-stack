@@ -17,6 +17,7 @@ import classnames from 'classnames'
 
 import Overlay from '@ttn-lw/components/overlay'
 import Pagination from '@ttn-lw/components/pagination'
+import HorizontalScrollFader from '@ttn-lw/components/horizontal-scroll-fader'
 
 import PropTypes from '@ttn-lw/lib/prop-types'
 import getByPath from '@ttn-lw/lib/get-by-path'
@@ -30,10 +31,12 @@ const Tabular = ({
   order,
   orderBy,
   pageSize,
+  setPageSize,
   page,
   handlesPagination,
   paginated,
   className,
+  headerClassName,
   loading,
   small,
   onRowClick,
@@ -46,6 +49,8 @@ const Tabular = ({
   clickable,
   disableSorting,
   onSortRequest,
+  panelStyle,
+  tableClassName,
 }) => {
   const handlePageChange = useCallback(
     page => {
@@ -84,7 +89,7 @@ const Tabular = ({
   )
 
   const columns = (
-    <Table.Row head>
+    <Table.Row head panelStyle={panelStyle}>
       {headers.map((header, key) => (
         <Table.HeadCell
           key={key}
@@ -92,6 +97,8 @@ const Tabular = ({
           content={header.sortable && !disableSorting ? undefined : header.displayName}
           name={header.name}
           width={header.width}
+          className={header.className}
+          panelStyle={panelStyle}
         >
           {header.sortable && !disableSorting ? (
             <Table.SortButton
@@ -104,6 +111,7 @@ const Tabular = ({
               }
               active={header.sortKey ? orderBy === header.sortKey : orderBy === header.name}
               onSort={handleSortRequest}
+              align={header.align}
             />
           ) : null}
         </Table.HeadCell>
@@ -120,7 +128,7 @@ const Tabular = ({
   const paginatedData = handlePagination(data)
   const rows = paginatedData.map((row, rowIndex) => {
     // If the whole table is disabled each row should be as well.
-    const rowClickable = !clickable ? false : row._meta?.clickable ?? clickable
+    const rowClickable = !clickable ? false : (row._meta?.clickable ?? clickable)
 
     return (
       <Table.Row
@@ -130,14 +138,15 @@ const Tabular = ({
         clickable={rowClickable}
         linkTo={rowHrefSelector ? rowHrefSelector(row) : undefined}
         body
+        panelStyle={panelStyle}
       >
         {headers.map((header, index) => {
           const value = headers[index].getValue
             ? headers[index].getValue(row)
             : getByPath(row, headers[index].name)
           return (
-            <Table.DataCell key={index} align={header.align} small={small}>
-              {headers[index].render ? headers[index].render(value) : value}
+            <Table.DataCell key={index} align={header.align} small={small} panelStyle={panelStyle}>
+              {headers[index].render ? headers[index].render(value, row) : value}
             </Table.DataCell>
           )
         })}
@@ -146,34 +155,39 @@ const Tabular = ({
   })
 
   const pagination = paginated ? (
-    <Table.Row footer>
-      <Table.DataCell className={style.paginationCell} small={small}>
-        <Pagination
-          className={style.pagination}
-          pageCount={Math.ceil(totalCount / pageSize) || 1}
-          onPageChange={handlePageChange}
-          disableInitialCallback
-          pageRangeDisplayed={2}
-          forcePage={page}
-        />
-      </Table.DataCell>
-    </Table.Row>
+    <div className="d-flex justify-center">
+      <Pagination
+        className={style.pagination}
+        pageCount={Math.ceil(totalCount / pageSize) || 1}
+        onPageChange={handlePageChange}
+        disableInitialCallback
+        pageRangeDisplayed={2}
+        forcePage={page}
+        pageSize={pageSize}
+        setPageSize={setPageSize}
+        totalCount={totalCount}
+      />
+    </div>
   ) : null
 
   return (
-    <div className={classnames(style.container, className)}>
-      <Overlay visible={loading} loading={loading} className={style.overlay}>
-        <Table minWidth={minWidth}>
-          <Table.Head>{columns}</Table.Head>
-          <Table.Body loading={loading} empty={rows.length === 0} emptyMessage={emptyMessage}>
-            {rows}
-          </Table.Body>
-        </Table>
-        <Table.Footer loading={loading} empty={rows.length === 0}>
-          {pagination}
-        </Table.Footer>
-      </Overlay>
-    </div>
+    <HorizontalScrollFader light faderWidth="5rem">
+      <div className={classnames(style.container, className)}>
+        <Overlay visible={loading} loading={loading} className={style.overlay}>
+          <Table minWidth={minWidth} className={tableClassName}>
+            <Table.Head className={headerClassName} panelStyle={panelStyle}>
+              {columns}
+            </Table.Head>
+            <Table.Body loading={loading} empty={rows.length === 0} emptyMessage={emptyMessage}>
+              {rows}
+            </Table.Body>
+          </Table>
+          <Table.Footer loading={loading} empty={rows.length === 0}>
+            {pagination}
+          </Table.Footer>
+        </Overlay>
+      </div>
+    </HorizontalScrollFader>
   )
 }
 
@@ -200,6 +214,8 @@ Tabular.propTypes = {
    * the user is responsible for passing the right number of items.
    */
   handlesPagination: PropTypes.bool,
+  /** A class name to apply to the header row. */
+  headerClassName: PropTypes.string,
   /** A list of head entries to display within the table head. */
   headers: PropTypes.arrayOf(
     PropTypes.shape({
@@ -210,7 +226,8 @@ Tabular.propTypes = {
       render: PropTypes.func,
       sortable: PropTypes.bool,
       sortKey: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
-      width: PropTypes.number,
+      width: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+      className: PropTypes.string,
     }),
   ).isRequired,
   /** A flag specifying whether the table should covered with the loading overlay. */
@@ -238,12 +255,15 @@ Tabular.propTypes = {
   pageSize: PropTypes.number,
   /** A flag identifying whether the table should have pagination. */
   paginated: PropTypes.bool,
+  panelStyle: PropTypes.bool,
   /** A selector to determine the `href`/`to` prop of the rendered rows. */
   rowHrefSelector: PropTypes.func,
   /** A selector to determine the `key` prop of the rendered rows. */
   rowKeySelector: PropTypes.func,
+  setPageSize: PropTypes.func,
   /** A flag specifying the height of data cells. */
   small: PropTypes.bool,
+  tableClassName: PropTypes.string,
   /** The total number of available entries. */
   totalCount: PropTypes.number,
 }
@@ -263,10 +283,14 @@ Tabular.defaultProps = {
   totalCount: 0,
   page: 0,
   pageSize: undefined,
+  setPageSize: () => null,
   clickable: true,
   rowKeySelector: undefined,
   rowHrefSelector: undefined,
   disableSorting: false,
+  headerClassName: undefined,
+  panelStyle: false,
+  tableClassName: undefined,
 }
 
 export { Tabular as default, Table }

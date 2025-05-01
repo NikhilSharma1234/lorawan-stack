@@ -73,6 +73,11 @@ describe('End device repository claiming', () => {
     })
 
     cy.intercept('POST', '/api/v3/edcs/claim', composeClaimResponse(device1)).as('claim-request')
+    cy.intercept(
+      'GET',
+      '/api/v3/dr/applications/claim-test-application/brands/test-brand-otaa?field_mask=name',
+      { brand_id: 'test-brand-otaa', name: 'Test Brand OTTAA' },
+    )
 
     cy.findByLabelText('Frequency plan').selectOption('EU_863_870_TTN')
     cy.findByLabelText('JoinEUI').type(device1.joinEui)
@@ -87,7 +92,9 @@ describe('End device repository claiming', () => {
     cy.wait('@claim-request')
       .its('request.body')
       .should('deep.equal', composeExpectedRequest(device1))
-    cy.findByTestId('toast-notification').findByText('End device registered').should('be.visible')
+    cy.findByTestId('toast-notification-success')
+      .findByText('End device registered')
+      .should('be.visible')
     cy.findByRole('button', { name: 'Register end device' }).should('not.be.disabled')
 
     cy.intercept('POST', '/api/v3/edcs/claim', composeClaimResponse(device2)).as('claim-request')
@@ -109,12 +116,13 @@ describe('End device repository claiming', () => {
       `${Cypress.config('consoleRootPath')}/applications/${appId}/devices/${device2.id}`,
     )
     cy.findByRole('heading', { name: device2.id }).should('be.visible')
-    cy.get('#stage').within(() => {
-      cy.findByRole('button', { name: 'General settings' }).click()
-    })
+    cy.visit(
+      `${Cypress.config('consoleRootPath')}/applications/${appId}/devices/${device2.id}/general-settings`,
+    )
     cy.findByText('Join settings')
       .parents('[data-test-id="collapsible-section"]')
       .within(() => {
+        cy.get('p').scrollIntoView()
         cy.findByText('Not registered in this cluster').should('be.visible')
       })
     cy.get('#sidebar').within(() => {
@@ -178,7 +186,9 @@ describe('End device repository claiming', () => {
       .its('request.body')
       .should('deep.equal', composeExpectedRequest(device1))
     // Properly wait for the form to finish submitting.
-    cy.findByTestId('toast-notification').findByText('End device registered').should('be.visible')
+    cy.findByTestId('toast-notification-success')
+      .findByText('End device registered')
+      .should('be.visible')
     cy.findByRole('button', { name: 'Register end device' }).should('not.be.disabled')
 
     cy.intercept('POST', '/api/v3/edcs/claim', composeClaimResponse(device2)).as('claim-request')
@@ -194,7 +204,9 @@ describe('End device repository claiming', () => {
       .its('request.body')
       .should('deep.equal', composeExpectedRequest(device2))
     // Properly wait for the form to finish submitting.
-    cy.findByTestId('toast-notification').findByText('End device registered').should('be.visible')
+    cy.findByTestId('toast-notification-success')
+      .findByText('End device registered')
+      .should('be.visible')
     cy.findByRole('button', { name: 'Register end device' }).should('not.be.disabled')
 
     cy.intercept('POST', '/api/v3/edcs/claim', composeClaimResponse(device3)).as('claim-request')
@@ -223,13 +235,17 @@ describe('End device repository claiming', () => {
       )}/applications/${appId}/devices/${device3.id.toLowerCase()}`,
     )
     cy.findByRole('heading', { name: `${device3.id.toLowerCase()}` }).should('be.visible')
+    cy.get('[data-test-id="overview-panel-"]').scrollIntoView()
     cy.findByText('Provisioned on external Join Server').should('be.visible')
-    cy.get('#stage').within(() => {
-      cy.findByRole('button', { name: 'General settings' }).click()
-    })
+    cy.visit(
+      `${Cypress.config(
+        'consoleRootPath',
+      )}/applications/${appId}/devices/${device3.id.toLowerCase()}/general-settings`,
+    )
     cy.findByText('Join settings')
       .parents('[data-test-id="collapsible-section"]')
       .within(() => {
+        cy.get('p').scrollIntoView()
         cy.findByText('Not registered in this cluster').should('be.visible')
       })
     cy.get('#sidebar').within(() => {

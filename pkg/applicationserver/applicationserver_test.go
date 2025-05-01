@@ -303,9 +303,7 @@ func TestApplicationServer(t *testing.T) {
 			},
 		},
 		EndDeviceMetadataStorage: applicationserver.EndDeviceMetadataStorageConfig{
-			Location: applicationserver.EndDeviceLocationStorageConfig{
-				Registry: metadata.NewNoopEndDeviceLocationRegistry(),
-			},
+			Registry: metadata.NewNoopEndDeviceRegistry(),
 		},
 		Downlinks: applicationserver.DownlinksConfig{
 			ConfirmationConfig: applicationserver.ConfirmationConfig{
@@ -2414,9 +2412,7 @@ func TestSkipPayloadCrypto(t *testing.T) {
 			},
 		},
 		EndDeviceMetadataStorage: applicationserver.EndDeviceMetadataStorageConfig{
-			Location: applicationserver.EndDeviceLocationStorageConfig{
-				Registry: metadata.NewNoopEndDeviceLocationRegistry(),
-			},
+			Registry: metadata.NewNoopEndDeviceRegistry(),
 		},
 		Downlinks: applicationserver.DownlinksConfig{
 			ConfirmationConfig: applicationserver.ConfirmationConfig{
@@ -2916,9 +2912,7 @@ func TestLocationFromPayload(t *testing.T) {
 			},
 		},
 		EndDeviceMetadataStorage: applicationserver.EndDeviceMetadataStorageConfig{
-			Location: applicationserver.EndDeviceLocationStorageConfig{
-				Registry: metadata.NewClusterEndDeviceLocationRegistry(c, (1<<4)*Timeout),
-			},
+			Registry: metadata.NewClusterEndDeviceRegistry(c, (1<<4)*Timeout),
 		},
 		Downlinks: applicationserver.DownlinksConfig{
 			ConfirmationConfig: applicationserver.ConfirmationConfig{
@@ -3101,9 +3095,7 @@ func TestUplinkNormalized(t *testing.T) {
 			},
 		},
 		EndDeviceMetadataStorage: applicationserver.EndDeviceMetadataStorageConfig{
-			Location: applicationserver.EndDeviceLocationStorageConfig{
-				Registry: metadata.NewClusterEndDeviceLocationRegistry(c, (1<<4)*Timeout),
-			},
+			Registry: metadata.NewClusterEndDeviceRegistry(c, (1<<4)*Timeout),
 		},
 		Downlinks: applicationserver.DownlinksConfig{
 			ConfirmationConfig: applicationserver.ConfirmationConfig{

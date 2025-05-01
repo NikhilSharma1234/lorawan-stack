@@ -131,8 +131,8 @@ func TestHTTP(t *testing.T) {
 
 		config.HTTP.Listen = ""
 		config.HTTP.ListenTLS = httpsAddress
-		config.TLS.Certificate = "testdata/servercert.pem"
-		config.TLS.Key = "testdata/serverkey.pem"
+		config.TLS.ServerAuth.Certificate = "testdata/servercert.pem"
+		config.TLS.ServerAuth.Key = "testdata/serverkey.pem"
 
 		c, err := component.New(test.GetLogger(t), &config)
 		a.So(err, should.BeNil)
@@ -214,8 +214,8 @@ func TestGRPC(t *testing.T) {
 
 		config := baseConfig
 		config.ServiceBase.GRPC.ListenTLS = fmt.Sprintf("0.0.0.0:%d", grpcPort)
-		config.TLS.Certificate = "testdata/servercert.pem"
-		config.TLS.Key = "testdata/serverkey.pem"
+		config.TLS.ServerAuth.Certificate = "testdata/servercert.pem"
+		config.TLS.ServerAuth.Key = "testdata/serverkey.pem"
 
 		c, err := component.New(test.GetLogger(t), &config)
 		a.So(err, should.BeNil)
@@ -223,7 +223,7 @@ func TestGRPC(t *testing.T) {
 		err = c.Start()
 		a.So(err, should.BeNil)
 
-		tlsCredentials, err := credentials.NewClientTLSFromFile(config.TLS.Certificate, "")
+		tlsCredentials, err := credentials.NewClientTLSFromFile(config.TLS.ServerAuth.Certificate, "")
 		a.So(err, should.BeNil)
 
 		client, err := grpc.Dial(fmt.Sprintf("localhost:%d", grpcPort),

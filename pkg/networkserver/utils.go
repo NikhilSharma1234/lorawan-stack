@@ -121,7 +121,13 @@ func lastClassADataDownlinkSlot(dev *ttnpb.EndDevice, phy *band.Band) (*classADo
 // nextUnconfirmedNetworkInitiatedDownlinkAt returns the earliest possible time instant when next unconfirmed
 // network-initiated data downlink can be transmitted to the device given the data known by Network Server and true,
 // if such time instant exists, otherwise it returns time.Time{} and false.
-func nextUnconfirmedNetworkInitiatedDownlinkAt(ctx context.Context, dev *ttnpb.EndDevice, phy *band.Band, defaults *ttnpb.MACSettings) (time.Time, bool) {
+func nextUnconfirmedNetworkInitiatedDownlinkAt(
+	ctx context.Context,
+	dev *ttnpb.EndDevice,
+	phy *band.Band,
+	defaults *ttnpb.MACSettings,
+	profile *ttnpb.MACSettings,
+) (time.Time, bool) {
 	switch {
 	case dev.GetMacState() == nil:
 		log.FromContext(ctx).Warn("Insufficient data to compute next network-initiated unconfirmed downlink slot")
@@ -145,20 +151,29 @@ func nextUnconfirmedNetworkInitiatedDownlinkAt(ctx context.Context, dev *ttnpb.E
 		return latestTime(classA.RX2(), *ttnpb.StdTime(dev.MacState.LastDownlinkAt)), true
 	}
 	classA, hasClassA := lastClassADataDownlinkSlot(dev, phy)
-	classBCDownlinkInterval := mac.DeviceClassBCDownlinkInterval(dev, defaults)
+	classBCDownlinkInterval := mac.DeviceClassBCDownlinkInterval(dev, defaults, profile)
 	if !hasClassA {
 		return ttnpb.StdTime(dev.MacState.LastNetworkInitiatedDownlinkAt).Add(classBCDownlinkInterval), true
 	}
 	if ttnpb.StdTime(classA.Uplink.ReceivedAt).After(*ttnpb.StdTime(dev.MacState.LastNetworkInitiatedDownlinkAt)) {
 		return classA.RX2(), true
 	}
-	return latestTime(classA.RX2(), ttnpb.StdTime(dev.MacState.LastNetworkInitiatedDownlinkAt).Add(classBCDownlinkInterval)), true
+	return latestTime(
+		classA.RX2(),
+		ttnpb.StdTime(dev.MacState.LastNetworkInitiatedDownlinkAt).Add(classBCDownlinkInterval),
+	), true
 }
 
 // nextConfirmedNetworkInitiatedDownlinkAt returns the earliest possible time instant when a confirmed
 // network-initiated data downlink can be transmitted to the device given the data known by Network Server and true,
 // if such time instant exists, otherwise it returns time.Time{} and false.
-func nextConfirmedNetworkInitiatedDownlinkAt(ctx context.Context, dev *ttnpb.EndDevice, phy *band.Band, defaults *ttnpb.MACSettings) (time.Time, bool) {
+func nextConfirmedNetworkInitiatedDownlinkAt(
+	ctx context.Context,
+	dev *ttnpb.EndDevice,
+	phy *band.Band,
+	defaults *ttnpb.MACSettings,
+	profile *ttnpb.MACSettings,
+) (time.Time, bool) {
 	if dev.GetMacState() == nil {
 		log.FromContext(ctx).Warn("Insufficient data to compute next network-initiated confirmed downlink slot")
 		return time.Time{}, false
@@ -167,7 +182,7 @@ func nextConfirmedNetworkInitiatedDownlinkAt(ctx context.Context, dev *ttnpb.End
 		return time.Time{}, false
 	}
 
-	unconfAt, ok := nextUnconfirmedNetworkInitiatedDownlinkAt(ctx, dev, phy, defaults)
+	unconfAt, ok := nextUnconfirmedNetworkInitiatedDownlinkAt(ctx, dev, phy, defaults, profile)
 	switch {
 	case !ok:
 		return time.Time{}, false
@@ -180,10 +195,10 @@ func nextConfirmedNetworkInitiatedDownlinkAt(ctx context.Context, dev *ttnpb.End
 	var timeout time.Duration
 	switch dev.MacState.DeviceClass {
 	case ttnpb.Class_CLASS_B:
-		timeout = mac.DeviceClassBTimeout(dev, defaults)
+		timeout = mac.DeviceClassBTimeout(dev, defaults, profile)
 
 	case ttnpb.Class_CLASS_C:
-		timeout = mac.DeviceClassCTimeout(dev, defaults)
+		timeout = mac.DeviceClassCTimeout(dev, defaults, profile)
 	default:
 		panic(fmt.Errorf("unmatched class: %v", dev.MacState.DeviceClass))
 	}
@@ -224,7 +239,14 @@ func deviceHasPathForDownlink(ctx context.Context, dev *ttnpb.EndDevice, down *t
 
 // nextDataDownlinkSlot returns the next downlinkSlot before or at earliestAt when next data downlink can be transmitted to the device
 // given the data known by Network Server and true, if such downlinkSlot and downlink exist, otherwise it returns nil and false.
-func nextDataDownlinkSlot(ctx context.Context, dev *ttnpb.EndDevice, phy *band.Band, defaults *ttnpb.MACSettings, earliestAt time.Time) (downlinkSlot, bool) {
+func nextDataDownlinkSlot( // nolint: gocyclo
+	ctx context.Context,
+	dev *ttnpb.EndDevice,
+	phy *band.Band,
+	defaults *ttnpb.MACSettings,
+	earliestAt time.Time,
+	profile *ttnpb.MACSettings,
+) (downlinkSlot, bool) {
 	if dev.GetMacState() == nil {
 		return nil, false
 	}
@@ -316,12 +338,12 @@ func nextDataDownlinkSlot(ctx context.Context, dev *ttnpb.EndDevice, phy *band.B
 		}
 	}
 
-	nwkUnconf, hasNwkUnconf := nextUnconfirmedNetworkInitiatedDownlinkAt(ctx, dev, phy, defaults)
+	nwkUnconf, hasNwkUnconf := nextUnconfirmedNetworkInitiatedDownlinkAt(ctx, dev, phy, defaults, profile)
 	if hasNwkUnconf && dev.MacState.DeviceClass == ttnpb.Class_CLASS_B {
 		nwkUnconf, hasNwkUnconf = mac.NextPingSlotAt(ctx, dev, latestTime(nwkUnconf, earliestAt))
 	}
 
-	nwkConf, hasNwkConf := nextConfirmedNetworkInitiatedDownlinkAt(ctx, dev, phy, defaults)
+	nwkConf, hasNwkConf := nextConfirmedNetworkInitiatedDownlinkAt(ctx, dev, phy, defaults, profile)
 	if hasNwkConf {
 		nwkConf = latestTime(nwkConf, nwkUnconf)
 	}

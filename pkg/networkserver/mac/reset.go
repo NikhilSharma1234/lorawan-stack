@@ -33,7 +33,16 @@ var (
 	)()
 )
 
-func HandleResetInd(ctx context.Context, dev *ttnpb.EndDevice, pld *ttnpb.MACCommand_ResetInd, fps *frequencyplans.Store, defaults *ttnpb.MACSettings) (events.Builders, error) {
+// HandleResetInd handles the uplink of a reset indication.
+// This method is called by the Network Server when an uplink with a reset indication is received.
+func HandleResetInd(
+	_ context.Context,
+	dev *ttnpb.EndDevice,
+	pld *ttnpb.MACCommand_ResetInd,
+	fps *frequencyplans.Store,
+	defaults *ttnpb.MACSettings,
+	profile *ttnpb.MACSettings,
+) (events.Builders, error) {
 	if pld == nil {
 		return nil, ErrNoPayload.New()
 	}
@@ -45,7 +54,7 @@ func HandleResetInd(ctx context.Context, dev *ttnpb.EndDevice, pld *ttnpb.MACCom
 		return evs, nil
 	}
 
-	macState, err := NewState(dev, fps, defaults)
+	macState, err := NewState(dev, fps, defaults, profile)
 	if err != nil {
 		return evs, err
 	}

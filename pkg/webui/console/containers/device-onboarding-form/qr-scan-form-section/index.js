@@ -15,10 +15,10 @@
 import React, { useCallback, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 
+import Icon, { IconCheck, IconX } from '@ttn-lw/components/icon'
 import QRModalButton from '@ttn-lw/components/qr-modal-button'
 import { useFormContext } from '@ttn-lw/components/form'
 import Link from '@ttn-lw/components/link'
-import Icon from '@ttn-lw/components/icon'
 import ModalButton from '@ttn-lw/components/button/modal-button'
 import ButtonGroup from '@ttn-lw/components/button/group'
 
@@ -27,7 +27,7 @@ import Message from '@ttn-lw/lib/components/message'
 import attachPromise from '@ttn-lw/lib/store/actions/attach-promise'
 import sharedMessages from '@ttn-lw/lib/shared-messages'
 
-import { parseQRCode } from '@console/store/actions/qr-code-generator'
+import { parseEndDeviceQRCode } from '@console/store/actions/qr-code-generator'
 
 import { selectDeviceBrands } from '@console/store/selectors/device-repository'
 
@@ -101,7 +101,7 @@ const DeviceQRScanFormSection = () => {
     async qrCode => {
       try {
         // Get end device template from QR code
-        const device = await dispatch(attachPromise(parseQRCode(qrCode)))
+        const device = await dispatch(attachPromise(parseEndDeviceQRCode(qrCode)))
 
         const { end_device } = device.end_device_template
         const { lora_alliance_profile_ids } = end_device
@@ -109,7 +109,7 @@ const DeviceQRScanFormSection = () => {
         const brand = getBrand(lora_alliance_profile_ids.vendor_id)
         const sheetData = [
           {
-            header: m.deviceInfo,
+            header: sharedMessages.qrCodeData,
             items: [
               {
                 key: sharedMessages.claimAuthCode,
@@ -149,9 +149,9 @@ const DeviceQRScanFormSection = () => {
   return (
     <>
       {qrData.approved ? (
-        <div className="mb-cs-xs">
-          <Icon icon="check" textPaddedRight className="c-success" />
-          <Message content={m.scanSuccess} />
+        <div className="mb-cs-xs d-flex al-center">
+          <Icon icon={IconCheck} textPaddedRight className="c-text-success-normal" />
+          <Message content={sharedMessages.scanSuccess} />
         </div>
       ) : (
         <div className="mb-cs-xs">
@@ -162,22 +162,24 @@ const DeviceQRScanFormSection = () => {
         {qrData.approved ? (
           <ModalButton
             type="button"
-            icon="close"
+            icon={IconX}
             onApprove={handleReset}
-            message={m.resetQRCodeData}
+            message={sharedMessages.qrCodeDataReset}
             modalData={{
-              title: m.resetQRCodeData,
+              title: sharedMessages.qrCodeDataReset,
               noTitleLine: true,
-              buttonMessage: m.resetQRCodeData,
-              children: <Message content={m.resetConfirm} component="span" />,
+              buttonMessage: sharedMessages.qrCodeDataReset,
+              children: <Message content={sharedMessages.resetConfirm} component="span" />,
               approveButtonProps: {
-                icon: 'close',
+                primary: true,
+                icon: IconX,
               },
             }}
           />
         ) : (
           <QRModalButton
             message={sharedMessages.scanEndDevice}
+            invalidMessage={m.invalidData}
             onApprove={handleQRCodeApprove}
             onCancel={handleQRCodeCancel}
             onRead={handleQRCodeRead}

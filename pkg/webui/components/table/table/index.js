@@ -38,16 +38,29 @@ Empty.defaultProps = {
   message: undefined,
 }
 
-const Head = ({ className, ...props }) => (
-  <div {...props} className={classnames(className, style.sectionHeader)} />
+const Head = ({ className, panelStyle, children, ...props }) => (
+  <>
+    <div
+      {...props}
+      className={classnames(className, style.sectionHeader, {
+        [style.panelStyle]: panelStyle,
+      })}
+    >
+      {children}
+    </div>
+  </>
 )
 
 Head.propTypes = {
+  children: PropTypes.oneOfType([PropTypes.arrayOf(PropTypes.node), PropTypes.node]),
   className: PropTypes.string,
+  panelStyle: PropTypes.bool,
 }
 
 Head.defaultProps = {
   className: undefined,
+  panelStyle: false,
+  children: undefined,
 }
 
 const Body = ({ className, empty, loading, emptyMessage, ...props }) => {

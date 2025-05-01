@@ -15,7 +15,11 @@
 import React from 'react'
 import classnames from 'classnames'
 
-import Icon from '@ttn-lw/components/icon'
+import Icon, {
+  IconExclamationCircle,
+  IconInfoCircle,
+  IconAlertCircle,
+} from '@ttn-lw/components/icon'
 
 import Message from '@ttn-lw/lib/components/message'
 
@@ -37,6 +41,7 @@ const Notification = ({
   success,
   messageValues = {},
   children,
+  dark,
   'data-test-id': dataTestId,
 }) => {
   const classname = classnames(style.notification, className, {
@@ -45,14 +50,15 @@ const Notification = ({
     [style.info]: info,
     [style.small]: small,
     [style.success]: success,
+    [style.dark]: dark,
     [style.withDetails]: Boolean(details),
   })
 
-  let icon = 'info'
+  let icon = IconInfoCircle
   if (error) {
-    icon = 'error'
+    icon = IconExclamationCircle
   } else if (warning) {
-    icon = 'warning'
+    icon = IconAlertCircle
   }
 
   return (
@@ -76,6 +82,7 @@ Notification.propTypes = {
   children: PropTypes.node,
   className: PropTypes.string,
   content: PropTypes.oneOfType([PropTypes.message, PropTypes.error, PropTypes.string]),
+  dark: PropTypes.bool,
   'data-test-id': PropTypes.string,
   details: PropTypes.error,
   error: PropTypes.bool,
@@ -100,6 +107,7 @@ Notification.defaultProps = {
   success: false,
   messageValues: undefined,
   details: undefined,
+  dark: false,
 }
 
 export default Notification

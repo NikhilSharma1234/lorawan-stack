@@ -135,7 +135,15 @@ func (ns *NetworkServer) nextDataDownlinkTaskAt(ctx context.Context, dev *ttnpb.
 		log.FromContext(ctx).WithError(err).Warn("Failed to determine device band")
 		return time.Time{}, nil
 	}
-	slot, ok := nextDataDownlinkSlot(ctx, dev, phy, ns.defaultMACSettings, earliestAt)
+	var profile *ttnpb.MACSettingsProfile
+	if dev.MacSettingsProfileIds != nil {
+		profile, err = ns.macSettingsProfiles.Get(ctx, dev.GetMacSettingsProfileIds(), []string{"mac_settings"})
+		if err != nil {
+			log.FromContext(ctx).WithError(err).Warn("Failed to get MAC settings profile")
+			return time.Time{}, nil
+		}
+	}
+	slot, ok := nextDataDownlinkSlot(ctx, dev, phy, ns.defaultMACSettings, earliestAt, profile.GetMacSettings())
 	if !ok {
 		return time.Time{}, nil
 	}
@@ -597,8 +605,26 @@ func (ns *NetworkServer) generateDataDownlink(ctx context.Context, dev *ttnpb.En
 	logger = logger.WithField("f_pending", pld.FHdr.FCtrl.FPending)
 	ctx = log.NewContext(ctx, logger)
 
+	var (
+		err     error
+		profile *ttnpb.MACSettingsProfile
+	)
+	if dev.MacSettingsProfileIds != nil {
+		profile, err = ns.macSettingsProfiles.Get(ctx, dev.GetMacSettingsProfileIds(), []string{"mac_settings"})
+		if err != nil {
+			logger.WithError(err).Warn("Failed to get MAC settings profile")
+			return nil, genState, err
+		}
+	}
+
 	if mType == ttnpb.MType_CONFIRMED_DOWN && class != ttnpb.Class_CLASS_A {
-		confirmedAt, ok := nextConfirmedNetworkInitiatedDownlinkAt(ctx, dev, phy, ns.defaultMACSettings)
+		confirmedAt, ok := nextConfirmedNetworkInitiatedDownlinkAt(
+			ctx,
+			dev,
+			phy,
+			ns.defaultMACSettings,
+			profile.GetMacSettings(),
+		)
 		if !ok {
 			return nil, genState, ErrCorruptedMACState.
 				WithCause(ErrNetworkDownlinkSlot)
@@ -1931,7 +1957,19 @@ func (ns *NetworkServer) processDownlinkTask(ctx context.Context, consumerID str
 					return nil, nil, nil
 				}
 
-				if !mac.DeviceScheduleDownlinks(dev, ns.defaultMACSettings) {
+				var (
+					err     error
+					profile *ttnpb.MACSettingsProfile
+				)
+				if dev.MacSettingsProfileIds != nil {
+					profile, err = ns.macSettingsProfiles.Get(ctx, dev.GetMacSettingsProfileIds(), []string{"mac_settings"})
+					if err != nil {
+						logger.WithError(err).Warn("Failed to get MAC settings profile")
+						return dev, nil, err
+					}
+				}
+
+				if !mac.DeviceScheduleDownlinks(dev, ns.defaultMACSettings, profile.GetMacSettings()) {
 					logger.Debug("Downlink slot skipped since scheduling is disabled")
 					return dev, nil, nil
 				}
@@ -2154,7 +2192,7 @@ func (ns *NetworkServer) processDownlinkTask(ctx context.Context, consumerID str
 				}
 				var earliestAt time.Time
 				for {
-					v, ok := nextDataDownlinkSlot(ctx, dev, phy, ns.defaultMACSettings, earliestAt)
+					v, ok := nextDataDownlinkSlot(ctx, dev, phy, ns.defaultMACSettings, earliestAt, profile.GetMacSettings())
 					if !ok {
 						return dev, nil, nil
 					}

@@ -80,9 +80,9 @@ describe('Payload formatters', () => {
         join_eui: '0000000000000006',
         device_id: 'device-all-components',
       },
-      network_server_address: 'localhost',
-      application_server_address: 'localhost',
-      join_server_address: 'localhost',
+      network_server_address: window.location.hostname,
+      application_server_address: window.location.hostname,
+      join_server_address: window.location.hostname,
     },
     field_mask: {
       paths: ['network_server_address', 'application_server_address', 'join_server_address'],
@@ -119,7 +119,7 @@ describe('Payload formatters', () => {
         cy.findByRole('button', { name: 'Save changes' }).click()
 
         cy.findByTestId('error-notification').should('not.exist')
-        cy.findByTestId('toast-notification')
+        cy.findByTestId('toast-notification-success')
           .should('be.visible')
           .findByText('Payload formatter updated')
           .should('be.visible')
@@ -137,7 +137,7 @@ describe('Payload formatters', () => {
         cy.findByRole('button', { name: 'Save changes' }).click()
 
         cy.findByTestId('error-notification').should('not.exist')
-        cy.findByTestId('toast-notification')
+        cy.findByTestId('toast-notification-success')
           .should('be.visible')
           .findByText('Payload formatter updated')
           .should('be.visible')
@@ -155,7 +155,7 @@ describe('Payload formatters', () => {
         cy.findByRole('button', { name: 'Save changes' }).click()
 
         cy.findByTestId('error-notification').should('not.exist')
-        cy.findByTestId('toast-notification')
+        cy.findByTestId('toast-notification-success')
           .should('be.visible')
           .findByText('Payload formatter updated')
           .should('be.visible')
@@ -173,7 +173,7 @@ describe('Payload formatters', () => {
         cy.findByRole('button', { name: 'Save changes' }).click()
 
         cy.findByTestId('error-notification').should('not.exist')
-        cy.findByTestId('toast-notification')
+        cy.findByTestId('toast-notification-success')
           .should('be.visible')
           .findByText('Payload formatter updated')
           .should('be.visible')
@@ -192,7 +192,7 @@ describe('Payload formatters', () => {
         cy.findByRole('button', { name: 'Save changes' }).click()
 
         cy.findByTestId('error-notification').should('not.exist')
-        cy.findByTestId('toast-notification')
+        cy.findByTestId('toast-notification-success')
           .should('be.visible')
           .findByText('Payload formatter updated')
           .should('be.visible')
@@ -217,7 +217,7 @@ describe('Payload formatters', () => {
         cy.findByRole('button', { name: 'Save changes' }).click()
 
         cy.findByTestId('error-notification').should('not.exist')
-        cy.findByTestId('toast-notification')
+        cy.findByTestId('toast-notification-success')
           .should('be.visible')
           .findByText('Payload formatter updated')
           .should('be.visible')
@@ -235,7 +235,7 @@ describe('Payload formatters', () => {
         cy.findByRole('button', { name: 'Save changes' }).click()
 
         cy.findByTestId('error-notification').should('not.exist')
-        cy.findByTestId('toast-notification')
+        cy.findByTestId('toast-notification-success')
           .should('be.visible')
           .findByText('Payload formatter updated')
           .should('be.visible')
@@ -253,7 +253,7 @@ describe('Payload formatters', () => {
         cy.findByRole('button', { name: 'Save changes' }).click()
 
         cy.findByTestId('error-notification').should('not.exist')
-        cy.findByTestId('toast-notification')
+        cy.findByTestId('toast-notification-success')
           .should('be.visible')
           .findByText('Payload formatter updated')
           .should('be.visible')
@@ -271,7 +271,7 @@ describe('Payload formatters', () => {
         cy.findByRole('button', { name: 'Save changes' }).click()
 
         cy.findByTestId('error-notification').should('not.exist')
-        cy.findByTestId('toast-notification')
+        cy.findByTestId('toast-notification-success')
           .should('be.visible')
           .findByText('Payload formatter updated')
           .should('be.visible')
@@ -290,7 +290,7 @@ describe('Payload formatters', () => {
         cy.findByRole('button', { name: 'Save changes' }).click()
 
         cy.findByTestId('error-notification').should('not.exist')
-        cy.findByTestId('toast-notification')
+        cy.findByTestId('toast-notification-success')
           .should('be.visible')
           .findByText('Payload formatter updated')
           .should('be.visible')
@@ -317,7 +317,7 @@ describe('Payload formatters', () => {
         cy.findByRole('button', { name: 'Save changes' }).click()
 
         cy.findByTestId('error-notification').should('not.exist')
-        cy.findByTestId('toast-notification')
+        cy.findByTestId('toast-notification-success')
           .should('be.visible')
           .findByText('Payload formatter updated')
           .should('be.visible')
@@ -341,6 +341,7 @@ describe('Payload formatters', () => {
 
         cy.findByLabelText('Formatter type').selectOption('javascript')
         cy.findByTestId('code-editor-javascript-formatter').should('be.visible')
+        cy.get('button[type="submit"]').first().scrollIntoView()
         cy.findByRole('button', { name: 'Paste repository formatter' }).should('be.visible')
         cy.findByLabelText('Formatter type').selectOption('repository')
         cy.findByTestId('code-editor-repository-formatter').should('be.visible')
@@ -356,6 +357,7 @@ describe('Payload formatters', () => {
         cy.findByTestId('code-editor-javascript-formatter').should('be.visible')
         cy.findByLabelText('Formatter type').selectOption('javascript')
         cy.findByTestId('code-editor-javascript-formatter').should('be.visible')
+        cy.get('button[type="submit"]').first().scrollIntoView()
         cy.findByRole('button', { name: 'Paste repository formatter' }).should('not.exist')
         cy.findByRole('button', { name: 'Paste application formatter' }).should('be.visible')
         cy.findByLabelText('Formatter type').selectOption('application')
@@ -375,7 +377,7 @@ describe('Payload formatters', () => {
         cy.findByRole('button', { name: 'Save changes' }).click()
 
         cy.findByTestId('error-notification').should('not.exist')
-        cy.findByTestId('toast-notification')
+        cy.findByTestId('toast-notification-success')
           .should('be.visible')
           .findByText('Payload formatter updated')
           .should('be.visible')
@@ -393,7 +395,7 @@ describe('Payload formatters', () => {
         cy.findByRole('button', { name: 'Save changes' }).click()
 
         cy.findByTestId('error-notification').should('not.exist')
-        cy.findByTestId('toast-notification')
+        cy.findByTestId('toast-notification-success')
           .should('be.visible')
           .findByText('Payload formatter updated')
           .should('be.visible')
@@ -411,7 +413,7 @@ describe('Payload formatters', () => {
         cy.findByRole('button', { name: 'Save changes' }).click()
 
         cy.findByTestId('error-notification').should('not.exist')
-        cy.findByTestId('toast-notification')
+        cy.findByTestId('toast-notification-success')
           .should('be.visible')
           .findByText('Payload formatter updated')
           .should('be.visible')
@@ -429,7 +431,7 @@ describe('Payload formatters', () => {
         cy.findByRole('button', { name: 'Save changes' }).click()
 
         cy.findByTestId('error-notification').should('not.exist')
-        cy.findByTestId('toast-notification')
+        cy.findByTestId('toast-notification-success')
           .should('be.visible')
           .findByText('Payload formatter updated')
           .should('be.visible')
@@ -454,7 +456,7 @@ describe('Payload formatters', () => {
         cy.findByRole('button', { name: 'Save changes' }).click()
 
         cy.findByTestId('error-notification').should('not.exist')
-        cy.findByTestId('toast-notification')
+        cy.findByTestId('toast-notification-success')
           .should('be.visible')
           .findByText('Payload formatter updated')
           .should('be.visible')
@@ -478,6 +480,7 @@ describe('Payload formatters', () => {
 
         cy.findByLabelText('Formatter type').selectOption('javascript')
         cy.findByTestId('code-editor-javascript-formatter').should('be.visible')
+        cy.get('button[type="submit"]').first().scrollIntoView()
         cy.findByRole('button', { name: 'Paste repository formatter' }).should('be.visible')
         cy.findByLabelText('Formatter type').selectOption('repository')
         cy.findByTestId('code-editor-repository-formatter').should('be.visible')
@@ -493,6 +496,7 @@ describe('Payload formatters', () => {
         cy.findByTestId('code-editor-javascript-formatter').should('be.visible')
         cy.findByLabelText('Formatter type').selectOption('javascript')
         cy.findByTestId('code-editor-javascript-formatter').should('be.visible')
+        cy.get('button[type="submit"]').first().scrollIntoView()
         cy.findByRole('button', { name: 'Paste repository formatter' }).should('not.exist')
         cy.findByRole('button', { name: 'Paste application formatter' }).should('be.visible')
       })
@@ -510,7 +514,7 @@ describe('Payload formatters', () => {
         cy.findByRole('button', { name: 'Save changes' }).click()
 
         cy.findByTestId('error-notification').should('not.exist')
-        cy.findByTestId('toast-notification')
+        cy.findByTestId('toast-notification-success')
           .should('be.visible')
           .findByText('Payload formatter updated')
           .should('be.visible')
@@ -528,7 +532,7 @@ describe('Payload formatters', () => {
         cy.findByRole('button', { name: 'Save changes' }).click()
 
         cy.findByTestId('error-notification').should('not.exist')
-        cy.findByTestId('toast-notification')
+        cy.findByTestId('toast-notification-success')
           .should('be.visible')
           .findByText('Payload formatter updated')
           .should('be.visible')
@@ -546,7 +550,7 @@ describe('Payload formatters', () => {
         cy.findByRole('button', { name: 'Save changes' }).click()
 
         cy.findByTestId('error-notification').should('not.exist')
-        cy.findByTestId('toast-notification')
+        cy.findByTestId('toast-notification-success')
           .should('be.visible')
           .findByText('Payload formatter updated')
           .should('be.visible')
@@ -564,7 +568,7 @@ describe('Payload formatters', () => {
         cy.findByRole('button', { name: 'Save changes' }).click()
 
         cy.findByTestId('error-notification').should('not.exist')
-        cy.findByTestId('toast-notification')
+        cy.findByTestId('toast-notification-success')
           .should('be.visible')
           .findByText('Payload formatter updated')
           .should('be.visible')

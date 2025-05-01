@@ -428,7 +428,7 @@ const ApplicationDataExport = () => {
     document.body.removeChild(link)
   }
 
-  useRootClass(style.stageFlex, 'stage')
+  //useRootClass(style.stageFlex, 'stage')
 
   useBreadcrumbs(
     'apps.single.data',

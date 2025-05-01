@@ -55,8 +55,8 @@ const GatewayUplinkMessagePreview = React.memo(({ event }) => {
   return (
     <DescriptionList>
       <DescriptionList.Byte title={messages.devAddr} data={devAddr} />
-      <DescriptionList.Item title={messages.fCnt} data={fCnt} highlight />
-      <DescriptionList.Item title={messages.fPort} data={fPort} />
+      <DescriptionList.Item title={sharedMessages.fCnt} data={fCnt} highlight />
+      <DescriptionList.Item title={sharedMessages.fPort} data={fPort} />
       {isConfirmed && (
         <DescriptionList.Item>
           <Message content={messages.confirmedUplink} />

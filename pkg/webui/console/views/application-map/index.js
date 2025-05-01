@@ -178,7 +178,7 @@ const ApplicationMap = () => {
 
   const mapCenter = getMapCenter(markerData)
 
-  useRootClass(style.stageFlex, 'stage')
+  //useRootClass(style.stageFlex, 'stage')
   useBreadcrumbs(
     'apps.single.data',
     <Breadcrumb path={`/applications/${appId}/map`} content={sharedMessages.map} />,

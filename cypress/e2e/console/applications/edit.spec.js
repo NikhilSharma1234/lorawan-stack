@@ -52,7 +52,7 @@ describe('Application general settings', () => {
     cy.findByRole('button', { name: 'Save changes' }).click()
 
     cy.findByTestId('error-notification').should('not.exist')
-    cy.findByTestId('toast-notification')
+    cy.findByTestId('toast-notification-success')
       .should('be.visible')
       .findByText(`Application updated`)
       .should('be.visible')
@@ -63,13 +63,15 @@ describe('Application general settings', () => {
 
     cy.findByRole('button', { name: /Add attributes/ }).click()
 
+    cy.get(`[name="attributes[0].key"]`).click()
     cy.get(`[name="attributes[0].key"]`).type('application-test-key')
+    cy.get(`[name="attributes[0].value"]`).click()
     cy.get(`[name="attributes[0].value"]`).type('application-test-value')
 
     cy.findByRole('button', { name: 'Save changes' }).click()
 
     cy.findByTestId('error-notification').should('not.exist')
-    cy.findByTestId('toast-notification')
+    cy.findByTestId('toast-notification-success')
       .should('be.visible')
       .findByText(`Application updated`)
       .should('be.visible')
@@ -83,7 +85,9 @@ describe('Application general settings', () => {
     cy.findByRole('button', { name: 'Save changes' }).click()
 
     cy.findByTestId('error-notification').should('not.exist')
-    cy.findByTestId('toast-notification').findByText(`Application updated`).should('be.visible')
+    cy.findByTestId('toast-notification-success')
+      .findByText(`Application updated`)
+      .should('be.visible')
   })
 
   it('fails adding non-collaborator contact information', () => {
@@ -115,7 +119,9 @@ describe('Application general settings', () => {
     cy.findByRole('button', { name: 'Save changes' }).click()
 
     cy.findByTestId('error-notification').should('not.exist')
-    cy.findByTestId('toast-notification').findByText(`Application updated`).should('be.visible')
+    cy.findByTestId('toast-notification-success')
+      .findByText(`Application updated`)
+      .should('be.visible')
   })
 
   it('succeeds setting current user as contact', () => {
@@ -125,6 +131,7 @@ describe('Application general settings', () => {
     cy.intercept('GET', `/api/v3/is/configuration`, { fixture: 'restricted-user-config.json' })
     cy.visit(`${Cypress.config('consoleRootPath')}/applications/${applicationId}/general-settings`)
 
+    cy.get('button[type="submit"]').scrollIntoView()
     cy.findByText('Contact information').should('be.visible')
     cy.findByLabelText('Administrative contact').should('have.attr', 'disabled')
     cy.findByLabelText('Administrative contact')

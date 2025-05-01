@@ -23,6 +23,9 @@ import (
 
 // KeyService provides common cryptographic operations.
 type KeyService interface {
+	// KeyVault returns the underlying key vault.
+	KeyVault() KeyVault
+
 	// Wrap implements the RFC 3394 AES Key Wrap algorithm. Only keys of 16, 24 or 32 bytes are accepted.
 	// Keys are referenced using the KEK labels.
 	Wrap(ctx context.Context, plaintext []byte, kekLabel string) ([]byte, error)
@@ -60,6 +63,10 @@ func NewKeyService(vault KeyVault) KeyService {
 	return &keyService{
 		vault: vault,
 	}
+}
+
+func (ks *keyService) KeyVault() KeyVault {
+	return ks.vault
 }
 
 func (ks *keyService) aes128Key(ctx context.Context, label string) (types.AES128Key, error) {

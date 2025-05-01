@@ -23,6 +23,7 @@ import (
 	"io"
 	"net/http"
 
+	"go.thethings.network/lorawan-stack/v3/pkg/config/tlsconfig"
 	"go.thethings.network/lorawan-stack/v3/pkg/crypto"
 	claimerrors "go.thethings.network/lorawan-stack/v3/pkg/deviceclaimingserver/enddevices/errors"
 	"go.thethings.network/lorawan-stack/v3/pkg/errors"
@@ -59,6 +60,7 @@ type Config struct {
 type Component interface {
 	httpclient.Provider
 	KeyService() crypto.KeyService
+	GetTLSConfig(context.Context) tlsconfig.Config
 }
 
 // TTJS is a client that claims end devices on a The Things Join Server.
@@ -91,7 +93,7 @@ func (c *TTJS) SupportsJoinEUI(eui types.EUI64) bool {
 func (c *TTJS) httpClient(ctx context.Context) (*http.Client, error) {
 	var opts []httpclient.Option
 	if !c.config.TLS.IsZero() {
-		tlsConf, err := c.config.TLS.TLSConfig(c.fetcher, c.KeyService())
+		tlsConf, err := c.config.TLS.TLSConfig(ctx, c.Component, c.fetcher)
 		if err != nil {
 			return nil, err
 		}

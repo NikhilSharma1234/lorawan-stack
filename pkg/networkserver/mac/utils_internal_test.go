@@ -105,7 +105,7 @@ func TestDeviceDefaultChannels(t *testing.T) {
 
 				pb := ttnpb.Clone(tc.Device)
 
-				deviceDefaultChannels := DeviceDefaultChannels(pb, tc.Band, &ttnpb.MACSettings{})
+				deviceDefaultChannels := DeviceDefaultChannels(pb, tc.Band, nil, nil)
 				a.So(deviceDefaultChannels, should.Resemble, tc.Channels)
 				a.So(pb, should.Resemble, tc.Device)
 			},
@@ -190,7 +190,13 @@ func TestDeviceDesiredChannels(t *testing.T) {
 
 				pb := ttnpb.Clone(tc.Device)
 
-				deviceDesiredChannels := DeviceDesiredChannels(pb, tc.Band, tc.FrequencyPlan, &ttnpb.MACSettings{})
+				deviceDesiredChannels := DeviceDesiredChannels(
+					pb,
+					tc.Band,
+					tc.FrequencyPlan,
+					nil,
+					nil,
+				)
 				a.So(deviceDesiredChannels, should.Resemble, tc.Channels)
 				a.So(pb, should.Resemble, tc.Device)
 			},
@@ -648,12 +654,362 @@ func TestNewState(t *testing.T) {
 			Func: func(ctx context.Context, t *testing.T, a *assertions.Assertion) {
 				pb := ttnpb.Clone(tc.Device)
 
-				macState, err := NewState(pb, tc.FrequencyPlanStore, &ttnpb.MACSettings{})
+				macState, err := NewState(pb, tc.FrequencyPlanStore, nil, nil)
 				if tc.ErrorAssertion != nil {
 					a.So(tc.ErrorAssertion(t, err), should.BeTrue)
 				} else {
 					a.So(err, should.BeNil)
 				}
+				a.So(macState, should.Resemble, tc.MACState)
+				a.So(pb, should.Resemble, tc.Device)
+			},
+		})
+	}
+}
+
+func TestNewStateMacSettingsOrder(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		Name     string
+		Device   *ttnpb.EndDevice
+		Default  *ttnpb.MACSettings
+		Profile  *ttnpb.MACSettings
+		MACState *ttnpb.MACState
+	}{
+		{
+			Name: "Device MAC settings",
+			Device: &ttnpb.EndDevice{
+				FrequencyPlanId:   test.EUFrequencyPlanID,
+				LorawanVersion:    ttnpb.MACVersion_MAC_V1_0_2,
+				LorawanPhyVersion: ttnpb.PHYVersion_RP001_V1_0_2_REV_B,
+				MacSettings: &ttnpb.MACSettings{
+					Rx1Delay: &ttnpb.RxDelayValue{
+						Value: ttnpb.RxDelay_RX_DELAY_13,
+					},
+					Rx1DataRateOffset: &ttnpb.DataRateOffsetValue{
+						Value: 1,
+					},
+					Rx2DataRateIndex: &ttnpb.DataRateIndexValue{
+						Value: ttnpb.DataRateIndex_DATA_RATE_5,
+					},
+					Rx2Frequency: &ttnpb.FrequencyValue{
+						Value: 869525000,
+					},
+					MaxDutyCycle: &ttnpb.AggregatedDutyCycleValue{
+						Value: ttnpb.AggregatedDutyCycle_DUTY_CYCLE_1,
+					},
+					PingSlotFrequency: &ttnpb.ZeroableFrequencyValue{
+						Value: 869525000,
+					},
+					BeaconFrequency: &ttnpb.ZeroableFrequencyValue{
+						Value: 869525000,
+					},
+					DesiredMaxEirp: &ttnpb.DeviceEIRPValue{
+						Value: ttnpb.DeviceEIRP_DEVICE_EIRP_16,
+					},
+					DesiredRx1Delay: &ttnpb.RxDelayValue{
+						Value: ttnpb.RxDelay_RX_DELAY_13,
+					},
+					DesiredRx1DataRateOffset: &ttnpb.DataRateOffsetValue{
+						Value: 1,
+					},
+					DesiredRx2DataRateIndex: &ttnpb.DataRateIndexValue{
+						Value: ttnpb.DataRateIndex_DATA_RATE_5,
+					},
+					DesiredRx2Frequency: &ttnpb.FrequencyValue{
+						Value: 869525000,
+					},
+					DesiredMaxDutyCycle: &ttnpb.AggregatedDutyCycleValue{
+						Value: ttnpb.AggregatedDutyCycle_DUTY_CYCLE_1,
+					},
+					DesiredPingSlotFrequency: &ttnpb.ZeroableFrequencyValue{
+						Value: 869525000,
+					},
+					DesiredBeaconFrequency: &ttnpb.ZeroableFrequencyValue{
+						Value: 869525000,
+					},
+					DesiredAdrAckLimitExponent: &ttnpb.ADRAckLimitExponentValue{
+						Value: 3,
+					},
+					DesiredAdrAckDelayExponent: &ttnpb.ADRAckDelayExponentValue{
+						Value: 3,
+					},
+				},
+			},
+			Default: nil,
+			Profile: nil,
+			MACState: func() *ttnpb.MACState {
+				macState := MakeDefaultEU868MACState(
+					ttnpb.Class_CLASS_A,
+					ttnpb.MACVersion_MAC_V1_0_2,
+					ttnpb.PHYVersion_RP001_V1_0_2_REV_B,
+				)
+				macState.CurrentParameters.Rx1Delay = ttnpb.RxDelay_RX_DELAY_13
+				macState.CurrentParameters.Rx1DataRateOffset = 1
+				macState.CurrentParameters.Rx2DataRateIndex = ttnpb.DataRateIndex_DATA_RATE_5
+				macState.CurrentParameters.Rx2Frequency = 869525000
+				macState.CurrentParameters.MaxDutyCycle = ttnpb.AggregatedDutyCycle_DUTY_CYCLE_1
+				macState.CurrentParameters.PingSlotFrequency = 869525000
+				macState.CurrentParameters.BeaconFrequency = 869525000
+				macState.DesiredParameters.MaxEirp = 16
+				macState.DesiredParameters.Rx1Delay = ttnpb.RxDelay_RX_DELAY_13
+				macState.DesiredParameters.Rx1DataRateOffset = 1
+				macState.DesiredParameters.Rx2DataRateIndex = ttnpb.DataRateIndex_DATA_RATE_5
+				macState.DesiredParameters.Rx2Frequency = 869525000
+				macState.DesiredParameters.MaxDutyCycle = ttnpb.AggregatedDutyCycle_DUTY_CYCLE_1
+				macState.DesiredParameters.PingSlotFrequency = 869525000
+				macState.DesiredParameters.BeaconFrequency = 869525000
+				macState.DesiredParameters.AdrAckLimitExponent = &ttnpb.ADRAckLimitExponentValue{Value: 3}
+				macState.DesiredParameters.AdrAckDelayExponent = &ttnpb.ADRAckDelayExponentValue{Value: 3}
+				return macState
+			}(),
+		},
+		{
+			Name: "Default MAC settings",
+			Device: &ttnpb.EndDevice{
+				FrequencyPlanId:   test.EUFrequencyPlanID,
+				LorawanVersion:    ttnpb.MACVersion_MAC_V1_0_2,
+				LorawanPhyVersion: ttnpb.PHYVersion_RP001_V1_0_2_REV_B,
+				MacSettings:       nil,
+			},
+			Default: &ttnpb.MACSettings{
+				Rx1Delay: &ttnpb.RxDelayValue{
+					Value: ttnpb.RxDelay_RX_DELAY_13,
+				},
+				Rx1DataRateOffset: &ttnpb.DataRateOffsetValue{
+					Value: 1,
+				},
+				Rx2DataRateIndex: &ttnpb.DataRateIndexValue{
+					Value: ttnpb.DataRateIndex_DATA_RATE_5,
+				},
+				Rx2Frequency: &ttnpb.FrequencyValue{
+					Value: 869525000,
+				},
+				MaxDutyCycle: &ttnpb.AggregatedDutyCycleValue{
+					Value: ttnpb.AggregatedDutyCycle_DUTY_CYCLE_1,
+				},
+				PingSlotFrequency: &ttnpb.ZeroableFrequencyValue{
+					Value: 869525000,
+				},
+				BeaconFrequency: &ttnpb.ZeroableFrequencyValue{
+					Value: 869525000,
+				},
+				DesiredMaxEirp: &ttnpb.DeviceEIRPValue{
+					Value: ttnpb.DeviceEIRP_DEVICE_EIRP_16,
+				},
+				DesiredRx1Delay: &ttnpb.RxDelayValue{
+					Value: ttnpb.RxDelay_RX_DELAY_13,
+				},
+				DesiredRx1DataRateOffset: &ttnpb.DataRateOffsetValue{
+					Value: 1,
+				},
+				DesiredRx2DataRateIndex: &ttnpb.DataRateIndexValue{
+					Value: ttnpb.DataRateIndex_DATA_RATE_5,
+				},
+				DesiredRx2Frequency: &ttnpb.FrequencyValue{
+					Value: 869525000,
+				},
+				DesiredMaxDutyCycle: &ttnpb.AggregatedDutyCycleValue{
+					Value: ttnpb.AggregatedDutyCycle_DUTY_CYCLE_1,
+				},
+				DesiredPingSlotFrequency: &ttnpb.ZeroableFrequencyValue{
+					Value: 869525000,
+				},
+				DesiredBeaconFrequency: &ttnpb.ZeroableFrequencyValue{
+					Value: 869525000,
+				},
+				DesiredAdrAckLimitExponent: &ttnpb.ADRAckLimitExponentValue{
+					Value: 3,
+				},
+				DesiredAdrAckDelayExponent: &ttnpb.ADRAckDelayExponentValue{
+					Value: 3,
+				},
+			},
+			Profile: nil,
+			MACState: func() *ttnpb.MACState {
+				macState := MakeDefaultEU868MACState(
+					ttnpb.Class_CLASS_A,
+					ttnpb.MACVersion_MAC_V1_0_2,
+					ttnpb.PHYVersion_RP001_V1_0_2_REV_B,
+				)
+				macState.CurrentParameters.Rx1Delay = ttnpb.RxDelay_RX_DELAY_13
+				macState.CurrentParameters.Rx1DataRateOffset = 1
+				macState.CurrentParameters.Rx2DataRateIndex = ttnpb.DataRateIndex_DATA_RATE_5
+				macState.CurrentParameters.Rx2Frequency = 869525000
+				macState.CurrentParameters.MaxDutyCycle = ttnpb.AggregatedDutyCycle_DUTY_CYCLE_1
+				macState.CurrentParameters.PingSlotFrequency = 869525000
+				macState.CurrentParameters.BeaconFrequency = 869525000
+				macState.DesiredParameters.MaxEirp = 16
+				macState.DesiredParameters.Rx1Delay = ttnpb.RxDelay_RX_DELAY_13
+				macState.DesiredParameters.Rx1DataRateOffset = 1
+				macState.DesiredParameters.Rx2DataRateIndex = ttnpb.DataRateIndex_DATA_RATE_5
+				macState.DesiredParameters.Rx2Frequency = 869525000
+				macState.DesiredParameters.MaxDutyCycle = ttnpb.AggregatedDutyCycle_DUTY_CYCLE_1
+				macState.DesiredParameters.PingSlotFrequency = 869525000
+				macState.DesiredParameters.BeaconFrequency = 869525000
+				macState.DesiredParameters.AdrAckLimitExponent = &ttnpb.ADRAckLimitExponentValue{Value: 3}
+				macState.DesiredParameters.AdrAckDelayExponent = &ttnpb.ADRAckDelayExponentValue{Value: 3}
+				return macState
+			}(),
+		},
+		{
+			Name: "MAC settings profile",
+			Device: &ttnpb.EndDevice{
+				FrequencyPlanId:   test.EUFrequencyPlanID,
+				LorawanVersion:    ttnpb.MACVersion_MAC_V1_0_2,
+				LorawanPhyVersion: ttnpb.PHYVersion_RP001_V1_0_2_REV_B,
+				MacSettings:       nil,
+			},
+			Default: nil,
+			Profile: &ttnpb.MACSettings{
+				Rx1Delay: &ttnpb.RxDelayValue{
+					Value: ttnpb.RxDelay_RX_DELAY_13,
+				},
+				Rx1DataRateOffset: &ttnpb.DataRateOffsetValue{
+					Value: 1,
+				},
+				Rx2DataRateIndex: &ttnpb.DataRateIndexValue{
+					Value: ttnpb.DataRateIndex_DATA_RATE_5,
+				},
+				Rx2Frequency: &ttnpb.FrequencyValue{
+					Value: 869525000,
+				},
+				MaxDutyCycle: &ttnpb.AggregatedDutyCycleValue{
+					Value: ttnpb.AggregatedDutyCycle_DUTY_CYCLE_1,
+				},
+				PingSlotFrequency: &ttnpb.ZeroableFrequencyValue{
+					Value: 869525000,
+				},
+				BeaconFrequency: &ttnpb.ZeroableFrequencyValue{
+					Value: 869525000,
+				},
+				DesiredMaxEirp: &ttnpb.DeviceEIRPValue{
+					Value: ttnpb.DeviceEIRP_DEVICE_EIRP_16,
+				},
+				DesiredRx1Delay: &ttnpb.RxDelayValue{
+					Value: ttnpb.RxDelay_RX_DELAY_13,
+				},
+				DesiredRx1DataRateOffset: &ttnpb.DataRateOffsetValue{
+					Value: 1,
+				},
+				DesiredRx2DataRateIndex: &ttnpb.DataRateIndexValue{
+					Value: ttnpb.DataRateIndex_DATA_RATE_5,
+				},
+				DesiredRx2Frequency: &ttnpb.FrequencyValue{
+					Value: 869525000,
+				},
+				DesiredMaxDutyCycle: &ttnpb.AggregatedDutyCycleValue{
+					Value: ttnpb.AggregatedDutyCycle_DUTY_CYCLE_1,
+				},
+				DesiredPingSlotFrequency: &ttnpb.ZeroableFrequencyValue{
+					Value: 869525000,
+				},
+				DesiredBeaconFrequency: &ttnpb.ZeroableFrequencyValue{
+					Value: 869525000,
+				},
+				DesiredAdrAckLimitExponent: &ttnpb.ADRAckLimitExponentValue{
+					Value: 3,
+				},
+				DesiredAdrAckDelayExponent: &ttnpb.ADRAckDelayExponentValue{
+					Value: 3,
+				},
+			},
+			MACState: func() *ttnpb.MACState {
+				macState := MakeDefaultEU868MACState(
+					ttnpb.Class_CLASS_A,
+					ttnpb.MACVersion_MAC_V1_0_2,
+					ttnpb.PHYVersion_RP001_V1_0_2_REV_B,
+				)
+				macState.CurrentParameters.Rx1Delay = ttnpb.RxDelay_RX_DELAY_13
+				macState.CurrentParameters.Rx1DataRateOffset = 1
+				macState.CurrentParameters.Rx2DataRateIndex = ttnpb.DataRateIndex_DATA_RATE_5
+				macState.CurrentParameters.Rx2Frequency = 869525000
+				macState.CurrentParameters.MaxDutyCycle = ttnpb.AggregatedDutyCycle_DUTY_CYCLE_1
+				macState.CurrentParameters.PingSlotFrequency = 869525000
+				macState.CurrentParameters.BeaconFrequency = 869525000
+				macState.DesiredParameters.MaxEirp = 16
+				macState.DesiredParameters.Rx1Delay = ttnpb.RxDelay_RX_DELAY_13
+				macState.DesiredParameters.Rx1DataRateOffset = 1
+				macState.DesiredParameters.Rx2DataRateIndex = ttnpb.DataRateIndex_DATA_RATE_5
+				macState.DesiredParameters.Rx2Frequency = 869525000
+				macState.DesiredParameters.MaxDutyCycle = ttnpb.AggregatedDutyCycle_DUTY_CYCLE_1
+				macState.DesiredParameters.PingSlotFrequency = 869525000
+				macState.DesiredParameters.BeaconFrequency = 869525000
+				macState.DesiredParameters.AdrAckLimitExponent = &ttnpb.ADRAckLimitExponentValue{Value: 3}
+				macState.DesiredParameters.AdrAckDelayExponent = &ttnpb.ADRAckDelayExponentValue{Value: 3}
+				return macState
+			}(),
+		},
+		{
+			Name: "Device settings has higher priority",
+			Device: &ttnpb.EndDevice{
+				FrequencyPlanId:   test.EUFrequencyPlanID,
+				LorawanVersion:    ttnpb.MACVersion_MAC_V1_0_2,
+				LorawanPhyVersion: ttnpb.PHYVersion_RP001_V1_0_2_REV_B,
+				MacSettings: &ttnpb.MACSettings{
+					DesiredRx1Delay: &ttnpb.RxDelayValue{
+						Value: ttnpb.RxDelay_RX_DELAY_13,
+					},
+				},
+			},
+			Default: &ttnpb.MACSettings{
+				DesiredRx1Delay: &ttnpb.RxDelayValue{
+					Value: ttnpb.RxDelay_RX_DELAY_14,
+				},
+			},
+			Profile: nil,
+			MACState: func() *ttnpb.MACState {
+				macState := MakeDefaultEU868MACState(
+					ttnpb.Class_CLASS_A,
+					ttnpb.MACVersion_MAC_V1_0_2,
+					ttnpb.PHYVersion_RP001_V1_0_2_REV_B,
+				)
+				macState.DesiredParameters.Rx1Delay = ttnpb.RxDelay_RX_DELAY_13
+				return macState
+			}(),
+		},
+		{
+			Name: "MAC settings profile has highest priority",
+			Device: &ttnpb.EndDevice{
+				FrequencyPlanId:   test.EUFrequencyPlanID,
+				LorawanVersion:    ttnpb.MACVersion_MAC_V1_0_2,
+				LorawanPhyVersion: ttnpb.PHYVersion_RP001_V1_0_2_REV_B,
+				MacSettings: &ttnpb.MACSettings{
+					DesiredRx1Delay: &ttnpb.RxDelayValue{
+						Value: ttnpb.RxDelay_RX_DELAY_13,
+					},
+				},
+			},
+			Default: &ttnpb.MACSettings{
+				DesiredRx1Delay: &ttnpb.RxDelayValue{
+					Value: ttnpb.RxDelay_RX_DELAY_14,
+				},
+			},
+			Profile: &ttnpb.MACSettings{
+				DesiredRx1Delay: &ttnpb.RxDelayValue{
+					Value: ttnpb.RxDelay_RX_DELAY_15,
+				},
+			},
+			MACState: func() *ttnpb.MACState {
+				macState := MakeDefaultEU868MACState(
+					ttnpb.Class_CLASS_A,
+					ttnpb.MACVersion_MAC_V1_0_2,
+					ttnpb.PHYVersion_RP001_V1_0_2_REV_B,
+				)
+				macState.DesiredParameters.Rx1Delay = ttnpb.RxDelay_RX_DELAY_15
+				return macState
+			}(),
+		},
+	} {
+		test.RunSubtest(t, test.SubtestConfig{
+			Name:     tc.Name,
+			Parallel: true,
+			Func: func(_ context.Context, _ *testing.T, a *assertions.Assertion) {
+				pb := ttnpb.Clone(tc.Device)
+				fp := frequencyplans.NewStore(test.FrequencyPlansFetcher)
+
+				macState, err := NewState(pb, fp, tc.Default, tc.Profile)
+				a.So(err, should.BeNil)
 				a.So(macState, should.Resemble, tc.MACState)
 				a.So(pb, should.Resemble, tc.Device)
 			},

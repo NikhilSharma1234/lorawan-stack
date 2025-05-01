@@ -22,6 +22,7 @@ import (
 
 	"go.thethings.network/lorawan-stack/v3/pkg/cluster"
 	"go.thethings.network/lorawan-stack/v3/pkg/config"
+	"go.thethings.network/lorawan-stack/v3/pkg/config/tlsconfig"
 	"go.thethings.network/lorawan-stack/v3/pkg/crypto"
 	"go.thethings.network/lorawan-stack/v3/pkg/deviceclaimingserver/enddevices/ttjsv2"
 	"go.thethings.network/lorawan-stack/v3/pkg/fetch"
@@ -58,6 +59,7 @@ type Component interface {
 	httpclient.Provider
 	KeyService() crypto.KeyService
 	GetBaseConfig(ctx context.Context) config.ServiceBase
+	GetTLSConfig(ctx context.Context) tlsconfig.Config
 	GetPeerConn(ctx context.Context, role ttnpb.ClusterRole, ids cluster.EntityIdentifiers) (*grpc.ClientConn, error)
 	AllowInsecureForCredentials() bool
 }

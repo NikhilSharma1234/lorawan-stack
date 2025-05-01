@@ -16,6 +16,7 @@ package pubsub
 
 import (
 	"context"
+	"strconv"
 
 	"go.thethings.network/lorawan-stack/v3/pkg/auth/rights"
 	"go.thethings.network/lorawan-stack/v3/pkg/errors"
@@ -23,8 +24,14 @@ import (
 	"go.thethings.network/lorawan-stack/v3/pkg/log"
 	"go.thethings.network/lorawan-stack/v3/pkg/ttnpb"
 	"go.thethings.network/lorawan-stack/v3/pkg/unique"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
+
+func setTotalHeader(ctx context.Context, total int64) {
+	grpc.SetHeader(ctx, metadata.Pairs("x-total-count", strconv.FormatInt(total, 10))) // nolint: errcheck
+}
 
 // appendImplicitPubSubGetPaths appends implicit ttnpb.ApplicationPubSub get paths to paths.
 func appendImplicitPubSubGetPaths(paths ...string) []string {
@@ -66,6 +73,8 @@ func (ps *PubSub) List(ctx context.Context, req *ttnpb.ListApplicationPubSubsReq
 	if err := rights.RequireApplication(ctx, req.ApplicationIds, ttnpb.Right_RIGHT_APPLICATION_TRAFFIC_READ); err != nil {
 		return nil, err
 	}
+	var total int64
+	ctx = ps.registry.WithPagination(ctx, req.Limit, req.Page, &total)
 	pubsubs, err := ps.registry.List(ctx, req.ApplicationIds, appendImplicitPubSubGetPaths(req.FieldMask.GetPaths()...))
 	if err != nil {
 		return nil, err
@@ -73,6 +82,11 @@ func (ps *PubSub) List(ctx context.Context, req *ttnpb.ListApplicationPubSubsReq
 	for _, pubsub := range pubsubs {
 		_ = ps.providerStatuses.Enabled(ctx, pubsub.Provider)
 	}
+	defer func() {
+		if err == nil {
+			setTotalHeader(ctx, total)
+		}
+	}()
 	return &ttnpb.ApplicationPubSubs{
 		Pubsubs: pubsubs,
 	}, nil

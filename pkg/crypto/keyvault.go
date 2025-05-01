@@ -25,3 +25,9 @@ type KeyVault interface {
 	ServerCertificate(ctx context.Context, label string) (tls.Certificate, error)
 	ClientCertificate(ctx context.Context, label string) (tls.Certificate, error)
 }
+
+// KeyVaultKeyWriter is a KeyVault that can set keys.
+type KeyVaultKeyWriter interface {
+	KeyVault
+	SetKey(ctx context.Context, label string, key []byte) error
+}

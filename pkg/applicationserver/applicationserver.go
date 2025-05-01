@@ -81,7 +81,7 @@ type ApplicationServer struct {
 
 	linkRegistry           LinkRegistry
 	deviceRegistry         DeviceRegistry
-	locationRegistry       metadata.EndDeviceLocationRegistry
+	endDeviceRegistry      metadata.EndDeviceRegistry
 	formatters             messageprocessors.MapPayloadProcessor
 	webhooks               ioweb.Webhooks
 	webhookTemplates       ioweb.TemplateStore
@@ -156,14 +156,14 @@ func New(c *component.Component, conf *Config) (as *ApplicationServer, err error
 	}
 
 	as = &ApplicationServer{
-		Component:        c,
-		ctx:              ctx,
-		config:           conf,
-		linkRegistry:     conf.Links,
-		deviceRegistry:   wrapEndDeviceRegistryWithReplacedFields(conf.Devices, replacedEndDeviceFields...),
-		appPkgRegistry:   conf.Packages.Registry,
-		locationRegistry: conf.EndDeviceMetadataStorage.Location.Registry,
-		formatters:       make(messageprocessors.MapPayloadProcessor),
+		Component:         c,
+		ctx:               ctx,
+		config:            conf,
+		linkRegistry:      conf.Links,
+		deviceRegistry:    wrapEndDeviceRegistryWithReplacedFields(conf.Devices, replacedEndDeviceFields...),
+		appPkgRegistry:    conf.Packages.Registry,
+		endDeviceRegistry: conf.EndDeviceMetadataStorage.Registry,
+		formatters:        make(messageprocessors.MapPayloadProcessor),
 		clusterDistributor: distribution.NewPubSubDistributor(
 			ctx,
 			c,
@@ -924,7 +924,7 @@ func (as *ApplicationServer) handleUp(ctx context.Context, up *ttnpb.Application
 	case *ttnpb.ApplicationUp_LocationSolved:
 		return true, as.handleLocationSolved(ctx, up.EndDeviceIds, p.LocationSolved, link)
 	case *ttnpb.ApplicationUp_ServiceData:
-		return true, nil
+		return true, as.handleServiceData(ctx, up.EndDeviceIds, p.ServiceData)
 	default:
 		return false, nil
 	}
@@ -1049,6 +1049,14 @@ func (as *ApplicationServer) handleJoinAccept(
 		return err
 	}
 
+	if entity, err := as.endDeviceRegistry.Get(ctx, ids, []string{"attributes"}); err != nil {
+		log.FromContext(ctx).WithError(err).Warn(
+			"Failed to retrieve end device attributes on join-accept",
+		)
+	} else {
+		joinAccept.Attributes = entity.Attributes
+	}
+
 	// Publish last seen event.
 	if err := as.deviceLastSeenPool.Publish(ctx, lastSeenAtInfo{
 		ids:        ids,
@@ -1159,6 +1167,7 @@ func (as *ApplicationServer) publishNormalizedUplink(ctx context.Context, info u
 					Locations:                 info.uplink.Locations,
 					VersionIds:                info.uplink.VersionIds,
 					NetworkIds:                info.uplink.NetworkIds,
+					Attributes:                info.uplink.Attributes,
 				},
 			},
 			Simulated: info.simulated,
@@ -1208,6 +1217,15 @@ func (as *ApplicationServer) handleUplink(ctx context.Context, info uplinkInfo) 
 		return err
 	}
 
+	if entity, err := as.endDeviceRegistry.Get(ctx, info.ids, []string{"attributes", "locations"}); err != nil {
+		log.FromContext(ctx).WithError(err).Warn(
+			"Failed to retrieve the end device attributes and locations on uplink",
+		)
+	} else {
+		info.uplink.Attributes = entity.Attributes
+		info.uplink.Locations = entity.Locations
+	}
+
 	if !as.skipPayloadCrypto(ctx, info.link, dev, dev.Session) {
 		if err := as.decryptAndDecodeUplink(ctx, dev, info.uplink, info.link.DefaultFormatters); err != nil {
 			return err
@@ -1227,11 +1245,6 @@ func (as *ApplicationServer) handleUplink(ctx context.Context, info uplinkInfo) 
 	}
 
 	// Set location in message and publish location solved if the payload contains location information.
-	if locations, err := as.locationRegistry.Get(ctx, info.ids); err != nil {
-		log.FromContext(ctx).WithError(err).Warn("Failed to retrieve end device locations")
-	} else {
-		info.uplink.Locations = locations
-	}
 	loc := as.locationFromPayload(info.uplink)
 	if loc != nil {
 		if info.uplink.Locations == nil {
@@ -1285,10 +1298,14 @@ func (as *ApplicationServer) handleSimulatedUplink(ctx context.Context, info upl
 		return err
 	}
 
-	if locations, err := as.locationRegistry.Get(ctx, info.ids); err != nil {
-		log.FromContext(ctx).WithError(err).Warn("Failed to retrieve end device locations")
+	if entity, err := as.endDeviceRegistry.Get(ctx, info.ids, []string{"attributes", "locations"}); err != nil {
+		log.FromContext(ctx).WithError(err).Warn(
+			"Failed to retrieve the end device from entity registry on simulated uplink",
+		)
 	} else {
-		info.uplink.Locations = locations
+		info.uplink.Attributes = entity.Attributes
+		info.uplink.Locations = entity.Locations
+
 	}
 
 	if err := as.decodeUplink(ctx, dev, info.uplink, info.link.DefaultFormatters); err != nil {
@@ -1370,7 +1387,19 @@ func (as *ApplicationServer) handleDownlinkQueueInvalidated(
 			return dev, mask, nil
 		},
 	)
-	return pass, err
+	if err != nil {
+		return pass, err
+	}
+
+	if entity, err := as.endDeviceRegistry.Get(ctx, ids, []string{"attributes"}); err != nil {
+		log.FromContext(ctx).WithError(err).Warn(
+			"Failed to retrieve end device attributes on downlink queue invalidated",
+		)
+	} else {
+		invalid.Attributes = entity.Attributes
+	}
+
+	return pass, nil
 }
 
 func (as *ApplicationServer) handleDownlinkNack(
@@ -1455,17 +1484,41 @@ func (as *ApplicationServer) handleDownlinkNack(
 			return dev, mask, nil
 		},
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	if entity, err := as.endDeviceRegistry.Get(ctx, ids, []string{"attributes"}); err != nil {
+		log.FromContext(ctx).WithError(err).Warn(
+			"Failed to retrieve end device attributes on downlink nack",
+		)
+	} else {
+		msg.Attributes = entity.Attributes
+	}
+
+	return nil
 }
 
-// handleLocationSolved saves the provided *ttnpb.ApplicationLocation in the Entity Registry as part of the device locations.
-// Locations provided by other services will be maintained.
+// handleLocationSolved saves the provided *ttnpb.ApplicationLocation in the Entity Registry as part of the device
+// locations. Locations provided by other services will be maintained.
 func (as *ApplicationServer) handleLocationSolved(ctx context.Context, ids *ttnpb.EndDeviceIdentifiers, msg *ttnpb.ApplicationLocation, link *ttnpb.ApplicationLink) error {
 	defer trace.StartRegion(ctx, "handle location solved").End()
 
-	if _, err := as.locationRegistry.Merge(ctx, ids, map[string]*ttnpb.Location{
-		msg.Service: msg.Location,
-	}); err != nil {
+	if _, err := as.endDeviceRegistry.Set(ctx, ids, []string{"locations"},
+		func(stored *ttnpb.EndDevice) (*ttnpb.EndDevice, []string, error) {
+			if stored == nil {
+				return nil, nil, errDeviceNotFound.WithAttributes("device_uid", unique.ID(ctx, ids))
+			}
+
+			if len(stored.Locations) == 0 {
+				stored.Locations = make(map[string]*ttnpb.Location)
+			}
+
+			stored.Locations[msg.Service] = msg.Location
+
+			return stored, []string{"locations"}, nil
+		},
+	); err != nil {
 		log.FromContext(ctx).WithError(err).Warn("Failed to merge end device locations")
 	}
 	return nil
@@ -1486,6 +1539,15 @@ func (as *ApplicationServer) decryptDownlinkMessage(ctx context.Context, ids *tt
 	if err != nil {
 		return err
 	}
+
+	if entity, err := as.endDeviceRegistry.Get(ctx, ids, []string{"attributes"}); err != nil {
+		log.FromContext(ctx).WithError(err).Warn(
+			"Failed to retrieve end device attributes on downlink message",
+		)
+	} else {
+		msg.Attributes = entity.Attributes
+	}
+
 	var session *ttnpb.Session
 	switch {
 	case dev.Session != nil && bytes.Equal(dev.Session.Keys.SessionKeyId, msg.SessionKeyId):
@@ -1497,6 +1559,24 @@ func (as *ApplicationServer) decryptDownlinkMessage(ctx context.Context, ids *tt
 		return nil
 	}
 	return as.decryptAndDecodeDownlink(ctx, dev, msg, link.DefaultFormatters)
+}
+
+func (as *ApplicationServer) handleServiceData(
+	ctx context.Context,
+	ids *ttnpb.EndDeviceIdentifiers,
+	msg *ttnpb.ApplicationServiceData,
+) error {
+	defer trace.StartRegion(ctx, "handle service data").End()
+
+	if entity, err := as.endDeviceRegistry.Get(ctx, ids, []string{"attributes"}); err != nil {
+		log.FromContext(ctx).WithError(err).Warn(
+			"Failed to retrieve end device attributes on downlink message",
+		)
+	} else {
+		msg.Attributes = entity.Attributes
+	}
+
+	return nil
 }
 
 // GetConfig returns the Application Server config based on the context.

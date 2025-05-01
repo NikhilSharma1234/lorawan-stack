@@ -1,4 +1,5 @@
 project_name: lorawan-stack
+version: 2
 
 release:
   prerelease: auto
@@ -45,7 +46,7 @@ builds:
 archives:
   - id: stack
     name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
-    builds:
+    ids:
       - cli
       - stack
     files:
@@ -56,11 +57,11 @@ archives:
     wrap_in_directory: true
     format_overrides:
       - goos: windows
-        format: zip
+        formats: [ 'zip' ]
 
   - id: cli
     name_template: '{{ .ProjectName }}-cli_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
-    builds:
+    ids:
       - cli
     files:
       - LICENSE
@@ -69,11 +70,11 @@ archives:
     wrap_in_directory: true
     format_overrides:
       - goos: windows
-        format: zip
+        formats: [ 'zip' ]
 
 nfpms:
   - id: stack
-    builds:
+    ids:
       - cli
       - stack
     vendor: The Things Network
@@ -99,7 +100,7 @@ nfpms:
 
 snapcrafts:
   - id: stack
-    builds:
+    ids:
       - cli
       - stack
     name: ttn-lw-stack
@@ -133,7 +134,7 @@ brews:
   - name: ttn-lw-stack
     ids:
       - stack
-    tap:
+    repository:
       owner: TheThingsNetwork
       name: homebrew-lorawan-stack
     commit_author:
@@ -161,7 +162,7 @@ brews:
   - name: ttn-lw-cli
     ids:
       - cli
-    tap:
+    repository:
       owner: TheThingsNetwork
       name: homebrew-lorawan-stack
     commit_author:
@@ -185,7 +186,7 @@ blobs:
     ids:
       - stack
       - cli
-    folder: '{{ .Version }}'
+    directory: '{{ .Version }}'
     extra_files:
       - glob: ./CHANGELOG.md
 

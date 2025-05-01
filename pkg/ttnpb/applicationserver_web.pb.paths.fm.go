@@ -178,6 +178,7 @@ var ApplicationWebhookFieldPathsNested = []string{
 	"join_accept.path",
 	"location_solved",
 	"location_solved.path",
+	"paused",
 	"service_data",
 	"service_data.path",
 	"template_fields",
@@ -207,6 +208,7 @@ var ApplicationWebhookFieldPathsTopLevel = []string{
 	"ids",
 	"join_accept",
 	"location_solved",
+	"paused",
 	"service_data",
 	"template_fields",
 	"template_ids",
@@ -244,11 +246,15 @@ var ListApplicationWebhooksRequestFieldPathsNested = []string{
 	"application_ids",
 	"application_ids.application_id",
 	"field_mask",
+	"limit",
+	"page",
 }
 
 var ListApplicationWebhooksRequestFieldPathsTopLevel = []string{
 	"application_ids",
 	"field_mask",
+	"limit",
+	"page",
 }
 var SetApplicationWebhookRequestFieldPathsNested = []string{
 	"field_mask",
@@ -299,6 +305,7 @@ var SetApplicationWebhookRequestFieldPathsNested = []string{
 	"webhook.join_accept.path",
 	"webhook.location_solved",
 	"webhook.location_solved.path",
+	"webhook.paused",
 	"webhook.service_data",
 	"webhook.service_data.path",
 	"webhook.template_fields",

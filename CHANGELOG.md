@@ -11,6 +11,9 @@ For details about compatibility between different releases, see the **Commitment
 
 ### Added
 
+- Support to associate/disassociate MAC settings profiles to batch of end devices
+  - This feature is experimental and subject to change.
+
 ### Changed
 
 ### Deprecated
@@ -21,10 +24,126 @@ For details about compatibility between different releases, see the **Commitment
 
 ### Security
 
-## [3.32.0] - unreleased
+## [3.34.1] - unreleased
 
 ### Added
 
+- Support to associate/disassociate MAC settings profiles to end devices
+  - This feature is experimental and subject to change.
+
+### Changed
+
+- Support wildcards in the supported hosts for TLS certificates obtained via ACME (`tls.acme.hosts`).
+- Increase downlink capacity by raising duty-cycle budgets per priority.
+
+### Fixed
+
+- Downlink scheduling conflicts by gateways that require up to 32.5 ms margin between downlink transmissions (this includes the UDP Packet Forwarder and other packet forwarders that behave similarly).
+- Live data button covers content on the page.
+- Overflow device info in device overview -> General information panel.
+
+## [3.34.0] - 2025-03-18
+
+### Added
+
+- Add end device attributes to ApplicationUp messages.
+  - Add the locations, version_ids, network_ids fields to the following ApplicationUp messages:
+    - ApplicationJoinAccept
+    - ApplicationDownlink
+    - ApplicationDownlinkFailed
+    - ApplicationInvalidatedDownlinks
+    - ApplicationServiceData
+  - Add Timeout and Cache fields in the EndDeviceMetadataStorageConfig of the AS.
+- Support for using a TLS client certificate obtained via ACME for The Things Gateway Controller.
+
+### Changed
+
+- Set default page limit to `100` on AS and NS List RPCs
+  - All the List RPCs will use this value if the page limit is not provided in the request.
+  - The default limit is configurable via `as.pagination.default-limit` for AS and `ns.pagination.default-limit` for NS.
+
+### Deprecated
+
+- Deprecate the Location field (and its subfields) in the EndDeviceMetadataStorageConfig of AS.
+
+### Fixed
+
+- Fix password manager to detect password field on the login page
+
+## [3.33.1] - 2025-02-10
+
+### Added
+
+- Add recvTime field to the decodeUplink input in payload formatters
+- Add the latest battery percentage of the end device in the `ApplicationUplink` message.
+- Add live data split view tutorial to the Console.
+
+### Fixed
+
+- Enforce default page limit on AS and NS List RPCs if a value is not provided in the request.
+- Swapped field order in `RelayNotifyNewEndDeviceReq` MAC command.
+- `LinkADRAns` MAC command verification when the end device does not support ADR.
+- Being able to remove all attributes in general settings.
+
+## [3.33.0] - 2024-12-18
+
+### Added
+
+- Support user email notification preferences.
+  - This requires an Identity Server database migration (`ttn-lw-stack is-db migrate`).
+- Support for managing MAC settings profiles.
+  - This feature is experimental and subject to change.
+- Support pausing webhook in the edit webhook view in console
+- Add more specific rights for user operations.
+  - The rights added were for listing and creating rights.
+  - Admin validation associated with these operations remains.
+- Add purge rights for application, organizations, Oauth clients, gateways and user operations.
+
+### Fixed
+
+- Fix OAuth client authorizations delete request in the Console.
+- Consecutive disconnect/reconnect messages in the Live Data view in the Console.
+
+## [3.32.3] - 2024-12-04
+
+## [3.32.2] - 2024-11-18
+
+### Fixed
+
+- Potential leak of end devices of other (owned) applications in the top end devices panel in the application overview of the Console.
+- Fix reversed Join Server dev nonce metrics.
+- Identity Server's store runs each migration within a transaction, so a migration's changes are only applied if all of its queries are successful.
+  - Identity Server's store now marks a migration as successful after all its operations are finished. Previously it was possible to have a successful migration which not all of its queries were processed.
+- Enforce default page limit on IS List RPCs if a value is not provided in the request.
+
+## [3.32.1] - 2024-10-24
+
+### Added
+
+- Option to filter out non-gateway related frequency plans.
+  - `ListFrequencyPlans` RPC has a new `gateways-only` flag.
+- Option to pause application webhooks.
+- Endpoint for claiming gateways using a qr code
+- Update the GetTemplate endpoint in device repository to check for profile identifiers in the vendor index.
+- Support for claiming a gateway via QR code in the Console.
+
+### Fixed
+
+- RX2 and Class C with The Things Industries gateway protocol in dynamic channel plan regions (including `EU868`).
+- Filtering the list end points for end devices and gateways using the HTTP API.
+
+## [3.32.0] - 2024-09-05
+
+### Added
+
+- Newly redesigned The Things Stack Console. The most notable changes are as follows:
+  - New look and feel
+  - New sidebar-based navigation and structure
+  - Top entities are automatically stored and displayed for faster access
+  - More useful panels in the overviews of gateways, applications and end devices
+  - Quick search feature to search globally for any entity
+  - New event overlay for better in-context event examination
+  - Notifications can now be viewed from within the Console
 - Support for managed gateways and claiming through The Things Gateway Controller.
 - Support for The Things Industries gateway protocol. This is adds a new pair of ports to Gateway Server: `1889` for Envoy or Traefik terminated TLS mutual authentication, and `8889` for The Things Stack terminated TLS mutual authentication.
 - Option to filter the output of the `List` RPCs for end devices and gateways based on when they were updated.
@@ -2862,7 +2981,14 @@ For details about compatibility between different releases, see the **Commitment
 NOTE: These links should respect backports. See https://github.com/TheThingsNetwork/lorawan-stack/pull/1444/files#r333379706.
 -->
 
-[unreleased]: https://github.com/TheThingsNetwork/lorawan-stack/compare/v3.32.0...v3.32
+[unreleased]: https://github.com/TheThingsNetwork/lorawan-stack/compare/v3.34.1...v3.34
+[3.34.1]: https://github.com/TheThingsNetwork/lorawan-stack/compare/v3.34.0...v3.34.1
+[3.34.0]: https://github.com/TheThingsNetwork/lorawan-stack/compare/v3.33.1...v3.34.0
+[3.33.1]: https://github.com/TheThingsNetwork/lorawan-stack/compare/v3.33.0...v3.33.1
+[3.33.0]: https://github.com/TheThingsNetwork/lorawan-stack/compare/v3.32.3...v3.33.0
+[3.32.2]: https://github.com/TheThingsNetwork/lorawan-stack/compare/v3.32.2...v3.32.3
+[3.32.2]: https://github.com/TheThingsNetwork/lorawan-stack/compare/v3.32.1...v3.32.2
+[3.32.1]: https://github.com/TheThingsNetwork/lorawan-stack/compare/v3.32.0...v3.32.1
 [3.32.0]: https://github.com/TheThingsNetwork/lorawan-stack/compare/v3.31.1...v3.32.0
 [3.31.1]: https://github.com/TheThingsNetwork/lorawan-stack/compare/v3.31.0...v3.31.1
 [3.31.0]: https://github.com/TheThingsNetwork/lorawan-stack/compare/v3.30.2...v3.31.0

@@ -113,7 +113,9 @@ describe('Device general settings', () => {
     cy.findByRole('button', { name: 'Save changes' }).click()
 
     cy.findByTestId('error-notification').should('not.exist')
-    cy.findByTestId('toast-notification').findByText(`End device updated`).should('be.visible')
+    cy.findByTestId('toast-notification-success')
+      .findByText(`End device updated`)
+      .should('be.visible')
   })
 
   it('succeeds editing Network layer', () => {
@@ -136,7 +138,9 @@ describe('Device general settings', () => {
       })
 
     cy.findByTestId('error-notification').should('not.exist')
-    cy.findByTestId('toast-notification').findByText(`End device updated`).should('be.visible')
+    cy.findByTestId('toast-notification-success')
+      .findByText(`End device updated`)
+      .should('be.visible')
   })
 
   it('succeeds editing Application layer', () => {
@@ -153,7 +157,7 @@ describe('Device general settings', () => {
       })
 
     cy.findByTestId('error-notification').should('not.exist')
-    cy.findByTestId('toast-notification')
+    cy.findByTestId('toast-notification-success')
       .should('be.visible')
       .findByText(`End device updated`)
       .should('be.visible')
@@ -177,7 +181,9 @@ describe('Device general settings', () => {
       })
 
     cy.findByTestId('error-notification').should('not.exist')
-    cy.findByTestId('toast-notification').findByText(`End device updated`).should('be.visible')
+    cy.findByTestId('toast-notification-success')
+      .findByText(`End device updated`)
+      .should('be.visible')
   })
 
   it('succeeds editing server adresses', () => {
@@ -187,19 +193,25 @@ describe('Device general settings', () => {
     cy.findByRole('button', { name: 'Save changes' }).click()
 
     cy.findByTestId('error-notification').should('not.exist')
-    cy.findByTestId('toast-notification').findByText(`End device updated`).should('be.visible')
+    cy.findByTestId('toast-notification-success')
+      .findByText(`End device updated`)
+      .should('be.visible')
   })
 
   it('succeeds adding end device attributes', () => {
     cy.findByRole('button', { name: /Add attributes/ }).click()
 
+    cy.get(`[name="attributes[0].key"]`).click()
     cy.get(`[name="attributes[0].key"]`).type('end-device-test-key')
+    cy.get(`[name="attributes[0].value"]`).click()
     cy.get(`[name="attributes[0].value"]`).type('end-device-test-value')
 
     cy.findByRole('button', { name: 'Save changes' }).click()
 
     cy.findByTestId('error-notification').should('not.exist')
-    cy.findByTestId('toast-notification').findByText(`End device updated`).should('be.visible')
+    cy.findByTestId('toast-notification-success')
+      .findByText(`End device updated`)
+      .should('be.visible')
   })
 
   it('succeeds deleting end device', () => {

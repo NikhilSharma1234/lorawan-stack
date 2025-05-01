@@ -135,21 +135,39 @@ func (Dev) SQLRestore() error {
 	)
 }
 
-// RedisFlush deletes all keys from redis.
+// RedisFlush deletes all keys from redis except specific task queues.
 func (Dev) RedisFlush() error {
 	if mg.Verbose() {
-		fmt.Println("Deleting all keys from redis")
+		fmt.Println("Deleting keys from redis (preserving task queues)")
 	}
 
 	keys, err := sh.Output("docker", dockerComposeFlags("exec", "-T", "redis", "redis-cli", "keys", "ttn:v3:*")...)
 	if err != nil {
 		return err
 	}
+
 	ks := strings.Split(keys, "\n")
 	if len(ks) == 0 {
 		return nil
 	}
-	flags := dockerComposeFlags(append([]string{"exec", "-T", "redis", "redis-cli", "del"}, ks...)...)
+
+	// Delete all keys except preserved ones
+	baseArgs := []string{"exec", "-T", "redis", "redis-cli", "del"}
+	keysToDelete := make([]string, 0, len(ks))
+
+	for _, k := range ks {
+		if k != "ttn:v3:ns:tasks:downlink:ready" &&
+			k != "ttn:v3:ns:tasks:downlink:input" &&
+			k != "ttn:v3:ns:application-uplinks:uplinks" {
+			keysToDelete = append(keysToDelete, k)
+		}
+	}
+	// No keys to delete
+	if len(keysToDelete) == len(baseArgs) {
+		return nil
+	}
+
+	flags := dockerComposeFlags(append(baseArgs, keysToDelete...)...)
 	_, err = sh.Exec(nil, nil, os.Stderr, "docker", flags...)
 	return err
 }
@@ -347,6 +365,13 @@ func (Dev) StartDevStack() error {
 		)
 	}
 	return execGo(logFile, logFile, "run", "./cmd/ttn-lw-stack", "start", "--log.format=json")
+}
+
+func (Dev) ServeDevWebui() error {
+	if mg.Verbose() {
+		fmt.Println("Starting the webui with interactive configs")
+	}
+	return sh.RunV("node", "tools/js/serve-dev-webui.js")
 }
 
 func init() {

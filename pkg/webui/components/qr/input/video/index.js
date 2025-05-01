@@ -13,13 +13,15 @@
 // limitations under the License.
 
 import React, { useCallback, createRef, useEffect, useState } from 'react'
-import PropTypes from 'prop-types'
 import { defineMessages } from 'react-intl'
 
+import { IconCameraRotate } from '@ttn-lw/components/icon'
 import Spinner from '@ttn-lw/components/spinner'
 import Button from '@ttn-lw/components/button'
 
 import Message from '@ttn-lw/lib/components/message'
+
+import PropTypes from '@ttn-lw/lib/prop-types'
 
 import style from '../../qr.styl'
 
@@ -74,14 +76,20 @@ const Camera = props => {
     }
   }, [cameras])
 
-  const setDeviceIdFromStream = useCallback(userStream => {
-    const videoTracks = userStream.getVideoTracks()
-
-    if (videoTracks.length > 0) {
-      const { deviceId } = videoTracks[0].getSettings()
-      setDeviceId(deviceId)
-    }
-  }, [])
+  const setDeviceIdFromStream = useCallback(
+    userStream => {
+      const videoTracks = userStream.getVideoTracks()
+      if (videoTracks.length > 0) {
+        const { deviceId } = videoTracks[0].getSettings()
+        if (deviceId) {
+          setDeviceId(deviceId)
+        } else if (cameras.length > 0) {
+          setDeviceId(cameras[0].deviceId)
+        }
+      }
+    },
+    [cameras],
+  )
 
   useEffect(() => {
     setHasFrontCamera(cameras.some(device => device.label.toLowerCase().includes('front')))
@@ -91,10 +99,20 @@ const Camera = props => {
   return (
     <>
       {hasFrontCamera && hasBackCamera ? (
-        <Button icon="switch_camera" message={m.switchCamera} onClick={handleSwitchCamera} />
+        <Button
+          icon={IconCameraRotate}
+          message={m.switchCamera}
+          onClick={handleSwitchCamera}
+          naked
+        />
       ) : (
         cameras.length > 1 && (
-          <Button icon="switch_camera" message={m.switchCamera} onClick={handleCameraCycle} />
+          <Button
+            icon={IconCameraRotate}
+            message={m.switchCamera}
+            onClick={handleCameraCycle}
+            naked
+          />
         )
       )}
 
@@ -222,7 +240,7 @@ const Video = props => {
           data-test-id="webcam-feed"
         />
       ) : (
-        <Spinner center>
+        <Spinner center inline className="mb-cs-xl">
           <Message className={style.msg} content={m.fetchingCamera} />
         </Spinner>
       )}

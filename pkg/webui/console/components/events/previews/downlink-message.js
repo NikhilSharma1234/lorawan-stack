@@ -20,6 +20,7 @@ import { getDataRate } from '@console/components/events/utils'
 
 import PropTypes from '@ttn-lw/lib/prop-types'
 import getByPath from '@ttn-lw/lib/get-by-path'
+import sharedMessages from '@ttn-lw/lib/shared-messages'
 
 import messages from '../messages'
 
@@ -69,7 +70,7 @@ const DownLinkMessagePreview = React.memo(({ event }) => {
     return (
       <DescriptionList>
         <DescriptionList.Byte title={messages.devAddr} data={devAddr} />
-        <DescriptionList.Item title={messages.fPort} data={fPort} />
+        <DescriptionList.Item title={sharedMessages.fPort} data={fPort} />
         {isConfirmed && (
           <DescriptionList.Item>
             <Message content={messages.confirmedDownlink} />

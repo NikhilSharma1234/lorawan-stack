@@ -36,7 +36,7 @@ const findCheckedRadio = children => {
 }
 
 const RadioGroup = props => {
-  const { className, name, disabled, horizontal, onChange, children } = props
+  const { className, name, disabled, horizontal, spaceBetween, onChange, children } = props
   const [value, setValue] = useState(() => {
     if ('value' in props) {
       return props.value
@@ -84,6 +84,7 @@ const RadioGroup = props => {
 
   const cls = classnames(className, style.group, {
     [style.horizontal]: horizontal,
+    [style.spaceBetween]: spaceBetween,
   })
 
   return (
@@ -101,6 +102,7 @@ RadioGroup.propTypes = {
   initialValue: PropTypes.string,
   name: PropTypes.string.isRequired,
   onChange: PropTypes.func,
+  spaceBetween: PropTypes.bool,
   value: PropTypes.oneOfType([PropTypes.string, PropTypes.bool]),
 }
 
@@ -111,6 +113,7 @@ RadioGroup.defaultProps = {
   value: undefined,
   horizontal: false,
   onChange: () => null,
+  spaceBetween: false,
 }
 
 export default RadioGroup

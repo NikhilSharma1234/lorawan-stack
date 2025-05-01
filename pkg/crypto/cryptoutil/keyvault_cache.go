@@ -120,7 +120,7 @@ func (c *cacheKeyVault) getOrLoad(
 	val, err := c.cache.Get(cacheKey)
 	if err == nil {
 		crypto.RegisterCacheHit(ctx, cache)
-		entry := val.(*cacheKeyCacheEntry)
+		entry := val.(*cacheKeyCacheEntry) //nolint:revive
 		return entry.value, entry.err
 	}
 	crypto.RegisterCacheMiss(ctx, cache)
@@ -142,7 +142,7 @@ func (c *cacheKeyVault) Key(ctx context.Context, label string) ([]byte, error) {
 		val, err := c.inner.Key(ctx, label)
 		return val, 0, err
 	})
-	return val.([]byte), err
+	return val.([]byte), err //nolint:revive
 }
 
 func (c *cacheKeyVault) cacheCertificateTTL(crt tls.Certificate) (time.Duration, bool) {
@@ -167,7 +167,7 @@ func (c *cacheKeyVault) ServerCertificate(ctx context.Context, label string) (tl
 		}
 		return val, ttl, err
 	})
-	return val.(tls.Certificate), err
+	return val.(tls.Certificate), err //nolint:revive
 }
 
 // ClientCertificate implements crypto.KeyVault.
@@ -182,5 +182,5 @@ func (c *cacheKeyVault) ClientCertificate(ctx context.Context, label string) (tl
 		}
 		return val, ttl, err
 	})
-	return val.(tls.Certificate), err
+	return val.(tls.Certificate), err //nolint:revive
 }

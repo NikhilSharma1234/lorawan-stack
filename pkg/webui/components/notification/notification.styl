@@ -14,17 +14,17 @@
 
 $border-width = $cs.xxs
 
-left-border($color)
-  background: linear-gradient(left, $color, 5px $color, 5px white)
+left-border($color, $bg)
+  background: linear-gradient(to right, $color, $color 5px, $bg 0px)
 
 .notification
-  left-border($c-divider-dark)
-  border-top: 1px solid $c-divider
-  border-right: 1px solid $c-divider
-  border-color: $c-divider-subtle
+  left-border(var(--c-border-neutral-normal), transparent)
+  border-top: 1px solid var(--c-border-neutral-extralight)
+  border-right: 1px solid var(--c-border-neutral-extralight)
+  border-color: var(--c-border-neutral-extralight)
   border-radius: $br.m
   margin-bottom: $ls.xxs
-  box-shadow: 0 1px 1px 0 $c-divider-dark
+  box-shadow: 0 1px 1px 0 var(--c-bg-neutral-light)
   display: flex
   flex-wrap: wrap
   padding: 1px
@@ -44,20 +44,42 @@ left-border($color)
       margin-right: 8rem
 
   &.error
-    left-border($c-error)
-    color: $c-error
+    background: linear-gradient(to right, var(--c-border-error-normal), var(--c-border-error-normal) 5px, var(--c-bg-error-bold) 0px)
+    border-top: 1px solid light-dark(var(--c-border-error-light), var(--c-border-error-extralight))
+    border-right: 1px solid light-dark(var(--c-border-error-light), var(--c-border-error-extralight))
+    border-bottom: 1px solid light-dark(var(--c-border-error-light), var(--c-border-error-extralight))
+    border-color: light-dark(var(--c-border-error-light), var(--c-border-error-extralight))
+    color: var(--c-text-error-normal-hover)
+
+    &.dark
+      background: linear-gradient(to right, var(--c-border-error-light), var(--c-border-error-light) 5px, var(--c-bg-error-heavy) 0px)
 
   &.warning
-    left-border($c-warning)
-    color: $tc-warning
+    left-border(var(--c-border-warning-light), var(--c-bg-warning-heavy))
+    border-top: 1px solid var(--c-border-warning-extralight)
+    border-right: 1px solid var(--c-border-warning-extralight)
+    border-bottom: 1px solid var(--c-border-warning-extralight)
+    border-color: var(--c-border-warning-extralight)
+    color: var(--c-text-warning-normal-hover)
 
   &.info
-    left-border($c-active-blue)
-    color: $c-active-blue
+    left-border(var(--c-text-brand-normal), var(--c-bg-info-heavy))
+    border-top: 1px solid var(--c-border-info-extralight)
+    border-right: 1px solid var(--c-border-info-extralight)
+    border-bottom: 1px solid var(--c-border-info-extralight)
+    border-color: var(--c-border-info-extralight)
+    color: var(--c-text-brand-normal)
 
   &.success
-    left-border($c-success)
-    color: $c-success
+    background: linear-gradient(to right, var(--c-border-success-normal), var(--c-border-success-normal) 5px, var(--c-bg-success-heavy) 0px)
+    border-top: 1px solid var(--c-border-success-extralight)
+    border-right: 1px solid var(--c-border-success-extralight)
+    border-bottom: 1px solid var(--c-border-success-extralight)
+    border-color: var(--c-border-success-extralight)
+    color: var(--c-text-success-normal-hover)
+
+    &.dark
+      background: linear-gradient(to right, var(--c-border-success-light), var(--c-border-success-light) 5px, var(--c-bg-success-heavy) 0px)
 
   .message
     display: flex
@@ -72,13 +94,15 @@ left-border($color)
 
   .content
     display: inline-block
-    color: $tc-deep-gray
+    color: var(--c-text-neutral-heavy)
 
   .container
     display: flex
     margin: $cs.xl
 
   .icon
+    flex-shrink: 0
     display: flex
     margin-right: $cs.xl - $border-width
     margin-left: $cs.m
+    margin-top: .1rem

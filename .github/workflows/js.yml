@@ -18,7 +18,7 @@ on:
 jobs:
   quality:
     name: Code Quality
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - name: Check out code
@@ -39,12 +39,14 @@ jobs:
         run: tools/bin/mage -v jsSDK:lint
       - name: Lint frontend code
         run: tools/bin/mage -v js:lint
+      - name: Lint stylus files
+        run: tools/bin/mage -v styl:lint
       - name: Check for diff
         run: tools/bin/mage git:diff
 
   test:
     name: Tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - name: Check out code

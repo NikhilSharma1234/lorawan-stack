@@ -25,8 +25,8 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-func setTotalHeader(ctx context.Context, total uint64) {
-	grpc.SetHeader(ctx, metadata.Pairs("x-total-count", strconv.FormatUint(total, 10)))
+func setTotalHeader(ctx context.Context, total int64) {
+	grpc.SetHeader(ctx, metadata.Pairs("x-total-count", strconv.FormatInt(total, 10))) // nolint: errcheck
 }
 
 // appendImplicitWebhookGetPaths appends implicit ttnpb.ApplicationWebhook get paths to paths.
@@ -81,13 +81,15 @@ func (s webhookRegistryRPC) List(ctx context.Context, req *ttnpb.ListApplication
 	if err := rights.RequireApplication(ctx, req.ApplicationIds, ttnpb.Right_RIGHT_APPLICATION_TRAFFIC_READ); err != nil {
 		return nil, err
 	}
+	var total int64
+	ctx = s.webhooks.WithPagination(ctx, req.Limit, req.Page, &total)
 	webhooks, err := s.webhooks.List(ctx, req.ApplicationIds, appendImplicitWebhookGetPaths(req.FieldMask.GetPaths()...))
 	if err != nil {
 		return nil, err
 	}
 	defer func() {
 		if err == nil {
-			setTotalHeader(ctx, uint64(len(webhooks)))
+			setTotalHeader(ctx, total)
 		}
 	}()
 	return &ttnpb.ApplicationWebhooks{

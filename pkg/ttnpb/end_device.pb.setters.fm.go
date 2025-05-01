@@ -2511,6 +2511,77 @@ func (dst *MACSettings) SetFields(src *MACSettings, paths ...string) error {
 	return nil
 }
 
+func (dst *MACSettingsProfile) SetFields(src *MACSettingsProfile, paths ...string) error {
+	for name, subs := range _processPaths(paths) {
+		switch name {
+		case "ids":
+			if len(subs) > 0 {
+				var newDst, newSrc *MACSettingsProfileIdentifiers
+				if (src == nil || src.Ids == nil) && dst.Ids == nil {
+					continue
+				}
+				if src != nil {
+					newSrc = src.Ids
+				}
+				if dst.Ids != nil {
+					newDst = dst.Ids
+				} else {
+					newDst = &MACSettingsProfileIdentifiers{}
+					dst.Ids = newDst
+				}
+				if err := newDst.SetFields(newSrc, subs...); err != nil {
+					return err
+				}
+			} else {
+				if src != nil {
+					dst.Ids = src.Ids
+				} else {
+					dst.Ids = nil
+				}
+			}
+		case "mac_settings":
+			if len(subs) > 0 {
+				var newDst, newSrc *MACSettings
+				if (src == nil || src.MacSettings == nil) && dst.MacSettings == nil {
+					continue
+				}
+				if src != nil {
+					newSrc = src.MacSettings
+				}
+				if dst.MacSettings != nil {
+					newDst = dst.MacSettings
+				} else {
+					newDst = &MACSettings{}
+					dst.MacSettings = newDst
+				}
+				if err := newDst.SetFields(newSrc, subs...); err != nil {
+					return err
+				}
+			} else {
+				if src != nil {
+					dst.MacSettings = src.MacSettings
+				} else {
+					dst.MacSettings = nil
+				}
+			}
+		case "end_devices_count":
+			if len(subs) > 0 {
+				return fmt.Errorf("'end_devices_count' has no subfields, but %s were specified", subs)
+			}
+			if src != nil {
+				dst.EndDevicesCount = src.EndDevicesCount
+			} else {
+				var zero uint32
+				dst.EndDevicesCount = zero
+			}
+
+		default:
+			return fmt.Errorf("invalid field: '%s'", name)
+		}
+	}
+	return nil
+}
+
 func (dst *MACState) SetFields(src *MACState, paths ...string) error {
 	for name, subs := range _processPaths(paths) {
 		switch name {
@@ -3589,6 +3660,31 @@ func (dst *EndDevice) SetFields(src *EndDevice, paths ...string) error {
 					dst.LoraAllianceProfileIds = nil
 				}
 			}
+		case "mac_settings_profile_ids":
+			if len(subs) > 0 {
+				var newDst, newSrc *MACSettingsProfileIdentifiers
+				if (src == nil || src.MacSettingsProfileIds == nil) && dst.MacSettingsProfileIds == nil {
+					continue
+				}
+				if src != nil {
+					newSrc = src.MacSettingsProfileIds
+				}
+				if dst.MacSettingsProfileIds != nil {
+					newDst = dst.MacSettingsProfileIds
+				} else {
+					newDst = &MACSettingsProfileIdentifiers{}
+					dst.MacSettingsProfileIds = newDst
+				}
+				if err := newDst.SetFields(newSrc, subs...); err != nil {
+					return err
+				}
+			} else {
+				if src != nil {
+					dst.MacSettingsProfileIds = src.MacSettingsProfileIds
+				} else {
+					dst.MacSettingsProfileIds = nil
+				}
+			}
 
 		default:
 			return fmt.Errorf("invalid field: '%s'", name)
@@ -4256,6 +4352,76 @@ func (dst *BatchGetEndDevicesRequest) SetFields(src *BatchGetEndDevicesRequest, 
 				dst.FieldMask = src.FieldMask
 			} else {
 				dst.FieldMask = nil
+			}
+
+		default:
+			return fmt.Errorf("invalid field: '%s'", name)
+		}
+	}
+	return nil
+}
+
+func (dst *BatchSetMACSettingsProfileRequest) SetFields(src *BatchSetMACSettingsProfileRequest, paths ...string) error {
+	for name, subs := range _processPaths(paths) {
+		switch name {
+		case "application_ids":
+			if len(subs) > 0 {
+				var newDst, newSrc *ApplicationIdentifiers
+				if (src == nil || src.ApplicationIds == nil) && dst.ApplicationIds == nil {
+					continue
+				}
+				if src != nil {
+					newSrc = src.ApplicationIds
+				}
+				if dst.ApplicationIds != nil {
+					newDst = dst.ApplicationIds
+				} else {
+					newDst = &ApplicationIdentifiers{}
+					dst.ApplicationIds = newDst
+				}
+				if err := newDst.SetFields(newSrc, subs...); err != nil {
+					return err
+				}
+			} else {
+				if src != nil {
+					dst.ApplicationIds = src.ApplicationIds
+				} else {
+					dst.ApplicationIds = nil
+				}
+			}
+		case "mac_settings_profile_ids":
+			if len(subs) > 0 {
+				var newDst, newSrc *MACSettingsProfileIdentifiers
+				if (src == nil || src.MacSettingsProfileIds == nil) && dst.MacSettingsProfileIds == nil {
+					continue
+				}
+				if src != nil {
+					newSrc = src.MacSettingsProfileIds
+				}
+				if dst.MacSettingsProfileIds != nil {
+					newDst = dst.MacSettingsProfileIds
+				} else {
+					newDst = &MACSettingsProfileIdentifiers{}
+					dst.MacSettingsProfileIds = newDst
+				}
+				if err := newDst.SetFields(newSrc, subs...); err != nil {
+					return err
+				}
+			} else {
+				if src != nil {
+					dst.MacSettingsProfileIds = src.MacSettingsProfileIds
+				} else {
+					dst.MacSettingsProfileIds = nil
+				}
+			}
+		case "device_ids":
+			if len(subs) > 0 {
+				return fmt.Errorf("'device_ids' has no subfields, but %s were specified", subs)
+			}
+			if src != nil {
+				dst.DeviceIds = src.DeviceIds
+			} else {
+				dst.DeviceIds = nil
 			}
 
 		default:

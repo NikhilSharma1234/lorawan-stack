@@ -53,6 +53,8 @@ Keep the commits to be merged clean: adhere to the commit message format defined
 
 Interactive rebase (`git rebase -i`) can be used to edit or rewrite commits that do not follow these contribution guidelines.
 
+Commits must be signed (`git commit -S`).
+
 ## <a name="commit"></a>Commit Messages
 
 The first line of a commit message is the subject. The commit message may contain a body, separated from the subject by an empty line.

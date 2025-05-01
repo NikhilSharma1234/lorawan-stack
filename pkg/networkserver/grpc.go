@@ -42,45 +42,45 @@ func (ns *NetworkServer) GetDefaultMACSettings(ctx context.Context, req *ttnpb.G
 	if err != nil {
 		return nil, err
 	}
-	classBTimeout := mac.DeviceClassBTimeout(nil, ns.defaultMACSettings)
-	classCTimeout := mac.DeviceClassCTimeout(nil, ns.defaultMACSettings)
+	classBTimeout := mac.DeviceClassBTimeout(nil, ns.defaultMACSettings, nil)
+	classCTimeout := mac.DeviceClassCTimeout(nil, ns.defaultMACSettings, nil)
 	adrMargin := mac.DeviceADRMargin(nil, ns.defaultMACSettings)
 	statusTimePeriodicity := mac.DeviceStatusTimePeriodicity(nil, ns.defaultMACSettings)
 	statusCountPeriodicity := mac.DeviceStatusCountPeriodicity(nil, ns.defaultMACSettings)
 	settings := &ttnpb.MACSettings{
 		ClassBTimeout:                durationpb.New(classBTimeout),
-		PingSlotPeriodicity:          mac.DeviceDefaultPingSlotPeriodicity(nil, ns.defaultMACSettings),
-		PingSlotDataRateIndex:        mac.DeviceDefaultPingSlotDataRateIndexValue(nil, phy, ns.defaultMACSettings),
-		PingSlotFrequency:            &ttnpb.ZeroableFrequencyValue{Value: mac.DeviceDefaultPingSlotFrequency(nil, phy, ns.defaultMACSettings)},
-		BeaconFrequency:              &ttnpb.ZeroableFrequencyValue{Value: mac.DeviceDefaultBeaconFrequency(nil, phy, ns.defaultMACSettings)},
+		PingSlotPeriodicity:          mac.DeviceDefaultPingSlotPeriodicity(nil, ns.defaultMACSettings, nil),
+		PingSlotDataRateIndex:        mac.DeviceDefaultPingSlotDataRateIndexValue(nil, phy, ns.defaultMACSettings, nil),
+		PingSlotFrequency:            &ttnpb.ZeroableFrequencyValue{Value: mac.DeviceDefaultPingSlotFrequency(nil, phy, ns.defaultMACSettings, nil)}, // nolint: lll
+		BeaconFrequency:              &ttnpb.ZeroableFrequencyValue{Value: mac.DeviceDefaultBeaconFrequency(nil, phy, ns.defaultMACSettings, nil)},   // nolint: lll
 		ClassCTimeout:                durationpb.New(classCTimeout),
-		Rx1Delay:                     &ttnpb.RxDelayValue{Value: mac.DeviceDefaultRX1Delay(nil, phy, ns.defaultMACSettings)},
-		Rx1DataRateOffset:            &ttnpb.DataRateOffsetValue{Value: mac.DeviceDefaultRX1DataRateOffset(nil, ns.defaultMACSettings)},
-		Rx2DataRateIndex:             &ttnpb.DataRateIndexValue{Value: mac.DeviceDefaultRX2DataRateIndex(nil, phy, ns.defaultMACSettings)},
-		Rx2Frequency:                 &ttnpb.FrequencyValue{Value: mac.DeviceDefaultRX2Frequency(nil, phy, ns.defaultMACSettings)},
-		MaxDutyCycle:                 &ttnpb.AggregatedDutyCycleValue{Value: mac.DeviceDefaultMaxDutyCycle(nil, ns.defaultMACSettings)},
-		Supports_32BitFCnt:           &ttnpb.BoolValue{Value: mac.DeviceSupports32BitFCnt(nil, ns.defaultMACSettings)},
+		Rx1Delay:                     &ttnpb.RxDelayValue{Value: mac.DeviceDefaultRX1Delay(nil, phy, ns.defaultMACSettings, nil)},               // nolint: lll
+		Rx1DataRateOffset:            &ttnpb.DataRateOffsetValue{Value: mac.DeviceDefaultRX1DataRateOffset(nil, ns.defaultMACSettings, nil)},    // nolint: lll
+		Rx2DataRateIndex:             &ttnpb.DataRateIndexValue{Value: mac.DeviceDefaultRX2DataRateIndex(nil, phy, ns.defaultMACSettings, nil)}, // nolint: lll
+		Rx2Frequency:                 &ttnpb.FrequencyValue{Value: mac.DeviceDefaultRX2Frequency(nil, phy, ns.defaultMACSettings, nil)},         // nolint: lll
+		MaxDutyCycle:                 &ttnpb.AggregatedDutyCycleValue{Value: mac.DeviceDefaultMaxDutyCycle(nil, ns.defaultMACSettings, nil)},    // nolint: lll
+		Supports_32BitFCnt:           &ttnpb.BoolValue{Value: mac.DeviceSupports32BitFCnt(nil, ns.defaultMACSettings, nil)},                     // nolint: lll
 		UseAdr:                       &ttnpb.BoolValue{Value: mac.DeviceUseADR(nil, ns.defaultMACSettings, phy)},
 		AdrMargin:                    &wrapperspb.FloatValue{Value: adrMargin},
-		ResetsFCnt:                   &ttnpb.BoolValue{Value: mac.DeviceResetsFCnt(nil, ns.defaultMACSettings)},
+		ResetsFCnt:                   &ttnpb.BoolValue{Value: mac.DeviceResetsFCnt(nil, ns.defaultMACSettings, nil)},
 		StatusTimePeriodicity:        durationpb.New(statusTimePeriodicity),
 		StatusCountPeriodicity:       &wrapperspb.UInt32Value{Value: statusCountPeriodicity},
-		DesiredRx1Delay:              &ttnpb.RxDelayValue{Value: mac.DeviceDesiredRX1Delay(nil, phy, ns.defaultMACSettings)},
-		DesiredRx1DataRateOffset:     &ttnpb.DataRateOffsetValue{Value: mac.DeviceDesiredRX1DataRateOffset(nil, ns.defaultMACSettings)},
-		DesiredRx2DataRateIndex:      &ttnpb.DataRateIndexValue{Value: mac.DeviceDesiredRX2DataRateIndex(nil, phy, fp, ns.defaultMACSettings)},
-		DesiredRx2Frequency:          &ttnpb.FrequencyValue{Value: mac.DeviceDesiredRX2Frequency(nil, phy, fp, ns.defaultMACSettings)},
-		DesiredMaxDutyCycle:          &ttnpb.AggregatedDutyCycleValue{Value: mac.DeviceDesiredMaxDutyCycle(nil, ns.defaultMACSettings)},
-		DesiredAdrAckLimitExponent:   mac.DeviceDesiredADRAckLimitExponent(nil, phy, ns.defaultMACSettings),
-		DesiredAdrAckDelayExponent:   mac.DeviceDesiredADRAckDelayExponent(nil, phy, ns.defaultMACSettings),
-		DesiredPingSlotDataRateIndex: mac.DeviceDesiredPingSlotDataRateIndexValue(nil, phy, fp, ns.defaultMACSettings),
-		DesiredPingSlotFrequency:     &ttnpb.ZeroableFrequencyValue{Value: mac.DeviceDesiredPingSlotFrequency(nil, phy, fp, ns.defaultMACSettings)},
-		DesiredBeaconFrequency:       &ttnpb.ZeroableFrequencyValue{Value: mac.DeviceDesiredBeaconFrequency(nil, phy, ns.defaultMACSettings)},
-		DesiredMaxEirp:               &ttnpb.DeviceEIRPValue{Value: lorawan.Float32ToDeviceEIRP(mac.DeviceDesiredMaxEIRP(nil, phy, fp, ns.defaultMACSettings))},
-		UplinkDwellTime:              mac.DeviceUplinkDwellTime(nil, phy, ns.defaultMACSettings),
-		DownlinkDwellTime:            mac.DeviceDownlinkDwellTime(nil, phy, ns.defaultMACSettings),
-		ScheduleDownlinks:            &ttnpb.BoolValue{Value: mac.DeviceScheduleDownlinks(nil, ns.defaultMACSettings)},
-		Relay:                        mac.DeviceDefaultRelaySettings(nil, ns.defaultMACSettings),
-		DesiredRelay:                 mac.DeviceDesiredRelaySettings(nil, ns.defaultMACSettings),
+		DesiredRx1Delay:              &ttnpb.RxDelayValue{Value: mac.DeviceDesiredRX1Delay(nil, phy, ns.defaultMACSettings, nil)},                   // nolint: lll
+		DesiredRx1DataRateOffset:     &ttnpb.DataRateOffsetValue{Value: mac.DeviceDesiredRX1DataRateOffset(nil, ns.defaultMACSettings, nil)},        // nolint: lll
+		DesiredRx2DataRateIndex:      &ttnpb.DataRateIndexValue{Value: mac.DeviceDesiredRX2DataRateIndex(nil, phy, fp, ns.defaultMACSettings, nil)}, // nolint: lll
+		DesiredRx2Frequency:          &ttnpb.FrequencyValue{Value: mac.DeviceDesiredRX2Frequency(nil, phy, fp, ns.defaultMACSettings, nil)},         // nolint: lll
+		DesiredMaxDutyCycle:          &ttnpb.AggregatedDutyCycleValue{Value: mac.DeviceDesiredMaxDutyCycle(nil, ns.defaultMACSettings, nil)},        // nolint: lll
+		DesiredAdrAckLimitExponent:   mac.DeviceDesiredADRAckLimitExponent(nil, phy, ns.defaultMACSettings, nil),
+		DesiredAdrAckDelayExponent:   mac.DeviceDesiredADRAckDelayExponent(nil, phy, ns.defaultMACSettings, nil),
+		DesiredPingSlotDataRateIndex: mac.DeviceDesiredPingSlotDataRateIndexValue(nil, phy, fp, ns.defaultMACSettings, nil),
+		DesiredPingSlotFrequency:     &ttnpb.ZeroableFrequencyValue{Value: mac.DeviceDesiredPingSlotFrequency(nil, phy, fp, ns.defaultMACSettings, nil)},             // nolint: lll
+		DesiredBeaconFrequency:       &ttnpb.ZeroableFrequencyValue{Value: mac.DeviceDesiredBeaconFrequency(nil, phy, ns.defaultMACSettings, nil)},                   // nolint: lll
+		DesiredMaxEirp:               &ttnpb.DeviceEIRPValue{Value: lorawan.Float32ToDeviceEIRP(mac.DeviceDesiredMaxEIRP(nil, phy, fp, ns.defaultMACSettings, nil))}, // nolint: lll
+		UplinkDwellTime:              mac.DeviceUplinkDwellTime(nil, phy, ns.defaultMACSettings, nil),
+		DownlinkDwellTime:            mac.DeviceDownlinkDwellTime(nil, phy, ns.defaultMACSettings, nil),
+		ScheduleDownlinks:            &ttnpb.BoolValue{Value: mac.DeviceScheduleDownlinks(nil, ns.defaultMACSettings, nil)},
+		Relay:                        mac.DeviceDefaultRelaySettings(nil, ns.defaultMACSettings, nil),
+		DesiredRelay:                 mac.DeviceDesiredRelaySettings(nil, ns.defaultMACSettings, nil),
 	}
 	return settings, nil
 }

@@ -33,7 +33,7 @@ const DocTooltip = ({ content, docPath, docTitle, interactive, ...rest }) => (
       <>
         {content}
         <div className={style.docLink}>
-          <Link.DocLink primary path={docPath}>
+          <Link.DocLink secondary path={docPath}>
             <Message content={docTitle} />
           </Link.DocLink>
         </div>

@@ -380,7 +380,7 @@ const ApplicationDataVisualization = () => {
       .catch(error => console.error('Error fetching data:', error));
   };
 
-  useRootClass(style.stageFlex, 'stage')
+  //useRootClass(style.stageFlex, 'stage')
 
   useBreadcrumbs(
     'apps.single.data',

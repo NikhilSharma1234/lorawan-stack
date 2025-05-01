@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"runtime/trace"
 	"strings"
+	"time"
 
 	"go.thethings.network/lorawan-stack/v3/pkg/errors"
 	"go.thethings.network/lorawan-stack/v3/pkg/goproto"
@@ -101,8 +102,8 @@ func (h *host) CompileDownlinkEncoder(
 
 	return func(
 		ctx context.Context,
-		ids *ttnpb.EndDeviceIdentifiers,
-		version *ttnpb.EndDeviceVersionIdentifiers,
+		_ *ttnpb.EndDeviceIdentifiers,
+		_ *ttnpb.EndDeviceVersionIdentifiers,
 		msg *ttnpb.ApplicationDownlink,
 	) error {
 		return h.encodeDownlink(ctx, msg, run)
@@ -138,7 +139,7 @@ func (*host) encodeDownlink(
 	if err != nil {
 		return errInput.WithCause(err)
 	}
-	fPort := uint8(msg.FPort)
+	fPort := uint8(msg.FPort) // nolint:gosec
 	input := encodeDownlinkInput{
 		Data:  data,
 		FPort: &fPort,
@@ -170,8 +171,9 @@ func (*host) encodeDownlink(
 }
 
 type decodeUplinkInput struct {
-	Bytes []uint8 `json:"bytes"`
-	FPort uint8   `json:"fPort"`
+	Bytes    []uint8 `json:"bytes"`
+	FPort    uint8   `json:"fPort"`
+	RecvTime int64   `json:"recvTime"` // UnixNano
 }
 
 type decodeUplinkOutput struct {
@@ -200,9 +202,13 @@ func wrapUplinkDecoderScript(script string) string {
 
 		function main(input) {
 			const bytes = input.bytes.slice();
-			const { fPort } = input;
+			const { fPort, recvTime } = input;
+
+			// Convert UnixNano to JavaScript Date.
+			const jsDate = new Date(Number(BigInt(recvTime) / 1000000n));
+
 			if (typeof decodeUplink === 'function') {
-				const decoded = decodeUplink({ bytes, fPort });
+				const decoded = decodeUplink({ bytes, fPort, recvTime: jsDate });
 				let normalized;
 				const { data, errors } = decoded;
 				if ((!errors || !errors.length) && data && typeof normalizeUplink === 'function') {
@@ -240,8 +246,8 @@ func (h *host) CompileUplinkDecoder(
 
 	return func(
 		ctx context.Context,
-		ids *ttnpb.EndDeviceIdentifiers,
-		version *ttnpb.EndDeviceVersionIdentifiers,
+		_ *ttnpb.EndDeviceIdentifiers,
+		_ *ttnpb.EndDeviceVersionIdentifiers,
 		msg *ttnpb.ApplicationUplink,
 	) error {
 		return h.decodeUplink(ctx, msg, run)
@@ -280,7 +286,7 @@ func appendValidationErrors(dst []string, measurements []normalizedpayload.Parse
 	return dst
 }
 
-func (*host) decodeUplink(
+func (*host) decodeUplink( // nolint: gocyclo
 	ctx context.Context,
 	msg *ttnpb.ApplicationUplink,
 	run func(context.Context, string, ...any) (func(any) error, error),
@@ -288,8 +294,9 @@ func (*host) decodeUplink(
 	defer trace.StartRegion(ctx, "decode uplink message").End()
 
 	input := decodeUplinkInput{
-		Bytes: msg.FrmPayload,
-		FPort: uint8(msg.FPort),
+		Bytes:    msg.FrmPayload,
+		FPort:    uint8(msg.FPort), // nolint:gosec
+		RecvTime: msg.ReceivedAt.AsTime().UnixNano(),
 	}
 
 	valueAs, err := run(ctx, "main", input)
@@ -306,6 +313,14 @@ func (*host) decodeUplink(
 	if errs := output.Decoded.Errors; len(errs) > 0 {
 		return errOutputErrors.WithAttributes("errors", strings.Join(errs, ", "))
 	}
+
+	// goproto.Struct does not support time.Time, use UnixNano instead.
+	for key, item := range output.Decoded.Data {
+		if t, ok := item.(time.Time); ok {
+			output.Decoded.Data[key] = t.UnixNano()
+		}
+	}
+
 	decodedPayload, err := goproto.Struct(output.Decoded.Data)
 	if err != nil {
 		return errOutput.WithCause(err)
@@ -432,8 +447,8 @@ func (h *host) CompileDownlinkDecoder(
 
 	return func(
 		ctx context.Context,
-		ids *ttnpb.EndDeviceIdentifiers,
-		version *ttnpb.EndDeviceVersionIdentifiers,
+		_ *ttnpb.EndDeviceIdentifiers,
+		_ *ttnpb.EndDeviceVersionIdentifiers,
 		msg *ttnpb.ApplicationDownlink,
 	) error {
 		return h.decodeDownlink(ctx, msg, run)
@@ -463,7 +478,7 @@ func (*host) decodeDownlink(
 
 	input := decodeDownlinkInput{
 		Bytes: msg.FrmPayload,
-		FPort: uint8(msg.FPort),
+		FPort: uint8(msg.FPort), // nolint:gosec
 	}
 
 	valueAs, err := run(ctx, "main", input)

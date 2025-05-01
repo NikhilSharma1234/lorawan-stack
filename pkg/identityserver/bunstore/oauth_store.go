@@ -685,6 +685,11 @@ func (s *oauthStore) GetAccessToken(ctx context.Context, id string) (*ttnpb.OAut
 		return nil, err
 	}
 
+	// NOTE: This imposes a limitation on the client's rights if the token's user is the unique support user.
+	if model.User.Account.UID == ttnpb.SupportUserID {
+		model.Rights = convertIntSlice[ttnpb.Right, int](ttnpb.AllReadAdminRights.GetRights())
+	}
+
 	pb, err := accessTokenToPB(model, nil, nil)
 	if err != nil {
 		return nil, err

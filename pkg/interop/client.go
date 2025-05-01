@@ -29,6 +29,7 @@ import (
 
 	"github.com/oklog/ulid/v2"
 	"go.thethings.network/lorawan-stack/v3/pkg/config"
+	"go.thethings.network/lorawan-stack/v3/pkg/config/tlsconfig"
 	"go.thethings.network/lorawan-stack/v3/pkg/crypto"
 	"go.thethings.network/lorawan-stack/v3/pkg/encoding/lorawan"
 	"go.thethings.network/lorawan-stack/v3/pkg/errors"
@@ -343,6 +344,7 @@ var (
 // ClientComponent provides an interface to the component for the interop client.
 type ClientComponent interface {
 	httpclient.Provider
+	GetTLSConfig(context.Context) tlsconfig.Config
 	KeyService() crypto.KeyService
 }
 
@@ -433,7 +435,7 @@ func NewClient(
 		case ProtocolV1_0, ProtocolV1_1:
 			var opts []httpclient.Option
 			if !jsConf.TLS.IsZero() {
-				tlsConf, err := jsConf.TLS.TLSConfig(fetcher, c.KeyService())
+				tlsConf, err := jsConf.TLS.TLSConfig(ctx, c, fetcher)
 				if err != nil {
 					return nil, err
 				}

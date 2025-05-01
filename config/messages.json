@@ -593,6 +593,15 @@
       "file": "i18n.go"
     }
   },
+  "enum:RIGHT_APPLICATION_PURGE": {
+    "translations": {
+      "en": "purge application"
+    },
+    "description": {
+      "package": "pkg/ttnpb",
+      "file": "i18n.go"
+    }
+  },
   "enum:RIGHT_APPLICATION_SETTINGS_API_KEYS": {
     "translations": {
       "en": "view and edit application API keys"
@@ -683,6 +692,15 @@
       "file": "i18n.go"
     }
   },
+  "enum:RIGHT_CLIENT_PURGE": {
+    "translations": {
+      "en": "purge OAuth client"
+    },
+    "description": {
+      "package": "pkg/ttnpb",
+      "file": "i18n.go"
+    }
+  },
   "enum:RIGHT_CLIENT_SETTINGS_BASIC": {
     "translations": {
       "en": "edit OAuth client basic settings"
@@ -740,6 +758,15 @@
   "enum:RIGHT_GATEWAY_LOCATION_READ": {
     "translations": {
       "en": "view gateway location"
+    },
+    "description": {
+      "package": "pkg/ttnpb",
+      "file": "i18n.go"
+    }
+  },
+  "enum:RIGHT_GATEWAY_PURGE": {
+    "translations": {
+      "en": "purge gateway"
     },
     "description": {
       "package": "pkg/ttnpb",
@@ -908,6 +935,15 @@
       "file": "i18n.go"
     }
   },
+  "enum:RIGHT_ORGANIZATION_PURGE": {
+    "translations": {
+      "en": "purge organization"
+    },
+    "description": {
+      "package": "pkg/ttnpb",
+      "file": "i18n.go"
+    }
+  },
   "enum:RIGHT_ORGANIZATION_SETTINGS_API_KEYS": {
     "translations": {
       "en": "view and edit organization API keys"
@@ -998,6 +1034,15 @@
       "file": "i18n.go"
     }
   },
+  "enum:RIGHT_USER_CREATE": {
+    "translations": {
+      "en": "create user account"
+    },
+    "description": {
+      "package": "pkg/ttnpb",
+      "file": "i18n.go"
+    }
+  },
   "enum:RIGHT_USER_DELETE": {
     "translations": {
       "en": "delete user account"
@@ -1034,6 +1079,15 @@
       "file": "i18n.go"
     }
   },
+  "enum:RIGHT_USER_LIST": {
+    "translations": {
+      "en": "list user accounts"
+    },
+    "description": {
+      "package": "pkg/ttnpb",
+      "file": "i18n.go"
+    }
+  },
   "enum:RIGHT_USER_NOTIFICATIONS_READ": {
     "translations": {
       "en": "read user notifications"
@@ -1055,6 +1109,15 @@
   "enum:RIGHT_USER_ORGANIZATIONS_LIST": {
     "translations": {
       "en": "list organizations the user is a member of"
+    },
+    "description": {
+      "package": "pkg/ttnpb",
+      "file": "i18n.go"
+    }
+  },
+  "enum:RIGHT_USER_PURGE": {
+    "translations": {
+      "en": "purge user account"
     },
     "description": {
       "package": "pkg/ttnpb",
@@ -2701,7 +2764,7 @@
   },
   "error:pkg/applicationserver/io/web/sink:webhook_disabled": {
     "translations": {
-      "en": "webhook disabled"
+      "en": "webhook {webhook_id} of application {application_id} is disabled"
     },
     "description": {
       "package": "pkg/applicationserver/io/web/sink",
@@ -2798,13 +2861,13 @@
       "file": "io.go"
     }
   },
-  "error:pkg/applicationserver/metadata/redis:cache_miss": {
+  "error:pkg/applicationserver/metadata:field_mask_path_not_supported": {
     "translations": {
-      "en": "cache miss"
+      "en": "field mask path `{path}` is not supported"
     },
     "description": {
-      "package": "pkg/applicationserver/metadata/redis",
-      "file": "location_cache.go"
+      "package": "pkg/applicationserver/metadata",
+      "file": "metadata.go"
     }
   },
   "error:pkg/applicationserver/redis:application_uid": {
@@ -2909,15 +2972,6 @@
   "error:pkg/applicationserver:invalid_timeout": {
     "translations": {
       "en": "invalid timeout `{timeout}`"
-    },
-    "description": {
-      "package": "pkg/applicationserver",
-      "file": "config.go"
-    }
-  },
-  "error:pkg/applicationserver:invalid_ttl": {
-    "translations": {
-      "en": "invalid TTL `{ttl}`"
     },
     "description": {
       "package": "pkg/applicationserver",
@@ -3224,6 +3278,15 @@
   "error:pkg/auth/rights:insufficient_organization_rights": {
     "translations": {
       "en": "insufficient rights for organization `{uid}`"
+    },
+    "description": {
+      "package": "pkg/auth/rights",
+      "file": "require.go"
+    }
+  },
+  "error:pkg/auth/rights:insufficient_rights": {
+    "translations": {
+      "en": "insufficient rights for {entity_type} `{uid}`"
     },
     "description": {
       "package": "pkg/auth/rights",
@@ -3563,9 +3626,27 @@
       "file": "listeners.go"
     }
   },
+  "error:pkg/config/tlsconfig:acme_host_not_whitelisted": {
+    "translations": {
+      "en": "host `{host}` for ACME not whitelisted"
+    },
+    "description": {
+      "package": "pkg/config/tlsconfig",
+      "file": "config.go"
+    }
+  },
   "error:pkg/config/tlsconfig:fetch_file": {
     "translations": {
       "en": "fetch file `{name}`"
+    },
+    "description": {
+      "package": "pkg/config/tlsconfig",
+      "file": "config.go"
+    }
+  },
+  "error:pkg/config/tlsconfig:missing_acme_default_host": {
+    "translations": {
+      "en": "missing ACME default host"
     },
     "description": {
       "package": "pkg/config/tlsconfig",
@@ -4121,9 +4202,9 @@
       "file": "store.go"
     }
   },
-  "error:pkg/devicerepository/store/bleve:multiple_identifiers": {
+  "error:pkg/devicerepository/store/bleve:missing_profile_identifiers": {
     "translations": {
-      "en": "multiple identifiers found in the request. Use either EndDeviceVersionIdentifiers or EndDeviceProfileIdentifiers"
+      "en": "both vendor ID and vendor profile ID must be provided"
     },
     "description": {
       "package": "pkg/devicerepository/store/bleve",
@@ -4139,6 +4220,15 @@
       "file": "remote.go"
     }
   },
+  "error:pkg/devicerepository/store/remote:band_not_found_for_region": {
+    "translations": {
+      "en": "band not found for region `{region}`"
+    },
+    "description": {
+      "package": "pkg/devicerepository/store/remote",
+      "file": "remote.go"
+    }
+  },
   "error:pkg/devicerepository/store/remote:brand_not_found": {
     "translations": {
       "en": "brand `{brand_id}` not found"
@@ -4148,9 +4238,27 @@
       "file": "remote.go"
     }
   },
+  "error:pkg/devicerepository/store/remote:brand_with_vendor_id_not_found": {
+    "translations": {
+      "en": "brand with vendor ID `{vendor_id}` not found"
+    },
+    "description": {
+      "package": "pkg/devicerepository/store/remote",
+      "file": "remote.go"
+    }
+  },
   "error:pkg/devicerepository/store/remote:firmware_version_not_found": {
     "translations": {
       "en": "firmware version `{firmware_version}` for model `{brand_id}/{model_id}` not found"
+    },
+    "description": {
+      "package": "pkg/devicerepository/store/remote",
+      "file": "remote.go"
+    }
+  },
+  "error:pkg/devicerepository/store/remote:missing_profile_identifiers": {
+    "translations": {
+      "en": "both vendor ID and vendor profile ID must be provided"
     },
     "description": {
       "package": "pkg/devicerepository/store/remote",
@@ -4196,6 +4304,24 @@
   "error:pkg/devicerepository/store/remote:no_profile_for_band": {
     "translations": {
       "en": "device does not have a profile for band `{band_id}`"
+    },
+    "description": {
+      "package": "pkg/devicerepository/store/remote",
+      "file": "remote.go"
+    }
+  },
+  "error:pkg/devicerepository/store/remote:no_template_identifiers": {
+    "translations": {
+      "en": "one of version_ids or end_device_profile_ids must be set"
+    },
+    "description": {
+      "package": "pkg/devicerepository/store/remote",
+      "file": "remote.go"
+    }
+  },
+  "error:pkg/devicerepository/store/remote:vendor_profile_id_not_found": {
+    "translations": {
+      "en": "vendor profile ID `{vendor_profile_id}` not found for vendor ID `{vendor_id}`"
     },
     "description": {
       "package": "pkg/devicerepository/store/remote",
@@ -4715,6 +4841,15 @@
       "file": "pattern.go"
     }
   },
+  "error:pkg/events:marshal_data": {
+    "translations": {
+      "en": "marshal data"
+    },
+    "description": {
+      "package": "pkg/events",
+      "file": "events.go"
+    }
+  },
   "error:pkg/events:no_matching_events": {
     "translations": {
       "en": "no matching events for regexp `{regexp}`"
@@ -4902,6 +5037,15 @@
     "description": {
       "package": "pkg/gatewayconfigurationserver/managed",
       "file": "grpc.go"
+    }
+  },
+  "error:pkg/gatewayconfigurationserver/managed:managed_gateway_configuration_server_not_enabled": {
+    "translations": {
+      "en": "managed gateway configuration server is not enabled"
+    },
+    "description": {
+      "package": "pkg/gatewayconfigurationserver/managed",
+      "file": "grpc_disabled.go"
     }
   },
   "error:pkg/gatewayconfigurationserver/managed:no_profile_name": {
@@ -5123,15 +5267,6 @@
   "error:pkg/gatewayserver/io/ttigw:invalid_board": {
     "translations": {
       "en": "invalid board `{board}`"
-    },
-    "description": {
-      "package": "pkg/gatewayserver/io/ttigw",
-      "file": "mapping.go"
-    }
-  },
-  "error:pkg/gatewayserver/io/ttigw:invalid_frequency": {
-    "translations": {
-      "en": "invalid frequency `{frequency}`"
     },
     "description": {
       "package": "pkg/gatewayserver/io/ttigw",
@@ -5559,6 +5694,15 @@
     "description": {
       "package": "pkg/gatewayserver/upstream/packetbroker",
       "file": "packetbroker.go"
+    }
+  },
+  "error:pkg/gatewayserver:empty_gateway_token_hash_key_id": {
+    "translations": {
+      "en": "gateway token hash key ID is empty"
+    },
+    "description": {
+      "package": "pkg/gatewayserver",
+      "file": "gatewayserver.go"
     }
   },
   "error:pkg/gatewayserver:empty_identifiers": {
@@ -8123,7 +8267,16 @@
     },
     "description": {
       "package": "pkg/networkserver",
-      "file": "grpc_deviceregistry.go"
+      "file": "device_state.go"
+    }
+  },
+  "error:pkg/networkserver:field_mask": {
+    "translations": {
+      "en": "invalid field mask"
+    },
+    "description": {
+      "package": "pkg/networkserver",
+      "file": "grpc_mac_settings_profile.go"
     }
   },
   "error:pkg/networkserver:field_not_zero": {
@@ -8132,7 +8285,7 @@
     },
     "description": {
       "package": "pkg/networkserver",
-      "file": "grpc_deviceregistry.go"
+      "file": "device_state.go"
     }
   },
   "error:pkg/networkserver:field_value": {
@@ -8160,6 +8313,33 @@
     "description": {
       "package": "pkg/networkserver",
       "file": "errors.go"
+    }
+  },
+  "error:pkg/networkserver:mac_settings_profile_already_exists": {
+    "translations": {
+      "en": "MAC settings profile already exists"
+    },
+    "description": {
+      "package": "pkg/networkserver",
+      "file": "grpc_mac_settings_profile.go"
+    }
+  },
+  "error:pkg/networkserver:mac_settings_profile_not_found": {
+    "translations": {
+      "en": "MAC settings profile not found"
+    },
+    "description": {
+      "package": "pkg/networkserver",
+      "file": "grpc_mac_settings_profile.go"
+    }
+  },
+  "error:pkg/networkserver:mac_settings_profile_used": {
+    "translations": {
+      "en": "MAC settings profile is used"
+    },
+    "description": {
+      "package": "pkg/networkserver",
+      "file": "grpc_mac_settings_profile.go"
     }
   },
   "error:pkg/networkserver:no_downlink": {
@@ -9033,6 +9213,33 @@
     "description": {
       "package": "pkg/qrcodegenerator/qrcode/enddevices",
       "file": "enddevices.go"
+    }
+  },
+  "error:pkg/qrcodegenerator/qrcode/gateways:invalid_format": {
+    "translations": {
+      "en": "invalid format"
+    },
+    "description": {
+      "package": "pkg/qrcodegenerator/qrcode/gateways",
+      "file": "gateways.go"
+    }
+  },
+  "error:pkg/qrcodegenerator/qrcode/gateways:invalid_length": {
+    "translations": {
+      "en": "invalid length"
+    },
+    "description": {
+      "package": "pkg/qrcodegenerator/qrcode/gateways",
+      "file": "gateways.go"
+    }
+  },
+  "error:pkg/qrcodegenerator/qrcode/gateways:unknown_format": {
+    "translations": {
+      "en": "format unknown"
+    },
+    "description": {
+      "package": "pkg/qrcodegenerator/qrcode/gateways",
+      "file": "gateways.go"
     }
   },
   "error:pkg/qrcodegenerator:format_not_found": {
@@ -9989,6 +10196,15 @@
       "file": "observability.go"
     }
   },
+  "event:as.down.data.ack.forward": {
+    "translations": {
+      "en": "forward downlink acknowledged"
+    },
+    "description": {
+      "package": "pkg/applicationserver",
+      "file": "observability.go"
+    }
+  },
   "event:as.down.data.decode.fail": {
     "translations": {
       "en": "decode downlink data message failure"
@@ -10034,6 +10250,15 @@
       "file": "observability.go"
     }
   },
+  "event:as.down.data.failed.forward": {
+    "translations": {
+      "en": "forward downlink failed"
+    },
+    "description": {
+      "package": "pkg/applicationserver",
+      "file": "observability.go"
+    }
+  },
   "event:as.down.data.forward": {
     "translations": {
       "en": "forward downlink data message"
@@ -10043,9 +10268,36 @@
       "file": "observability.go"
     }
   },
+  "event:as.down.data.nack.forward": {
+    "translations": {
+      "en": "forward downlink not acknowledged"
+    },
+    "description": {
+      "package": "pkg/applicationserver",
+      "file": "observability.go"
+    }
+  },
+  "event:as.down.data.queue.invalidated.forward": {
+    "translations": {
+      "en": "forward downlink queue invalidated"
+    },
+    "description": {
+      "package": "pkg/applicationserver",
+      "file": "observability.go"
+    }
+  },
   "event:as.down.data.receive": {
     "translations": {
       "en": "receive downlink data message"
+    },
+    "description": {
+      "package": "pkg/applicationserver",
+      "file": "observability.go"
+    }
+  },
+  "event:as.down.data.sent.forward": {
+    "translations": {
+      "en": "forward downlink sent"
     },
     "description": {
       "package": "pkg/applicationserver",

@@ -124,9 +124,6 @@ const maxDutyCycleOptions = [
   { value: 'DUTY_CYCLE_16384', label: '0.006%' },
 ]
 
-const encodeAdrMode = value => ({ [value]: {} })
-const decodeAdrMode = value => (value !== undefined ? Object.keys(value)[0] : null)
-
 const MacSettingsSection = props => {
   const {
     activationMode,
@@ -237,6 +234,20 @@ const MacSettingsSection = props => {
     },
     [values],
   )
+
+  const getEncodedAdrModeValue = useCallback(mode => {
+    if (mode === 'static') {
+      return {
+        data_rate_index: 0,
+        tx_power_index: 0,
+        nb_trans: 1,
+      }
+    }
+    return {}
+  }, [])
+
+  const encodeAdrMode = value => ({ [value]: getEncodedAdrModeValue(value) })
+  const decodeAdrMode = value => (value !== undefined ? Object.keys(value)[0] : null)
 
   return (
     <Form.CollapseSection
@@ -697,6 +708,7 @@ const MacSettingsSection = props => {
             component={Input}
             type="number"
             inputWidth="xs"
+            max={15}
           />
           <Form.Field
             title={m.adrUplinks}
@@ -704,6 +716,8 @@ const MacSettingsSection = props => {
             component={Input}
             type="number"
             inputWidth="xs"
+            min={1}
+            max={15}
           />
         </>
       )}

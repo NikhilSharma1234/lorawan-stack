@@ -27,7 +27,6 @@ import { CleanWebpackPlugin } from 'clean-webpack-plugin'
 import ShellPlugin from 'webpack-shell-plugin'
 import CopyWebpackPlugin from 'copy-webpack-plugin'
 import ReactRefreshWebpackPlugin from '@pmmmwh/react-refresh-webpack-plugin'
-import nib from 'nib'
 
 import pjson from '../package.json'
 
@@ -42,6 +41,7 @@ const {
   PUBLIC_DIR = 'public',
   NODE_ENV = 'production',
   MAGE = 'tools/bin/mage',
+  CI = false,
 } = process.env
 
 const WEBPACK_IS_DEV_SERVER_BUILD = process.env.WEBPACK_IS_DEV_SERVER_BUILD === 'true'
@@ -137,7 +137,7 @@ export const styleConfig = {
         modules: {
           exportLocalsConvention: 'camelCase',
           localIdentName: env({
-            production: '[hash:base64:10]',
+            production: '[hash:base64:4]',
             development: '[local]-[hash:base64:4]',
           }),
         },
@@ -148,7 +148,6 @@ export const styleConfig = {
       options: {
         stylusOptions: {
           import: [path.resolve(context, 'pkg/webui/styles/include.styl')],
-          use: nib(),
         },
       },
     },
@@ -270,7 +269,7 @@ export default {
         ],
       },
       {
-        test: /\.(woff|woff2|ttf|eot|jpg|jpeg|png|svg)$/i,
+        test: /\.(woff|woff2|ttf|eot|otf|jpg|jpeg|png|svg)$/i,
         type: 'asset/resource',
         generator: {
           filename: '[name].[contenthash:20][ext]',
@@ -302,6 +301,7 @@ export default {
       }),
       new webpack.EnvironmentPlugin({
         NODE_ENV,
+        CI,
         VERSION: version,
         REVISION: revision,
         ADDITIONAL_CONFIG: JSON.stringify(ADDITIONAL_CONFIG),
@@ -360,6 +360,7 @@ export default {
       new ShellPlugin({
         onBuildExit: [`${MAGE} js:extractLocaleFiles`],
       }),
+      new webpack.HotModuleReplacementPlugin()
     ],
   }),
 }

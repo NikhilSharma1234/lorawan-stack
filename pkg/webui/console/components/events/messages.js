@@ -17,8 +17,6 @@ import { defineMessages } from 'react-intl'
 const messages = defineMessages({
   MACPayload: 'MAC payload',
   devAddr: 'DevAddr',
-  fPort: 'FPort',
-  fCnt: 'FCnt',
   rawPayload: 'Raw payload',
   txPower: 'Tx Power',
   dataRate: 'Data rate',
@@ -52,6 +50,8 @@ const messages = defineMessages({
   eventUnavailable: 'This event is not available anymore. It was likely truncated to save memory.',
   verboseStream: 'Verbose stream',
   confirmedUplink: 'Confirmed uplink',
+  goToLiveData: 'Go to full live data',
+  showingEventsFor: 'Showing events for {entityType} {entityId}',
 })
 
 export default messages

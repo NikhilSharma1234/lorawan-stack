@@ -1090,6 +1090,15 @@ func (EndDeviceOptionNamespace) WithLoraAllianceProfileIds(v *ttnpb.LoRaAlliance
 	}
 }
 
+// WithMacSettingsProfileIds returns a EndDeviceOption, which returns a copy of ttnpb.EndDevice with MacSettingsProfileIds set to v.
+func (EndDeviceOptionNamespace) WithMacSettingsProfileIds(v *ttnpb.MACSettingsProfileIdentifiers) EndDeviceOption {
+	return func(x *ttnpb.EndDevice) *ttnpb.EndDevice {
+		copy := ttnpb.Clone(x)
+		copy.MacSettingsProfileIds = v
+		return copy
+	}
+}
+
 // Compose returns a functional composition of opts as a singular EndDeviceOption.
 func (EndDeviceOptionNamespace) Compose(opts ...EndDeviceOption) EndDeviceOption {
 	return func(x *ttnpb.EndDevice) *ttnpb.EndDevice {

@@ -17,8 +17,8 @@ import { useDispatch, useSelector } from 'react-redux'
 import { defineMessages } from 'react-intl'
 import { createSelector } from 'reselect'
 
+import Icon, { IconTrash, IconCheck } from '@ttn-lw/components/icon'
 import Status from '@ttn-lw/components/status'
-import Icon from '@ttn-lw/components/icon'
 import Button from '@ttn-lw/components/button'
 import toast from '@ttn-lw/components/toast'
 import ButtonGroup from '@ttn-lw/components/button/group'
@@ -34,7 +34,13 @@ import PropTypes from '@ttn-lw/lib/prop-types'
 import { getUserId } from '@ttn-lw/lib/selectors/id'
 import attachPromise from '@ttn-lw/lib/store/actions/attach-promise'
 
-import { checkFromState, mayManageUsers, maySendInvites } from '@console/lib/feature-checks'
+import {
+  checkFromState,
+  mayCreateUsers,
+  mayManageUsers,
+  mayPerformAllUserActions,
+  maySendInvites,
+} from '@console/lib/feature-checks'
 
 import {
   getUsersList,
@@ -44,15 +50,13 @@ import {
   restoreUser,
 } from '@console/store/actions/users'
 
-import { selectUserId } from '@console/store/selectors/logout'
+import { selectUserId } from '@console/store/selectors/user'
 import {
   selectUsers,
   selectUsersTotalCount,
   selectUserInvitations,
   selectUserInvitationsTotalCount,
 } from '@console/store/selectors/users'
-
-import style from './users-table.styl'
 
 const m = defineMessages({
   invite: 'Invite user',
@@ -68,13 +72,9 @@ const INVITATIONS_TAB = 'invitations'
 const tabs = [
   {
     title: sharedMessages.users,
-    name: 'users',
+    name: USERS_TAB,
   },
   { title: sharedMessages.deleted, name: DELETED_TAB },
-  {
-    title: sharedMessages.userInvitations,
-    name: 'invitations',
-  },
 ]
 
 const state = {
@@ -116,7 +116,13 @@ const UsersTable = props => {
   const dispatch = useDispatch()
   const currentUserId = useSelector(selectUserId)
   const mayInvite = useSelector(state => checkFromState(maySendInvites, state))
+  const mayPerformAllActions = useSelector(state => checkFromState(mayPerformAllUserActions, state))
+  const mayCreate = useSelector(state => checkFromState(mayCreateUsers, state))
 
+  const tabsWithInvitations = [
+    ...tabs,
+    { title: sharedMessages.userInvitations, name: INVITATIONS_TAB },
+  ]
   const [tab, setTab] = React.useState(USERS_TAB)
   const isInvitationsTab = tab === INVITATIONS_TAB
   const isDeletedTab = tab === DELETED_TAB
@@ -211,8 +217,10 @@ const UsersTable = props => {
               type="button"
               onClick={details.delete}
               message={m.revokeInvitation}
-              icon="delete"
+              icon={IconTrash}
+              primary
               danger
+              naked
             />
           ),
         },
@@ -231,7 +239,10 @@ const UsersTable = props => {
               return (
                 <span>
                   {userId}{' '}
-                  <Message className={style.hint} content={sharedMessages.currentUserIndicator} />
+                  <Message
+                    className="c-text-neutral-light"
+                    content={sharedMessages.currentUserIndicator}
+                  />
                 </span>
               )
             }
@@ -264,7 +275,7 @@ const UsersTable = props => {
           }),
           render: details => (
             <ButtonGroup align="end">
-              <Button message={sharedMessages.restore} onClick={details.restore} />
+              <Button message={sharedMessages.restore} onClick={details.restore} secondary />
               <DeleteModalButton
                 entityId={details.id}
                 entityName={details.name}
@@ -282,7 +293,7 @@ const UsersTable = props => {
           width: 7,
           render: isAdmin => {
             if (isAdmin) {
-              return <Icon className={style.icon} icon="check" />
+              return <Icon className="c-text-brand-normal" icon={IconCheck} />
             }
 
             return null
@@ -327,7 +338,7 @@ const UsersTable = props => {
     (users, totalCount) => ({
       users,
       totalCount,
-      mayAdd: mayManageUsers,
+      mayAdd: mayManageUsers && (mayPerformAllActions || mayCreate),
     }),
   )
 
@@ -347,7 +358,7 @@ const UsersTable = props => {
       baseDataSelector={isInvitationsTab ? invitationsBaseDataSelector : usersBaseDataSelector}
       pageSize={pageSize}
       clickable={!isDeletedTab}
-      tabs={maySendInvites ? tabs : []}
+      tabs={mayInvite ? tabsWithInvitations : tabs}
       searchable={!isInvitationsTab}
     />
   )

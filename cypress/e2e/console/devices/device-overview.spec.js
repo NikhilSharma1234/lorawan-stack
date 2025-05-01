@@ -67,7 +67,8 @@ describe('Device overview', () => {
   })
 
   it('succeeds downloading device MAC state', () => {
-    cy.findByRole('button', { name: /Download MAC data/ }).click()
+    cy.findByTestId('device-header-menu').click()
+    cy.findByText(/Download MAC data/).click()
     cy.findByTestId('modal-window')
       .should('be.visible')
       .within(() => {
@@ -75,10 +76,10 @@ describe('Device overview', () => {
         cy.findByRole('button', { name: /Download MAC data/ }).click()
       })
     cy.findByTestId('error-notification').should('not.exist')
-    cy.findByTestId('toast-notification').should('not.exist')
+    cy.findByTestId('toast-notification-success').should('not.exist')
   })
 
-  it('succeeds showing warning when there is no MAC state', () => {
+  it('succeeds showing error when there is no MAC state', () => {
     const response = {
       ids: {
         device_id: endDeviceId,
@@ -98,15 +99,16 @@ describe('Device overview', () => {
       response,
     )
 
-    cy.findByRole('button', { name: /Download MAC data/ }).click()
+    cy.findByTestId('device-header-menu').click()
+    cy.findByText(/Download MAC data/).click()
     cy.findByTestId('modal-window')
       .should('be.visible')
       .within(() => {
         cy.findByText('Download MAC data', { selector: 'h1' }).should('be.visible')
         cy.findByRole('button', { name: /Download MAC data/ }).click()
       })
-    cy.findByTestId('toast-notification')
-      .findByText(`There was an error and MAC state could not be included in the MAC data.`)
+    cy.findByTestId('toast-notification-error')
+      .findByText(`There was an error and MAC state could not be included in the MAC data`)
       .should('be.visible')
   })
 })

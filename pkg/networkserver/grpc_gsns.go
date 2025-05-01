@@ -43,6 +43,7 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 const (
@@ -306,13 +307,22 @@ func (ns *NetworkServer) matchAndHandleDataUplink(ctx context.Context, dev *ttnp
 		}
 	}
 
+	var profile *ttnpb.MACSettingsProfile
+	if dev.MacSettingsProfileIds != nil {
+		profile, err = ns.macSettingsProfiles.Get(ctx, dev.GetMacSettingsProfileIds(), []string{"mac_settings"})
+		if err != nil {
+			log.FromContext(ctx).WithError(err).Warn("Failed to get MAC settings profile")
+			return nil, false, nil
+		}
+	}
+
 	// Current session match
 	if matchType != pendingMatch &&
 		dev.Session != nil &&
 		dev.MacState != nil &&
 		devAddr.Equal(types.MustDevAddr(dev.Session.DevAddr).OrZero()) &&
 		macspec.UseLegacyMIC(cmacFMatchResult.LoRaWANVersion) == macspec.UseLegacyMIC(dev.MacState.LorawanVersion) &&
-		(cmacFMatchResult.FullFCnt == FullFCnt(uint16(pld.FHdr.FCnt), dev.Session.LastFCntUp, mac.DeviceSupports32BitFCnt(dev, ns.defaultMACSettings)) ||
+		(cmacFMatchResult.FullFCnt == FullFCnt(uint16(pld.FHdr.FCnt), dev.Session.LastFCntUp, mac.DeviceSupports32BitFCnt(dev, ns.defaultMACSettings, profile.GetMacSettings())) || // nolint: gosec, lll
 			cmacFMatchResult.FullFCnt == pld.FHdr.FCnt) {
 		fNwkSIntKey, err := cryptoutil.UnwrapAES128Key(ctx, dev.Session.Keys.FNwkSIntKey, ns.KeyService())
 		if err != nil {
@@ -327,12 +337,14 @@ func (ns *NetworkServer) matchAndHandleDataUplink(ctx context.Context, dev *ttnp
 			))
 			switch {
 			case cmacFMatchResult.FullFCnt < dev.Session.LastFCntUp:
-				if pld.FHdr.FCtrl.Ack || dev.Session.LastFCntUp != cmacFMatchResult.LastFCnt || !mac.DeviceResetsFCnt(dev, ns.defaultMACSettings) {
+				if pld.FHdr.FCtrl.Ack ||
+					dev.Session.LastFCntUp != cmacFMatchResult.LastFCnt ||
+					!mac.DeviceResetsFCnt(dev, ns.defaultMACSettings, profile.GetMacSettings()) {
 					return nil, false, nil
 				}
 				ctx = log.NewContextWithField(ctx, "f_cnt_reset", true)
 
-				macState, err := mac.NewState(dev, fps, ns.defaultMACSettings)
+				macState, err := mac.NewState(dev, fps, ns.defaultMACSettings, profile.GetMacSettings())
 				if err != nil {
 					log.FromContext(ctx).WithError(err).Warn("Failed to generate new MAC state")
 					return nil, false, nil
@@ -542,7 +554,7 @@ macLoop:
 		var err error
 		switch cmd.Cid {
 		case ttnpb.MACCommandIdentifier_CID_RESET:
-			evs, err = mac.HandleResetInd(ctx, dev, cmd.GetResetInd(), fps, ns.defaultMACSettings)
+			evs, err = mac.HandleResetInd(ctx, dev, cmd.GetResetInd(), fps, ns.defaultMACSettings, profile.GetMacSettings())
 		case ttnpb.MACCommandIdentifier_CID_LINK_CHECK:
 			if !deduplicated {
 				deferredMACHandlers = append(deferredMACHandlers, makeDeferredMACHandler(dev, mac.HandleLinkCheckReq))
@@ -568,7 +580,15 @@ macLoop:
 				break
 			}
 			cmds = cmds[dupCount:]
-			evs, err = mac.HandleLinkADRAns(ctx, dev, pld, uint(dupCount), cmacFMatchResult.FullFCnt, fps)
+			evs, err = mac.HandleLinkADRAns(
+				ctx,
+				dev,
+				pld,
+				uint(dupCount), // nolint: gosec
+				cmacFMatchResult.FullFCnt,
+				fps,
+				up.GetPayload().GetMacPayload().GetFHdr().GetFCtrl().GetAdr(),
+			)
 		case ttnpb.MACCommandIdentifier_CID_DUTY_CYCLE:
 			evs, err = mac.HandleDutyCycleAns(ctx, dev)
 		case ttnpb.MACCommandIdentifier_CID_RX_PARAM_SETUP:
@@ -848,6 +868,7 @@ var handleDataUplinkGetPaths = [...]string{
 	"supports_class_b",
 	"supports_class_c",
 	"supports_join",
+	"battery_percentage",
 }
 
 // mergeMetadata merges the metadata collected for up.
@@ -895,6 +916,18 @@ func (ns *NetworkServer) filterMetadata(ctx context.Context, up *ttnpb.UplinkMes
 const (
 	initialDeduplicationRound = iota
 )
+
+func lastBatteryPercentage(dev *ttnpb.EndDevice) *ttnpb.LastBatteryPercentage {
+	if dev.MacState == nil || dev.BatteryPercentage == nil || dev.LastDevStatusReceivedAt == nil {
+		return nil
+	}
+
+	return &ttnpb.LastBatteryPercentage{
+		FCnt:       dev.MacState.LastDevStatusFCntUp,
+		Value:      wrapperspb.Float(dev.BatteryPercentage.Value * 100),
+		ReceivedAt: dev.LastDevStatusReceivedAt,
+	}
+}
 
 func (ns *NetworkServer) handleDataUplink(ctx context.Context, up *ttnpb.UplinkMessage) (err error) {
 	defer trace.StartRegion(ctx, "handle data uplink").End()
@@ -947,7 +980,7 @@ func (ns *NetworkServer) handleDataUplink(ctx context.Context, up *ttnpb.UplinkM
 				MacSettings: &ttnpb.MACSettings{
 					Supports_32BitFCnt: match.Supports32BitFCnt,
 				},
-			}, ns.defaultMACSettings))
+			}, ns.defaultMACSettings, nil))
 
 			var cmacF [4]byte
 			cmacF, ok = matchCmacF(ctx, fNwkSIntKey, match.LoRaWANVersion, fCnt, up)
@@ -955,7 +988,7 @@ func (ns *NetworkServer) handleDataUplink(ctx context.Context, up *ttnpb.UplinkM
 				MacSettings: &ttnpb.MACSettings{
 					ResetsFCnt: match.ResetsFCnt,
 				},
-			}, ns.defaultMACSettings) {
+			}, ns.defaultMACSettings, nil) {
 				// FCnt reset
 				fCnt = pld.FHdr.FCnt
 				cmacF, ok = matchCmacF(ctx, fNwkSIntKey, match.LoRaWANVersion, fCnt, up)
@@ -1141,17 +1174,18 @@ func (ns *NetworkServer) handleDataUplink(ctx context.Context, up *ttnpb.UplinkM
 			CorrelationIds: up.CorrelationIds,
 			Up: &ttnpb.ApplicationUp_UplinkMessage{
 				UplinkMessage: &ttnpb.ApplicationUplink{
-					Confirmed:       up.Payload.MHdr.MType == ttnpb.MType_CONFIRMED_UP,
-					FCnt:            pld.FullFCnt,
-					FPort:           pld.FPort,
-					FrmPayload:      frmPayload,
-					RxMetadata:      up.RxMetadata,
-					SessionKeyId:    stored.Session.Keys.SessionKeyId,
-					Settings:        up.Settings,
-					ReceivedAt:      up.ReceivedAt,
-					ConsumedAirtime: up.ConsumedAirtime,
-					PacketErrorRate: mac.LossRate(stored.MacState, matched.phy),
-					NetworkIds:      ns.networkIdentifiers(ctx),
+					Confirmed:             up.Payload.MHdr.MType == ttnpb.MType_CONFIRMED_UP,
+					FCnt:                  pld.FullFCnt,
+					FPort:                 pld.FPort,
+					FrmPayload:            frmPayload,
+					RxMetadata:            up.RxMetadata,
+					SessionKeyId:          stored.Session.Keys.SessionKeyId,
+					Settings:              up.Settings,
+					ReceivedAt:            up.ReceivedAt,
+					ConsumedAirtime:       up.ConsumedAirtime,
+					PacketErrorRate:       mac.LossRate(stored.MacState, matched.phy),
+					NetworkIds:            ns.networkIdentifiers(ctx),
+					LastBatteryPercentage: lastBatteryPercentage(stored),
 				},
 			},
 		})
@@ -1293,7 +1327,15 @@ func (ns *NetworkServer) handleJoinRequest(ctx context.Context, up *ttnpb.Uplink
 		"data_rate", up.Settings.DataRate,
 	)
 
-	macState, err := mac.NewState(matched, fps, ns.defaultMACSettings)
+	var profile *ttnpb.MACSettingsProfile
+	if matched.MacSettingsProfileIds != nil {
+		profile, err = ns.macSettingsProfiles.Get(ctx, matched.MacSettingsProfileIds, []string{"mac_settings"})
+		if err != nil {
+			log.FromContext(ctx).WithError(err).Warn("Failed to get MAC settings profile")
+			return err
+		}
+	}
+	macState, err := mac.NewState(matched, fps, ns.defaultMACSettings, profile.GetMacSettings())
 	if err != nil {
 		log.FromContext(ctx).WithError(err).Warn("Failed to reset device's MAC state")
 		return err

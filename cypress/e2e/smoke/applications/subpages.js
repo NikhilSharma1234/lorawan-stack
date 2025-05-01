@@ -28,11 +28,7 @@ const applicationSubpages = defineSmokeTest('check all application sub-pages', (
   cy.loginConsole({ user_id: user.ids.user_id, password: user.password })
   cy.visit(Cypress.config('consoleRootPath'))
 
-  cy.get('header').within(() => {
-    cy.findAllByRole('link', { name: /Applications/ })
-      .first()
-      .click()
-  })
+  cy.findAllByRole('link', { name: /Applications/ }).click()
   cy.findByRole('cell', { name: application.ids.application_id }).click()
 
   cy.findAllByRole('link', { name: /End devices/ })
@@ -65,7 +61,7 @@ const applicationSubpages = defineSmokeTest('check all application sub-pages', (
   cy.findByLabelText('Formatter type').should('be.visible')
   cy.findByRole('button', { name: 'Save changes' })
 
-  cy.findByRole('button', { name: /Integrations/ }).click()
+  cy.findByRole('button', { name: /Other integrations/ }).click()
 
   cy.findByRole('link', { name: /MQTT/ }).click()
   cy.findByText('Connection information').should('be.visible')
@@ -89,15 +85,17 @@ const applicationSubpages = defineSmokeTest('check all application sub-pages', (
     .within(() => {
       cy.findByRole('button', { name: 'Expand' }).click()
       cy.findByLabelText('Token').should('be.visible')
+      cy.get('button[type="submit"]').scrollIntoView()
       cy.findByRole('button', { name: 'Set token' }).should('be.visible')
       cy.findByRole('button', { name: 'Collapse' }).click()
       cy.findByTestId('error-notification').should('not.exist')
     })
-  cy.findByRole('heading', { name: 'Device & Application Services' })
+  cy.findByRole('heading', { name: 'Modem Services' })
     .closest('[data-test-id="collapsible-section"]')
     .within(() => {
       cy.findByRole('button', { name: 'Expand' }).click()
       cy.findByLabelText('Token').should('be.visible')
+      cy.get('button[type="submit"]').scrollIntoView()
       cy.findByRole('button', { name: 'Set token' }).should('be.visible')
       cy.findByRole('button', { name: 'Collapse' }).click()
       cy.findByTestId('error-notification').should('not.exist')
@@ -116,6 +114,7 @@ const applicationSubpages = defineSmokeTest('check all application sub-pages', (
 
   cy.findByRole('link', { name: /General settings/ }).click()
   cy.findByLabelText('Application ID').should('be.visible')
+  cy.get('button[type="submit"]').scrollIntoView()
   cy.findByRole('button', { name: /Save changes/ }).should('be.visible')
   cy.findByTestId('error-notification').should('not.exist')
 })

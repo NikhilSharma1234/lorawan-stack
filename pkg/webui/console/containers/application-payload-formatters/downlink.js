@@ -40,8 +40,7 @@ import {
   selectApplicationLinkError,
   selectApplicationLinkFormatters,
 } from '@console/store/selectors/applications'
-
-import style from './application-payload-formatters.styl'
+import { selectConsolePreferences } from '@console/store/selectors/user-preferences'
 
 const m = defineMessages({
   title: 'Default downlink payload formatter',
@@ -52,6 +51,11 @@ const m = defineMessages({
 })
 
 const ApplicationPayloadFormatters = () => {
+  const consolePreferences = useSelector(selectConsolePreferences)
+  const darkTheme =
+    consolePreferences.console_theme === 'CONSOLE_THEME_DARK' ||
+    (consolePreferences.console_theme === 'CONSOLE_THEME_SYSTEM' &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches)
   const { appId } = useParams()
   const formatters = useSelector(selectApplicationLinkFormatters) || {}
   const linkError = useSelector(selectApplicationLinkError)
@@ -104,23 +108,24 @@ const ApplicationPayloadFormatters = () => {
   const hasError = Boolean(linkError) && !isNotFoundError(linkError)
 
   return (
-    <>
-      <PageTitle title={m.title} />
-      {hasError && <ErrorNotification content={linkError} small />}
-      {!isNoneType && (
-        <Notification className={style.notification} small info content={m.infoText} />
-      )}
-      {!mayViewLink && <Notification content={m.downlinkResetWarning} info small />}
-      <PayloadFormattersForm
-        uplink={false}
-        onSubmit={onSubmit}
-        onSubmitSuccess={onSubmitSuccess}
-        title={sharedMessages.payloadFormattersDownlink}
-        initialType={formatters.down_formatter || PAYLOAD_FORMATTER_TYPES.NONE}
-        initialParameter={formatters.down_formatter_parameter || ''}
-        onTypeChange={onTypeChange}
-      />
-    </>
+    <div className="container container--xl grid gap-ls-xxs box-border">
+      <div className="item-12">
+        <PageTitle title={m.title} />
+        {hasError && <ErrorNotification content={linkError} small />}
+        {!isNoneType && <Notification className="mb-ls-s" small info content={m.infoText} />}
+        {!mayViewLink && <Notification content={m.downlinkResetWarning} info small />}
+        <PayloadFormattersForm
+          uplink={false}
+          onSubmit={onSubmit}
+          onSubmitSuccess={onSubmitSuccess}
+          title={sharedMessages.payloadFormattersDownlink}
+          initialType={formatters.down_formatter || PAYLOAD_FORMATTER_TYPES.NONE}
+          initialParameter={formatters.down_formatter_parameter || ''}
+          onTypeChange={onTypeChange}
+          darkTheme={darkTheme}
+        />
+      </div>
+    </div>
   )
 }
 

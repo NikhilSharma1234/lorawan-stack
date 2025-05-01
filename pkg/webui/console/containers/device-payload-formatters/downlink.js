@@ -33,8 +33,7 @@ import PayloadFormattersForm from '@console/components/payload-formatters-form'
 import sharedMessages from '@ttn-lw/lib/shared-messages'
 import attachPromise from '@ttn-lw/lib/store/actions/attach-promise'
 
-import { checkFromState } from '@account/lib/feature-checks'
-import { mayViewApplicationLink } from '@console/lib/feature-checks'
+import { checkFromState, mayViewApplicationLink } from '@console/lib/feature-checks'
 
 import { updateDevice } from '@console/store/actions/devices'
 import { getRepositoryPayloadFormatters } from '@console/store/actions/device-repository'
@@ -45,6 +44,7 @@ import {
   selectSelectedDevice,
 } from '@console/store/selectors/devices'
 import { selectDeviceRepoPayloadFromatters } from '@console/store/selectors/device-repository'
+import { selectConsolePreferences } from '@console/store/selectors/user-preferences'
 
 import m from './messages'
 
@@ -56,6 +56,11 @@ const DevicePayloadFormatters = () => {
   const formatters = useSelector(selectSelectedDeviceFormatters)
   const encodeDownlink = tts.As.encodeDownlink
   const repositoryPayloadFormatters = useSelector(selectDeviceRepoPayloadFromatters)
+  const consolePreferences = useSelector(selectConsolePreferences)
+  const darkTheme =
+    consolePreferences.console_theme === 'CONSOLE_THEME_DARK' ||
+    (consolePreferences.console_theme === 'CONSOLE_THEME_SYSTEM' &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches)
   const [type, setType] = useState(
     Boolean(formatters)
       ? formatters.down_formatter || PAYLOAD_FORMATTER_TYPES.NONE
@@ -170,6 +175,7 @@ const DevicePayloadFormatters = () => {
         onTypeChange={onTypeChange}
         isDefaultType={isDefaultType}
         repoFormatters={repositoryPayloadFormatters}
+        darkTheme={darkTheme}
       />
     </RequireRequest>
   )

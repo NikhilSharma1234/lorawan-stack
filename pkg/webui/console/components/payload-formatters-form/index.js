@@ -14,7 +14,6 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { injectIntl, defineMessages } from 'react-intl'
-import { Col, Row } from 'react-grid-system'
 import { useBlocker } from 'react-router-dom'
 
 import TYPES from '@console/constants/formatter-types'
@@ -43,8 +42,6 @@ import { address as addressRegexp } from '@console/lib/regexp'
 
 import { getDefaultGrpcServiceFormatter, getDefaultJavascriptFormatter } from './formatter-values'
 import TestForm from './test-form'
-
-import style from './payload-formatters-form.styl'
 
 const m = defineMessages({
   repository: 'Use Device Repository formatters',
@@ -113,6 +110,7 @@ const Formatter = ({
   type,
   pasteAppPayloadFormatter,
   pasteRepoPayloadFormatters,
+  darkTheme,
 }) => {
   const hasRepoFormatter = repoFormatters !== undefined && Object.keys(repoFormatters).length !== 0
   const repositoryPayloadFormatters = repoFormatters?.formatter_parameter
@@ -133,6 +131,7 @@ const Formatter = ({
           height="10rem"
           minLines={25}
           maxLines={25}
+          darkTheme={darkTheme}
         />
         {type === TYPES.JAVASCRIPT && (
           <ButtonGroup>
@@ -191,6 +190,7 @@ const Formatter = ({
           minLines={25}
           maxLines={25}
           value={repositoryPayloadFormatters}
+          darkTheme={darkTheme}
         />
         <Link.DocLink path="/integrations/payload-formatters/device-repo/" secondary>
           <Message content={m.learnMoreAboutDeviceRepo} />
@@ -203,6 +203,7 @@ const Formatter = ({
 }
 
 Formatter.propTypes = {
+  darkTheme: PropTypes.bool,
   defaultType: PropTypes.string,
   pasteAppPayloadFormatter: PropTypes.func.isRequired,
   pasteRepoPayloadFormatters: PropTypes.func.isRequired,
@@ -213,6 +214,7 @@ Formatter.propTypes = {
 }
 
 Formatter.defaultProps = {
+  darkTheme: false,
   defaultType: undefined,
   repoFormatters: undefined,
 }
@@ -233,6 +235,7 @@ const PayloadFormattersForm = ({
   onSubmitFailure,
   onTestSubmit,
   defaultParameter,
+  darkTheme,
 }) => {
   const [type, setType] = useState(initialType)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -406,87 +409,87 @@ const PayloadFormattersForm = ({
 
   return (
     <>
-      <Row>
-        <Col sm={12} lg={_showTestSection() ? 6 : 12}>
-          <Form
-            onSubmit={handleSubmit}
-            initialValues={initialValues}
-            validationSchema={validationSchema}
-            error={error}
-            formikRef={formRef}
-            id="payload-formatter-form"
-          >
-            {() => (
-              <>
-                <Form.SubTitle title={sharedMessages.setup} />
-                <Form.Field
-                  name={FIELD_NAMES.SELECT}
-                  title={m.formatterType}
-                  component={Select}
-                  options={options}
-                  onChange={handleTypeChange}
-                  warning={type === TYPES.DEFAULT ? m.appFormatterWarning : undefined}
-                  inputWidth="m"
-                  required
+      <div className="item-12 lg-xl:item-6 xl:item-12 md-lg:item-12">
+        <Form
+          onSubmit={handleSubmit}
+          initialValues={initialValues}
+          validationSchema={validationSchema}
+          error={error}
+          formikRef={formRef}
+          id="payload-formatter-form"
+        >
+          {() => (
+            <>
+              <Form.SubTitle title={sharedMessages.setup} />
+              <Form.Field
+                name={FIELD_NAMES.SELECT}
+                title={m.formatterType}
+                component={Select}
+                options={options}
+                onChange={handleTypeChange}
+                warning={type === TYPES.DEFAULT ? m.appFormatterWarning : undefined}
+                inputWidth="m"
+                required
+              />
+              {isDefaultType && (
+                <Notification
+                  small
+                  info
+                  content={m.defaultFormatter}
+                  convertBackticks
+                  messageValues={{
+                    Link: msg => (
+                      <Link
+                        secondary
+                        key="manual-link"
+                        to={`/applications/${appId}/payload-formatters/uplink`}
+                      >
+                        {msg}
+                      </Link>
+                    ),
+                    defaultFormatter,
+                  }}
                 />
-                {isDefaultType && (
-                  <Notification
-                    small
-                    info
-                    content={m.defaultFormatter}
-                    convertBackticks
-                    messageValues={{
-                      Link: msg => (
-                        <Link
-                          secondary
-                          key="manual-link"
-                          to={`/applications/${appId}/payload-formatters/uplink`}
-                        >
-                          {msg}
-                        </Link>
-                      ),
-                      defaultFormatter,
-                    }}
-                  />
-                )}
-                <Formatter
-                  defaultType={defaultType}
-                  repoFormatters={repoFormatters}
-                  type={type}
-                  pasteAppPayloadFormatter={pasteAppPayloadFormatter}
-                  pasteRepoPayloadFormatters={pasteRepoPayloadFormatters}
-                />
-                <MoveAwayModal blocker={blocker} />
-              </>
-            )}
-          </Form>
-        </Col>
+              )}
+              <Formatter
+                defaultType={defaultType}
+                repoFormatters={repoFormatters}
+                type={type}
+                pasteAppPayloadFormatter={pasteAppPayloadFormatter}
+                pasteRepoPayloadFormatters={pasteRepoPayloadFormatters}
+                darkTheme={darkTheme}
+              />
+              <MoveAwayModal blocker={blocker} />
+            </>
+          )}
+        </Form>
+      </div>
+      <div className="item-6 lg-xl:item-6 lg:item-12 md-lg:item-12">
         {_showTestSection() && (
-          <Col sm={12} lg={6}>
+          <>
             <TestForm
-              className={style.testForm}
+              className="lg-xl:mt-ls-s"
               onSubmit={handleTestSubmit}
               uplink={uplink}
               testResult={testResult}
+              darkTheme={darkTheme}
             />
             <Link.DocLink path="/integrations/payload-formatters" secondary>
               <Message content={m.learnMoreAboutPayloadFormatters} />
             </Link.DocLink>
-          </Col>
+          </>
         )}
-      </Row>
-      <Row>
-        <Col sm={12}>
-          <SubmitBar>
-            <SubmitButton
-              message={sharedMessages.saveChanges}
-              form="payload-formatter-form"
-              isSubmitting={isSubmitting}
-              isValidating={false}
-            />
-          </SubmitBar>
-        </Col>
-      </Row>
+      </div>
+      <div className="item-6 lg-xl:item-6 lg:item-12 md-lg:item-12">
+        <SubmitBar>
+          <SubmitButton
+            message={sharedMessages.saveChanges}
+            form="payload-formatter-form"
+            isSubmitting={isSubmitting}
+            isValidating={false}
+          />
+        </SubmitBar>
+      </div>
     </>
   )
 }
@@ -495,6 +498,7 @@ PayloadFormattersForm.propTypes = {
   allowReset: PropTypes.bool,
   allowTest: PropTypes.bool,
   appId: PropTypes.string,
+  darkTheme: PropTypes.bool,
   defaultParameter: PropTypes.string,
   defaultType: PropTypes.string,
   initialParameter: PropTypes.string,
@@ -527,6 +531,7 @@ PayloadFormattersForm.defaultProps = {
   appId: undefined,
   isDefaultType: undefined,
   repoFormatters: undefined,
+  darkTheme: false,
 }
 
 export default injectIntl(PayloadFormattersForm)

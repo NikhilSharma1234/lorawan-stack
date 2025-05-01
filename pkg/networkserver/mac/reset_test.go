@@ -73,7 +73,12 @@ func TestHandleResetInd(t *testing.T) {
 					SupportsJoin:      false,
 					FrequencyPlanId:   test.EUFrequencyPlanID,
 				}
-				macState, err := NewState(dev, frequencyplans.NewStore(test.FrequencyPlansFetcher), &ttnpb.MACSettings{})
+				macState, err := NewState(
+					dev,
+					frequencyplans.NewStore(test.FrequencyPlansFetcher),
+					nil,
+					nil,
+				)
 				if err != nil {
 					t.Fatalf("Failed to reset MACState: %v", errors.Stack(err))
 				}
@@ -122,7 +127,12 @@ func TestHandleResetInd(t *testing.T) {
 					SupportsJoin:      false,
 					FrequencyPlanId:   test.EUFrequencyPlanID,
 				}
-				macState, err := NewState(dev, frequencyplans.NewStore(test.FrequencyPlansFetcher), &ttnpb.MACSettings{})
+				macState, err := NewState(
+					dev,
+					frequencyplans.NewStore(test.FrequencyPlansFetcher),
+					nil,
+					nil,
+				)
 				if err != nil {
 					t.Fatalf("Failed to reset MACState: %v", errors.Stack(err))
 				}
@@ -155,7 +165,14 @@ func TestHandleResetInd(t *testing.T) {
 			Func: func(ctx context.Context, t *testing.T, a *assertions.Assertion) {
 				dev := ttnpb.Clone(tc.Device)
 
-				evs, err := HandleResetInd(ctx, dev, tc.Payload, frequencyplans.NewStore(test.FrequencyPlansFetcher), &ttnpb.MACSettings{})
+				evs, err := HandleResetInd(
+					ctx,
+					dev,
+					tc.Payload,
+					frequencyplans.NewStore(test.FrequencyPlansFetcher),
+					nil,
+					nil,
+				)
 				if tc.Error != nil && !a.So(err, should.EqualErrorOrDefinition, tc.Error) ||
 					tc.Error == nil && !a.So(err, should.BeNil) {
 					t.FailNow()

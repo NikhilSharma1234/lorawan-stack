@@ -30,10 +30,10 @@ import (
 )
 
 var (
-	// QueueDelay indicates the time the gateway needs to recharge the concentrator between items in the queue.
+	// QueueDelay indicates the time to recharge the concentrator and other margins between items in the queue.
 	// This is a conservative value as implemented in the Semtech UDP Packet Forwarder reference implementation,
-	// see https://github.com/Lora-net/packet_forwarder/blob/v4.0.1/lora_pkt_fwd/src/jitqueue.c#L39
-	QueueDelay = 30 * time.Millisecond
+	// see https://github.com/Lora-net/packet_forwarder/blob/v4.0.1/lora_pkt_fwd/src/jitqueue.c#L35-L39
+	QueueDelay = 1500*time.Microsecond + 1000*time.Microsecond + 30000*time.Microsecond
 
 	// ScheduleTimeShort is a short time to send a downlink message to the gateway before it has to be transmitted.
 	// This time is comprised of a lower network latency and QueueDelay. This delay is used to block scheduling when the
@@ -45,11 +45,11 @@ var (
 	// scheduling, see ScheduleAnytime.
 	ScheduleTimeLong = 500*time.Millisecond + QueueDelay
 
-	// scheduleMinRTTCount is the minimum number of observed round-trip times that are taken into account before using
+	// ScheduleMinRTTCount is the minimum number of observed round-trip times that are taken into account before using
 	// using their statistics for calculating an absolute time or determining whether scheduling is too late.
 	scheduleMinRTTCount = 5
 
-	// scheduleLateRTTPercentile is the percentile of round-trip times that is considered for determining whether
+	// ScheduleLateRTTPercentile is the percentile of round-trip times that is considered for determining whether
 	// scheduling is too late.
 	scheduleLateRTTPercentile = 90
 )
@@ -73,12 +73,18 @@ type RTTs interface {
 }
 
 var (
-	errFrequencyPlansTimeOffAir     = errors.DefineInvalidArgument("frequency_plans_time_off_air", "frequency plans must have the same time off air value")
-	errFrequencyPlansOverlapSubBand = errors.DefineInvalidArgument("frequency_plans_overlap_sub_band", "frequency plans must not have overlapping sub bands")
+	errFrequencyPlansTimeOffAir = errors.DefineInvalidArgument(
+		"frequency_plans_time_off_air", "frequency plans must have the same time off air value",
+	)
+	errFrequencyPlansOverlapSubBand = errors.DefineInvalidArgument(
+		"frequency_plans_overlap_sub_band", "frequency plans must not have overlapping sub bands",
+	)
 )
 
 // NewScheduler instantiates a new Scheduler for the given frequency plan.
 // If no time source is specified, the system time is used.
+//
+//nolint:gocyclo
 func NewScheduler(
 	ctx context.Context,
 	fps []*frequencyplans.FrequencyPlan,
@@ -146,11 +152,11 @@ func NewScheduler(
 					}
 				}
 			} else {
-				band, err := band.GetLatest(fp.BandID)
+				b, err := band.GetLatest(fp.BandID)
 				if err != nil {
 					return nil, err
 				}
-				for _, subBand := range band.SubBands {
+				for _, subBand := range b.SubBands {
 					params := SubBandParameters{
 						MinFrequency: subBand.MinFrequency,
 						MaxFrequency: subBand.MaxFrequency,
@@ -181,7 +187,7 @@ func NewScheduler(
 		sb := NewSubBand(noDutyCycleParams, s.clock, nil, dutyCycleStyle)
 		s.subBands = append(s.subBands, sb)
 	}
-	go s.gc(ctx)
+	go s.gc(ctx) // nolint:errcheck
 	return s, nil
 }
 
@@ -197,7 +203,9 @@ type Scheduler struct {
 	scheduleAnytimeDelay time.Duration
 }
 
-var errSubBandNotFound = errors.DefineFailedPrecondition("sub_band_not_found", "sub-band not found for frequency `{frequency}` Hz")
+var errSubBandNotFound = errors.DefineFailedPrecondition(
+	"sub_band_not_found", "sub-band not found for frequency `{frequency}` Hz",
+)
 
 func (s *Scheduler) findSubBand(frequency uint64) (*SubBand, error) {
 	for _, subBand := range s.subBands {
@@ -235,7 +243,9 @@ func (s *Scheduler) gc(ctx context.Context) error {
 
 var errDwellTime = errors.DefineFailedPrecondition("dwell_time", "packet exceeds dwell time restriction")
 
-func (s *Scheduler) newEmission(payloadSize int, settings *ttnpb.TxSettings, starts ConcentratorTime) (Emission, error) {
+func (s *Scheduler) newEmission(
+	payloadSize int, settings *ttnpb.TxSettings, starts ConcentratorTime,
+) (Emission, error) {
 	d, err := toa.Compute(payloadSize, settings)
 	if err != nil {
 		return Emission{}, err
@@ -253,17 +263,23 @@ func (s *Scheduler) SubBandCount() int {
 	return len(s.subBands)
 }
 
-// syncWithUplinkToken synchronizes the clock using the given token.
-// If the given token does not provide enough information or if the latest clock sync is more recent, this method returns false.
+// SyncWithUplinkToken synchronizes the clock using the given token.
+// If the given token does not provide enough information or if the latest clock sync is more recent,
+// this method returns false.
 // This method assumes that the mutex is held.
-func (s *Scheduler) syncWithUplinkToken(token *ttnpb.UplinkToken) bool {
+func (s *Scheduler) syncWithUplinkToken(token *ttnpb.UplinkToken) bool { //nolint:unparam
 	if token.GetServerTime() == nil || token.GetConcentratorTime() == 0 {
 		return false
 	}
 	if lastSync, ok := s.clock.SyncTime(); ok && lastSync.After(*ttnpb.StdTime(token.ServerTime)) {
 		return false
 	}
-	s.clock.SyncWithGatewayConcentrator(token.Timestamp, *ttnpb.StdTime(token.ServerTime), ttnpb.StdTime(token.GatewayTime), ConcentratorTime(token.ConcentratorTime))
+	s.clock.SyncWithGatewayConcentrator(
+		token.Timestamp,
+		*ttnpb.StdTime(token.ServerTime),
+		ttnpb.StdTime(token.GatewayTime),
+		ConcentratorTime(token.ConcentratorTime),
+	)
 	return true
 }
 
@@ -287,7 +303,8 @@ type Options struct {
 }
 
 // ScheduleAt attempts to schedule the given Tx settings with the given priority.
-// If there are round-trip times available, the nth percentile (n = scheduleLateRTTPercentile) value will be used instead of ScheduleTimeShort.
+// If there are round-trip times available, the nth percentile (n = scheduleLateRTTPercentile) value will be used
+// instead of ScheduleTimeShort.
 func (s *Scheduler) ScheduleAt(ctx context.Context, opts Options) (res Emission, now ConcentratorTime, err error) {
 	defer trace.StartRegion(ctx, "schedule transmission").End()
 
@@ -396,12 +413,12 @@ func (s *Scheduler) ScheduleAnytime(ctx context.Context, opts Options) (res Emis
 	}
 	if opts.Timestamp == 0 {
 		starts = now + ConcentratorTime(s.scheduleAnytimeDelay)
-		opts.Timestamp = uint32(time.Duration(starts) / time.Microsecond)
+		opts.Timestamp = uint32(time.Duration(starts) / time.Microsecond) //nolint:gosec
 	} else {
 		starts = s.clock.FromTimestampTime(opts.Timestamp)
 		if delta := minScheduleTime - time.Duration(starts-now); delta > 0 {
 			starts += ConcentratorTime(delta)
-			opts.Timestamp += uint32(delta / time.Microsecond)
+			opts.Timestamp += uint32(delta / time.Microsecond) //nolint:gosec
 		}
 	}
 	sb, err := s.findSubBand(opts.Frequency)
@@ -467,7 +484,9 @@ func (s *Scheduler) SyncWithGatewayAbsolute(timestamp uint32, server, gateway ti
 
 // SyncWithGatewayConcentrator synchronizes the clock with the given concentrator timestamp, the server time and the
 // relative gateway time that corresponds to the given timestamp.
-func (s *Scheduler) SyncWithGatewayConcentrator(timestamp uint32, server time.Time, gateway *time.Time, concentrator ConcentratorTime) ConcentratorTime {
+func (s *Scheduler) SyncWithGatewayConcentrator(
+	timestamp uint32, server time.Time, gateway *time.Time, concentrator ConcentratorTime,
+) ConcentratorTime {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.clock.SyncWithGatewayConcentrator(timestamp, server, gateway, concentrator)
@@ -515,8 +534,7 @@ func (s *Scheduler) TimeFromServerTime(t time.Time) (ConcentratorTime, bool) {
 
 // SubBandStats returns a map with the usage stats of each sub band.
 func (s *Scheduler) SubBandStats() []*ttnpb.GatewayConnectionStats_SubBand {
-	var res []*ttnpb.GatewayConnectionStats_SubBand
-
+	res := make([]*ttnpb.GatewayConnectionStats_SubBand, 0, len(s.subBands))
 	for _, sb := range s.subBands {
 		res = append(res, &ttnpb.GatewayConnectionStats_SubBand{
 			MaxFrequency:             sb.MaxFrequency,
@@ -525,6 +543,5 @@ func (s *Scheduler) SubBandStats() []*ttnpb.GatewayConnectionStats_SubBand {
 			DownlinkUtilization:      sb.DutyCycleUtilization(),
 		})
 	}
-
 	return res
 }

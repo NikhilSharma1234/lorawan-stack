@@ -45,16 +45,16 @@ const Checkbox = props => {
   } = props
   const hasValue = 'value' in props
   const context = useContext(CheckboxGroupContext)
-  const composedValue = value && context ? value[name] : value
-  const [checked, setChecked] = useState(composedValue)
+  const composedValue = value && context ? value[name] : false
+  const [checkedState, setChecked] = useState(composedValue)
 
   useEffect(() => {
-    if (hasValue && value !== checked) {
+    if (hasValue && value !== checkedState) {
       setChecked(value)
     }
 
     return null
-  }, [value, hasValue, checked])
+  }, [value, hasValue, checkedState])
 
   const handleChange = useCallback(
     event => {
@@ -89,7 +89,7 @@ const Checkbox = props => {
     checkboxProps.onBlur = onBlur
     checkboxProps.onFocus = onFocus
     checkboxProps.disabled = disabled
-    checkboxProps.checked = checked
+    checkboxProps.checked = checkedState
   }
   checkboxProps.value = checkboxProps.checked
 
@@ -104,22 +104,24 @@ const Checkbox = props => {
 
   return (
     <label className={cls}>
-      <span className={style.checkbox}>
-        <input
-          type="checkbox"
-          ref={inputRef}
-          name={name}
-          readOnly={readOnly}
-          autoFocus={autoFocus}
-          onChange={handleChange}
-          id={id}
-          aria-describedby={rest['aria-describedby']}
-          aria-invalid={rest['aria-invalid']}
-          {...checkboxProps}
-        />
-        <span className={style.checkmark} />
-      </span>
-      {label && <Message className={labelCls} content={label} />}
+      <div>
+        <span className={style.checkbox}>
+          <input
+            type="checkbox"
+            ref={inputRef}
+            name={name}
+            readOnly={readOnly}
+            autoFocus={autoFocus}
+            onChange={handleChange}
+            id={id}
+            aria-describedby={rest['aria-describedby']}
+            aria-invalid={rest['aria-invalid']}
+            {...checkboxProps}
+          />
+          <span className={style.checkmark} />
+        </span>
+        {label && <Message className={labelCls} content={label} />}
+      </div>
       {children}
     </label>
   )

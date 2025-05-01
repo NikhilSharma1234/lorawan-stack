@@ -71,6 +71,8 @@ func (v *ApplicationDownlink) FieldIsZero(p string) bool {
 		return true
 	}
 	switch p {
+	case "attributes":
+		return v.Attributes == nil
 	case "class_b_c":
 		return v.ClassBC == nil
 	case "class_b_c.absolute_time":
@@ -79,6 +81,12 @@ func (v *ApplicationDownlink) FieldIsZero(p string) bool {
 		return v.ClassBC.FieldIsZero("gateways")
 	case "confirmed":
 		return !v.Confirmed
+	case "confirmed_retry":
+		return v.ConfirmedRetry == nil
+	case "confirmed_retry.attempt":
+		return v.ConfirmedRetry.FieldIsZero("attempt")
+	case "confirmed_retry.max_attempts":
+		return v.ConfirmedRetry.FieldIsZero("max_attempts")
 	case "correlation_ids":
 		return v.CorrelationIds == nil
 	case "decoded_payload":
@@ -91,16 +99,38 @@ func (v *ApplicationDownlink) FieldIsZero(p string) bool {
 		return v.FPort == 0
 	case "frm_payload":
 		return v.FrmPayload == nil
+	case "locations":
+		return v.Locations == nil
+	case "network_ids": // nolint: goconst
+		return v.NetworkIds == nil
+	case "network_ids.cluster_address":
+		return v.NetworkIds.FieldIsZero("cluster_address")
+	case "network_ids.cluster_id":
+		return v.NetworkIds.FieldIsZero("cluster_id")
+	case "network_ids.net_id":
+		return v.NetworkIds.FieldIsZero("net_id")
+	case "network_ids.ns_id":
+		return v.NetworkIds.FieldIsZero("ns_id")
+	case "network_ids.tenant_address":
+		return v.NetworkIds.FieldIsZero("tenant_address")
+	case "network_ids.tenant_id":
+		return v.NetworkIds.FieldIsZero("tenant_id")
 	case "priority":
 		return v.Priority == 0
 	case "session_key_id":
 		return v.SessionKeyId == nil
-	case "confirmed_retry":
-		return v.ConfirmedRetry == nil
-	case "confirmed_retry.attempt":
-		return v.ConfirmedRetry.FieldIsZero("attempt")
-	case "confirmed_retry.max_attempts":
-		return v.ConfirmedRetry.FieldIsZero("max_attempts")
+	case "version_ids":
+		return v.VersionIds == nil
+	case "version_ids.band_id":
+		return v.VersionIds.FieldIsZero("band_id")
+	case "version_ids.brand_id":
+		return v.VersionIds.FieldIsZero("brand_id")
+	case "version_ids.firmware_version":
+		return v.VersionIds.FieldIsZero("firmware_version")
+	case "version_ids.hardware_version":
+		return v.VersionIds.FieldIsZero("hardware_version")
+	case "version_ids.model_id":
+		return v.VersionIds.FieldIsZero("model_id")
 	}
 	panic(fmt.Sprintf("unknown path '%s'", p))
 }

@@ -22,7 +22,8 @@ import {
   selectIsSelectedGatewayManaged,
 } from '@console/store/selectors/gateways'
 import { selectOrganizationRights } from '@console/store/selectors/organizations'
-import { selectUserRights, selectUserIsAdmin } from '@console/store/selectors/logout'
+import { selectUserRights, selectUserIsAdmin } from '@console/store/selectors/user'
+import { selectClientRights } from '@console/store/selectors/clients'
 
 const stackConfig = selectStackConfig()
 const asEnabled = stackConfig.as.enabled
@@ -33,6 +34,10 @@ export const checkFromState = (featureCheck, state) =>
   featureCheck.check(featureCheck.rightsSelector(state))
 
 // User related feature checks.
+export const mayPerformAllUserActions = {
+  rightsSelector: selectUserRights,
+  check: rights => rights.includes('RIGHT_USER_ALL'),
+}
 export const mayViewApplicationsOfUser = {
   rightsSelector: selectUserRights,
   check: rights => rights.includes('RIGHT_USER_APPLICATIONS_LIST'),
@@ -40,6 +45,10 @@ export const mayViewApplicationsOfUser = {
 export const mayCreateApplications = {
   rightsSelector: selectUserRights,
   check: rights => rights.includes('RIGHT_USER_APPLICATIONS_CREATE'),
+}
+export const mayCreateDevices = {
+  rightsSelector: selectUserRights,
+  check: rights => rights.includes('RIGHT_APPLICATION_DEVICES_WRITE'),
 }
 export const mayViewGatewaysOfUser = {
   rightsSelector: selectUserRights,
@@ -64,6 +73,36 @@ export const mayViewOrEditApiKeys = {
 export const maySendInvites = {
   rightsSelector: selectUserRights,
   check: rights => rights.includes('RIGHT_SEND_INVITES'),
+}
+
+export const mayCreateClients = {
+  rightsSelector: selectUserRights,
+  check: rights => rights.includes('RIGHT_USER_CLIENTS_CREATE'),
+}
+
+export const mayViewClientsOfUser = {
+  rightsSelector: selectUserRights,
+  check: rights => rights.includes('RIGHT_USER_CLIENTS_LIST'),
+}
+
+export const mayViewOrEditClientAuthorizations = {
+  rightsSelector: selectUserRights,
+  check: rights => rights.includes('RIGHT_USER_AUTHORIZED_CLIENTS'),
+}
+
+export const mayViewOrEditUserSettings = {
+  rightsSelector: selectUserRights,
+  check: rights => rights.includes('RIGHT_USER_SETTINGS_BASIC'),
+}
+
+export const mayViewOrEditUserApiKeys = {
+  rightsSelector: selectUserRights,
+  check: rights => rights.includes('RIGHT_USER_SETTINGS_API_KEYS'),
+}
+
+export const mayCreateUsers = {
+  rightsSelector: selectUserRights,
+  check: rights => rights.includes('RIGHT_USER_CREATE'),
 }
 
 // Application related feature checks.
@@ -238,6 +277,32 @@ export const mayPerformAdminActions = {
   check: isAdmin => isAdmin,
 }
 
+// Client feature checks.
+export const mayPerformAllClientActions = {
+  rightsSelector: selectClientRights,
+  check: rights => rights.includes('RIGHT_CLIENT_ALL'),
+}
+
+export const mayEditBasicClientInformation = {
+  rightsSelector: selectClientRights,
+  check: rights => rights.includes('RIGHT_CLIENT_SETTINGS_BASIC'),
+}
+
+export const mayViewBasicClientInformation = {
+  rightsSelector: selectClientRights,
+  check: rights => rights.includes('RIGHT_CLIENT_INFO'),
+}
+
+export const mayDeleteClients = {
+  rightsSelector: selectClientRights,
+  check: rights => rights.includes('RIGHT_CLIENT_DELETE'),
+}
+
+export const mayViewOrEditClientCollaborators = {
+  rightsSelector: selectClientRights,
+  check: rights => rights.includes('RIGHT_CLIENT_SETTINGS_COLLABORATORS'),
+}
+
 export const mayManageUsers = mayPerformAdminActions
 export const mayPurgeEntities = mayPerformAdminActions
 export const mayConfigurePacketBroker = mayPerformAdminActions
@@ -262,6 +327,20 @@ export const mayViewGateways = {
 export const mayWriteTraffic = {
   rightsSelector: selectApplicationRights,
   check: rights => mayScheduleDownlinks.check(rights) || maySendUplink.check(rights),
+}
+
+export const mayCreateEntities = {
+  rightsSelector: createSelector(
+    [
+      selectUserRights,
+      selectOrganizationRights,
+      selectApplicationRights,
+      selectClientRights,
+      selectGatewayRights,
+    ],
+    (user, org, app, client, gateway) => [...user, ...org, ...app, ...client, ...gateway],
+  ),
+  check: rights => rights.some(right => right.includes('_CREATE')),
 }
 
 // Pub/Sub feature checks.

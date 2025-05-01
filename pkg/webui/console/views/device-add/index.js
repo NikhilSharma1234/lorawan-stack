@@ -21,6 +21,8 @@ import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 import videoFile from '@assets/videos/AddSensor.mp4'
 
 import PageTitle from '@ttn-lw/components/page-title'
+import { useBreadcrumbs } from '@ttn-lw/components/breadcrumbs/context'
+import Breadcrumb from '@ttn-lw/components/breadcrumbs/breadcrumb'
 
 import RequireRequest from '@ttn-lw/lib/components/require-request'
 
@@ -45,6 +47,14 @@ const DeviceAdd = () => {
       await dispatch(attachPromise(listBrands(appId, {}, ['name', 'lora_alliance_vendor_id'])))
     },
     [appId, jsEnabled],
+  )
+
+  useBreadcrumbs(
+    'apps.single.devices.add',
+    <Breadcrumb
+      path={`/applications/${appId}/devices/add`}
+      content={sharedMessages.registerEndDevice}
+    />,
   )
 
   return (
