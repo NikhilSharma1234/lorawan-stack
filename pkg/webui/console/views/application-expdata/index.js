@@ -217,9 +217,10 @@ const ApplicationDataExport = () => {
           for (const [displayName, keys] of Object.entries(displayNameToKeys)) {
             // Check if any of the keys exist in the current item
             const valuesToSum = keys.map(key => item[key]).filter(value => value !== undefined)
-
+            
+            // TODO: need to handle the case where a field has multiple strings for now just concat
             if (valuesToSum.length > 0) {
-              newItem[displayName] = valuesToSum.reduce((sum, value) => sum + (value || 0), 0)
+              newItem[displayName] = valuesToSum.reduce((sum, value) => sum + (value || 0), '') // set to '' to handle strings -- '' is 0 in addition
               keys.forEach(key => delete newItem[key]) // Remove original keys
             }
           }
@@ -248,7 +249,8 @@ const ApplicationDataExport = () => {
                   headerName: mappingInfo.display_name,
                   description: mappingInfo.description || '',
                   sortable: mappingInfo.sortable || false,
-                  type: 'number', // Adjust type based on unit
+                  type: (mappingInfo.unit == 'string' || mappingInfo.unit == '') 
+                        ? 'string' : 'number', // Adjust type based on unit -- if unit is string or empty assume string
                   width: mappingInfo.width || 100,
                 })
 
