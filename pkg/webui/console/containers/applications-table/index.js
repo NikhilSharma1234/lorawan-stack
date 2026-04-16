@@ -51,6 +51,7 @@ import { selectUserIsAdmin } from '@console/store/selectors/logout'
 import {
   selectApplicationsTotalCount,
   selectApplicationsWithDeviceCounts,
+  selectApplicationDerivedStore, // Gets last activity status
 } from '@console/store/selectors/applications'
 
 const m = defineMessages({
@@ -129,14 +130,14 @@ const ApplicationsTable = props => {
       {
         name: 'ids.application_id',
         displayName: sharedMessages.id,
-        width: 30,
+        width: 24,
         sortable: true,
         sortKey: 'application_id',
       },
       {
         name: 'name',
         displayName: sharedMessages.name,
-        width: 30,
+        width: 24,
         sortable: true,
       },
     ]
@@ -170,7 +171,7 @@ const ApplicationsTable = props => {
         {
           name: 'status',
           displayName: '',
-          width: 17,
+          width: 10,
           render: status => {
             if (status.otherCluster) {
               const host = status.host
@@ -213,6 +214,25 @@ const ApplicationsTable = props => {
             ),
         },
         {
+          name: 'last_activity', // last activity column
+          width: 16,
+          displayName: sharedMessages.lastSeen,
+          align: 'center',
+          render: value => {
+            if (!value) {
+              return null
+            }
+
+            const parsedTime = new Date(value).getTime()
+
+            if (!Number.isFinite(parsedTime) || parsedTime <= 0) {
+              return null
+            }
+
+            return <DateTime.Relative value={value} />
+          },
+        },
+        {
           name: 'created_at',
           width: 15,
           displayName: sharedMessages.createdAt,
@@ -228,18 +248,30 @@ const ApplicationsTable = props => {
 
   const selectDecoratedApplications = createSelector(
     selectApplicationsWithDeviceCounts,
-    applications =>
-      applications.map(app => ({
-        ...app,
-        status: {
-          otherCluster: isOtherClusterApp(app),
-          host:
-            app.application_server_address || app.network_server_address || app.join_server_address,
-        },
-        _meta: {
-          clickable: !isOtherClusterApp(app),
-        },
-      })),
+    selectApplicationDerivedStore,
+    (applications, derived) =>
+      applications.map(app => {
+        const appId = app.ids.application_id
+        const rawLastActivity = derived?.[appId]?.lastSeen
+
+        const parsedTime = rawLastActivity ? new Date(rawLastActivity).getTime() : NaN
+        const hasValidLastActivity = Number.isFinite(parsedTime) && parsedTime > 0
+
+        return {
+          ...app,
+          last_activity: hasValidLastActivity ? rawLastActivity : null,
+          status: {
+            otherCluster: isOtherClusterApp(app),
+            host:
+              app.application_server_address ||
+              app.network_server_address ||
+              app.join_server_address,
+          },
+          _meta: {
+            clickable: !isOtherClusterApp(app),
+          },
+        }
+      }),
   )
 
   const baseDataSelector = createSelector(
